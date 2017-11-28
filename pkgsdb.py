@@ -175,7 +175,6 @@ def deletepackdir(dirpath,dbpathname):
     return flag
 
 #遍历filepath下所有文件，包括子目录
-
 def displaydir(filepath,basepath,length,dbpathname):
     flag = True
     if os.path.isdir(filepath):
@@ -200,55 +199,3 @@ def getdirdisplay(filepath,dbpathname):
     #print "basepath:",basepath
     flag = displaydir(filepath,basepath,length,dbpathname)
     return flag
-
-def main():  
-    DB_FILE_PATH = 'F:\env\sample\packages\packages.dbsqlite'
-    TABLE_NAME = 'packagesfile'
-    path = "F:\env\sample\packages\hello-1.0.0"
-
-    #conn = get_conn(DB_FILE_PATH)
-    #c = get_cursor(conn) 
-    #sql = '''DELETE from packagefile where package = "hello-1.0.0.zip"'''
-    ##sql = '''DELETE from packagefile where package = ''' 
-    ##sql += repr('hello-1.0.0.zip')
-
-    ##sql = "DELETE from packagefile where pathname = '" + pathname + "'"
-    ##sql += repr(pathname)
-    #print sql
-    #c.execute(sql)
-    #conn.commit()
-    #conn.close()
-
-    #deletepackdir(path,DB_FILE_PATH)
-    archive_fn = "F:\\env\\tools\\summer-1.0.0.tar.bz2"
-    path = "F:\env\sample\packages\paho-mqtt-1.0.0"
-
-    #getdirdisplay(path,DB_FILE_PATH)
-
-    #dbdump(DB_FILE_PATH)
-
-    repo_path = 'F:\\22'
-    repo_url = 'https://github.com/RT-Thread/jerryscript.git'
-    #repo_url = 'https://github.com/SummerGGift/Python-Program.git' 
-    #repo_url =  'https://github.com/jerryscript-project/jerryscript.git'
-    #repo = Gittle.clone(repo_url, repo_path)
-    
-    print os.getcwd()
-
-    bsp_pkgs_path = "F:\\git_repositories\\env\\sample\\packages"
-
-    #os.chdir(repo_path)
-    #cmd = 'git clone https://github.com/RT-Thread/jerryscript.git ' + repo_path
-    #os.system(cmd)
-    #cmd = 'git submodule init '
-    #os.system(cmd)
-    #cmd = 'git submodule update '
-    #os.system(cmd)
-
-    fp = open("pkgs.json",'w') 
-    fp.close()
-
-
-
-if __name__ == '__main__':
-    main()

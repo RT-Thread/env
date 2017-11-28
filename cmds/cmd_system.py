@@ -19,7 +19,6 @@ def cmd(args):
 
         kconfig.close()
   
-
 def add_parser(sub):
     parser = sub.add_parser('system', help=__doc__, description=__doc__)
 
@@ -28,7 +27,5 @@ def add_parser(sub):
         action='store_true',
         default=False,
         dest = 'system_update')
-
-
 
     parser.set_defaults(func=cmd)
