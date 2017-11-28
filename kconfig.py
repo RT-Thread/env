@@ -64,4 +64,4 @@ def parse(filename):
     return ret
 
 if __name__ == '__main__':
-    parse('sample/.config');
+    parse('sample/.config')

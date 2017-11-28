@@ -39,7 +39,6 @@ def unpack(archive_fn, path):
                 pkgsdb.savetodb(b,archive_fn)
         arch.close()
 
-    
 def packtest(path):
     ret = True
     if ".zip" in path:
@@ -69,3 +68,4 @@ def packtest(path):
             ret = False
                     
     return ret
+    
