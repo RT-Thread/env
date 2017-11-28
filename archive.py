@@ -68,4 +68,3 @@ def packtest(path):
             ret = False
                     
     return ret
-    
