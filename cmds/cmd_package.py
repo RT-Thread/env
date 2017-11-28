@@ -38,9 +38,29 @@ if PKG_USING_${name}
         string
         default "/packages/${pkgs_class}/${lowercase_name}"
 
-    config PKG_${name}_VER
+    choice
+        prompt "${lowercase_name} version"
+        help
+            Select the ${lowercase_name} version
+
+        config PKG_USING_${name}_v${version}
+            bool "v${version}"
+
+        config PKG_USING_${name}_LATEST_VERSION
+            bool "latest_version"
+    endchoice
+    
+    if PKG_USING_${name}_v${version}
+        config PKG_${name}_VER
         string
         default "v${version}"
+    endif
+   
+    if PKG_USING_${name}_LATEST_VERSION
+       config PKG_${name}_VER
+       string
+       default "latest_version"    
+    endif
 
 endif
 '''
@@ -54,7 +74,8 @@ Package_json_file = '''
     ],
     "readme": "${description}",
     "site" : [
-    {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"}
+    {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
+    {"version" : "latest_version", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
     ]
 }
 '''
@@ -99,7 +120,7 @@ def install_pkg(env_root, bsp_root, pkg):
     package_name = pkg['name']
     pkgs_name_in_json =  package.get_name()
 
-    #print "get name here:",name_in_json
+    #print "get name here:",pkgs_name_in_json
     #print "url:",package_url
     #print "name:",package_name
    
