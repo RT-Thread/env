@@ -308,10 +308,13 @@ def package_update():
             #dirname = os.path.dirname(removepath)
             #gitdir = os.path.join(dirname,uppername)
             gitdir = removepath
-            print "Folder to delete: ",gitdir
 
-            print "The folder is managed by git,are you sure you want to delete this folder?"
-            rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file.')
+            print "\nOperation : Delete a git package or change the version of a package."
+            print "If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n"
+            print "Folder to delete: ",gitdir
+            print "The folder is managed by git,are you sure you want to delete this folder?\n"
+
+            rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
                 cmd = 'rd /s /q ' + gitdir
                 os.system(cmd)
@@ -428,8 +431,10 @@ def package_wizard():
 
 
 def cmd(args):
+    env_scripts_root = os.path.join(Import('env_root'), 'tools\\scripts')
     packages_root = os.path.join(Import('env_root'), 'packages')
     git_repo = 'https://github.com/RT-Thread/packages.git'
+    env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
     if args.package_update:
         package_update()
@@ -450,6 +455,13 @@ def cmd(args):
             cmd = 'git clone '+ git_repo + ' '+ packages_root + '\\packages'
             os.system(cmd)
             print "upgrade from :",git_repo
+
+        beforepath = os.getcwd()
+        os.chdir(env_scripts_root)
+        cmd = 'git pull '+ env_scripts_repo
+        os.system(cmd)
+        os.chdir(beforepath)
+
     elif args.package_print_env:
          print "Here are some environmental variables."
          print "If you meet some problems,please check them. Make sure the configuration is correct."
