@@ -87,7 +87,7 @@ def isdataexist(pathname):
 def savetodb(pathname,pkgspathname):
     dbpathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
-    bsppkgs = bsp_root + '\\packages\\'
+    bsppkgs = os.path.join(bsp_root,'packages')
     #print bsppkgs
 
     conn = get_conn(dbpathname)
@@ -95,7 +95,7 @@ def savetodb(pathname,pkgspathname):
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
     #print "pathname",pathname
-    md5pathname = bsppkgs + pathname
+    md5pathname = os.path.join(bsppkgs,pathname)
     md5 = GetFileMd5(md5pathname)
     #print "md5",md5
     data = [(pathname,package ,md5)]
@@ -117,6 +117,9 @@ def remove_unchangedfile(pathname,dbpathname,dbsqlname):
 
     conn = get_conn(dbpathname)
     c = get_cursor(conn)
+
+    #print 'pathname',pathname
+    #print 'dbsqlname',dbsqlname
 
     filemd5 = GetFileMd5(pathname)
     #print "filemd5:",filemd5
@@ -193,9 +196,9 @@ def displaydir(filepath,basepath,length,dbpathname):
 
 def getdirdisplay(filepath,dbpathname):
     flag = True
-    display = filepath + '\\'
+    display = filepath
     length = len(display)
-    basepath = os.path.basename(filepath) + '\\'
+    basepath = os.path.basename(filepath)
     #print "basepath:",basepath
     flag = displaydir(filepath,basepath,length,dbpathname)
     return flag
