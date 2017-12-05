@@ -112,8 +112,9 @@ def install_pkg(env_root, bsp_root, pkg):
     pkg_path = pkg['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
 
-    pkg_path = pkg_path.replace('/', '\\')
+    #pkg_path = pkg_path.replace('/', '\\')
     pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+
     package.parse(pkg_path)
 
     package_url = package.get_url(pkg['ver'])
@@ -128,7 +129,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
-        repo_path = bsp_pkgs_path + '\\' + pkgs_name_in_json
+        repo_path = os.path.join(bsp_pkgs_path,pkgs_name_in_json)
         cmd = 'git clone '+ package_url + ' '+ repo_path
         os.system(cmd)
         os.chdir(repo_path)
@@ -189,7 +190,7 @@ def package_list():
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
 
-        pkg_path = pkg_path.replace('/', '\\')
+        #pkg_path = pkg_path.replace('/', '\\')
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
 
@@ -431,7 +432,7 @@ def package_wizard():
 
 
 def cmd(args):
-    env_scripts_root = os.path.join(Import('env_root'), 'tools\\scripts')
+    env_scripts_root = os.path.join(Import('env_root'), 'tools','scripts')
     packages_root = os.path.join(Import('env_root'), 'packages')
     git_repo = 'https://github.com/RT-Thread/packages.git'
     env_scripts_repo = 'https://github.com/RT-Thread/env.git'
@@ -444,10 +445,10 @@ def cmd(args):
         package_list()
     elif args.package_upgrade:
         beforepath = os.getcwd()
-        pkgs_path = packages_root + '\\packages'
+        pkgs_path = os.path.join(packages_root,'packages')
         #print pkgs_path
         if not os.path.isdir(pkgs_path):
-            cmd = 'git clone '+ git_repo + ' '+ packages_root + '\\packages'
+            cmd = 'git clone '+ git_repo + ' '+ pkgs_path
             os.system(cmd)
             print "upgrade from :",git_repo
 

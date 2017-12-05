@@ -9,14 +9,17 @@ from vars import Import, Export
 
 def unpack(archive_fn, path):
     flag = False
+
+
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
         for tarinfo in arch:
             arch.extract(tarinfo, path)            
             a = tarinfo.name           
             if not os.path.isdir(os.path.join(path,a)):
-                b = a.replace('/','\\')
-                pkgsdb.savetodb(b,archive_fn)
+                #b = a.replace('/','\\')
+                a = os.path.join(os.path.split(a)[0],os.path.split(a)[1]) 
+                pkgsdb.savetodb(a,archive_fn)
         arch.close()
 
     if ".tar.gz" in archive_fn:
@@ -25,8 +28,9 @@ def unpack(archive_fn, path):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path,a)):
-                b = a.replace('/','\\')
-                pkgsdb.savetodb(b,archive_fn)
+                #b = a.replace('/','\\')
+                a = os.path.join(os.path.split(a)[0],os.path.split(a)[1]) 
+                pkgsdb.savetodb(a,archive_fn)
         arch.close()
 
     if ".zip" in archive_fn:
@@ -34,9 +38,10 @@ def unpack(archive_fn, path):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path,item)):
-                b = item.replace('/','\\')          
-                #print "here to extract files:",b
-                pkgsdb.savetodb(b,archive_fn)
+                #b = item.replace('/','\\')          
+                #print "here to extract files:",item
+                item = os.path.join(os.path.split(item)[0],os.path.split(item)[1]) 
+                pkgsdb.savetodb(item,archive_fn)
         arch.close()
 
 def packtest(path):
