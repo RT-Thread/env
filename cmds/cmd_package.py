@@ -43,14 +43,14 @@ if PKG_USING_${name}
         help
             Select the ${lowercase_name} version
 
-        config PKG_USING_${name}_v${version}
+        config PKG_USING_${name}_V${version_standard}
             bool "v${version}"
 
         config PKG_USING_${name}_LATEST_VERSION
             bool "latest_version"
     endchoice
     
-    if PKG_USING_${name}_v${version}
+    if PKG_USING_${name}_V${version_standard}
         config PKG_${name}_VER
         string
         default "v${version}"
@@ -380,6 +380,7 @@ def package_wizard():
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
     ver = user_input('version of package,default:\n' ,'1.0.0')
+    ver_standard = ver.replace('.','')
     #keyword = user_input('keyword,default:\n', name)
     keyword = name
 
@@ -411,7 +412,7 @@ def package_wizard():
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
-    kconfig = s.substitute(name = uppername, description = description, version = ver ,pkgs_class = pkgsclass ,lowercase_name = name)
+    kconfig = s.substitute(name = uppername, description = description, version = ver ,pkgs_class = pkgsclass ,lowercase_name = name ,version_standard = ver_standard)
     f = file(os.path.join(pkginfo_path, 'Kconfig'), 'wb')
     f.write(kconfig)
     f.close()
