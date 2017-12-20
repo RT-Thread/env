@@ -475,7 +475,14 @@ def cmd(args):
          print "RTT_CC:",os.getenv("RTT_CC")
          print "SCONS:",os.getenv("SCONS")
          print "PKGS_ROOT:",os.getenv("PKGS_ROOT")
-         print "ENV_ROOT:",os.getenv("ENV_ROOT")
+
+         env_root = os.getenv('ENV_ROOT')
+         if env_root == None:
+             import platform
+             if platform.system() != 'Windows':
+                 env_root = os.path.join(os.getenv('HOME'), '.env')
+
+         print "ENV_ROOT:",env_root
          #print "RTT_ROOT:",os.getenv("RTT_ROOT")
          #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
          #print "after",os.getenv("RTT_EXEC_PATH")

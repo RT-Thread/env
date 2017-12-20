@@ -24,6 +24,10 @@ if __name__ == '__main__':
     bsp_root = os.getcwd()
     script_root = os.path.split(os.path.realpath(__file__))[0]
     env_root = os.getenv("ENV_ROOT")
+    if env_root == None:
+        import platform
+        if platform.system() != 'Windows':
+            env_root = os.path.join(os.getenv('HOME'), '.env')
 
     sys.path = sys.path + [os.path.join(script_root)]
 
