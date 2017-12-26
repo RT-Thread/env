@@ -6,6 +6,8 @@ import kconfig
 import hashlib
 import pkgsdb
 import json
+import shutil
+import platform
 
 from package import Package
 from vars import Import, Export
@@ -297,7 +299,7 @@ def package_update():
         ver = pkg['ver']
         #print 'ver is :',ver[1:]
         if dirpath[0] == '/' or dirpath[0] == '\\': dirpath = dirpath[1:]
-        dirpath = dirpath.replace('/', '\\')
+        #dirpath = dirpath.replace('/', '\\')
         dirpath = os.path.basename(dirpath) 
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(target_pkgs_path,dirpath)
@@ -317,11 +319,17 @@ def package_update():
 
             rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
-                cmd = 'rd /s /q ' + gitdir
-                os.system(cmd)
-                if os.path.isdir(gitdir):
+                if platform.system() != "Windows":
+                    shutil.rmtree(gitdir) 
+                else:
                     cmd = 'rd /s /q ' + gitdir
                     os.system(cmd)
+                if os.path.isdir(gitdir):
+                    if platform.system() != "Windows":
+                        shutil.rmtree(gitdir) 
+                    else:
+                        cmd = 'rd /s /q ' + gitdir
+                        os.system(cmd)
                     print "Delete not entirely,try again."
                 else:
                     print "Folder has been removed."
