@@ -319,13 +319,13 @@ def package_update():
 
             rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
-                if platform.system() == "Linux":
+                if platform.system() != "Windows":
                     shutil.rmtree(gitdir) 
                 else:
                     cmd = 'rd /s /q ' + gitdir
                     os.system(cmd)
                 if os.path.isdir(gitdir):
-                    if platform.system() == "Linux":
+                    if platform.system() != "Windows":
                         shutil.rmtree(gitdir) 
                     else:
                         cmd = 'rd /s /q ' + gitdir
