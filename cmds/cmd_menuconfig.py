@@ -1,5 +1,6 @@
 import os
 import argparse
+from cmd_package import package_update
 from vars import Import, Export
 '''menuconfig for system configuration'''
 
@@ -107,6 +108,9 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
+    if not args.menuconfig_skipupdate:
+        package_update()
+
 def add_parser(sub):
     parser = sub.add_parser('menuconfig', help=__doc__, description=__doc__)
 
@@ -119,6 +123,12 @@ def add_parser(sub):
         action='store_true',
         default=False,
         dest = 'menuconfig_silent')
+
+    parser.add_argument('-s','--skipupdate', 
+    help = 'if you add "-s",you will skip command "pkgs --update" and do not update the packages.',
+    action='store_true',
+    default=False,
+    dest = 'menuconfig_skipupdate')
 
     parser.add_argument('--easy', 
     help = 'easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
