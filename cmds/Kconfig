@@ -1,0 +1,38 @@
+menu "Env config"
+
+config SYS_AUTO_UPDATE_PKGS
+    bool "Auto update pkgs config"
+    default n
+
+config SYS_CREATE_MDK_IAR_PROJECT
+    bool "Auto create a mdk/iar project"
+    default n
+
+if SYS_CREATE_MDK_IAR_PROJECT
+
+    choice
+        prompt "Project type"
+        help 
+            Select the project type mdk or iar
+
+        config SYS_CREATE_MDK4
+            bool "MDK4"
+            
+        config SYS_CREATE_MDK5
+            bool "MDK5"
+
+        config SYS_CREATE_IAR
+            bool "IAR"
+    endchoice
+    
+endif
+
+endmenu
+
+
+
+
+
+
+    
+    
