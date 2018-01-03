@@ -2,6 +2,7 @@ import os
 import argparse
 from vars import Import, Export
 '''menuconfig for system configuration'''
+import platform
 
 # make rtconfig.h from .config
 
@@ -61,6 +62,49 @@ def mk_rtconfig(filename):
     rtconfig.write('#endif\n')
     rtconfig.close()
 
+
+def find_macro_in_condfig(filename,macro_name):
+    try:
+        config = file(filename)
+    except:
+        print 'open .config failed'
+        return
+
+    empty_line = 1
+
+    for line in config:
+        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
+
+        if len(line) == 0: continue
+
+        if line[0] == '#':   
+            if len(line) == 1:
+                if empty_line:
+                    continue
+
+                empty_line = 1
+                continue
+
+            comment_line = line[1:]
+            if line.startswith('# CONFIG_'): line = ' ' + line[9:]
+            else: line = line[1:]
+
+            #print line
+
+            empty_line = 0
+        else: 
+            empty_line = 0
+            setting = line.split('=')
+            if len(setting) >= 2:
+                if setting[0].startswith('CONFIG_'):
+                    setting[0] = setting[0][7:]
+
+                    if setting[0] == macro_name and setting[1] == 'y':
+                        return True
+        
+    return False
+
+
 def cmd(args):
     currentdir = os.getcwd() 
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
@@ -106,6 +150,27 @@ def cmd(args):
 
     if mtime != mtime2:
         mk_rtconfig(fn)
+
+    if platform.system() == "Windows":
+        print("\nEnable the auto update option,env will auto update the packages you select.")
+
+        if find_macro_in_condfig(fn,'SYS_AUTO_UPDATE_PKGS'):
+            os.system('pkgs --update')
+            print "Auto update packages done"
+
+        print("Select the project type your bsp support and then env will create a new project.")
+
+        if find_macro_in_condfig(fn,'SYS_CREATE_MDK_IAR_PROJECT'):
+            if find_macro_in_condfig(fn,'SYS_CREATE_MDK4'):
+                os.system('scons --target=mdk4 -s')
+                print "Create mdk4 project done"
+            elif find_macro_in_condfig(fn,'SYS_CREATE_MDK5'):
+                os.system('scons --target=mdk5 -s')
+                print "Create mdk5 project done"
+            elif find_macro_in_condfig(fn,'SYS_CREATE_IAR'):
+                os.system('scons --target=iar -s')
+                print "Create iar project done"
+
 
 def add_parser(sub):
     parser = sub.add_parser('menuconfig', help=__doc__, description=__doc__)
