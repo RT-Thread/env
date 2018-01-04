@@ -462,14 +462,13 @@ def cmd(args):
             print "upgrade from :",git_repo
 
         for filename in os.listdir(packages_root):
-            pathname = os.path.join(packages_root, filename)
-            if not (os.path.isfile(filename)):
-                if not os.path.basename(pathname) == '.gitkeep':
-                    os.chdir(pkgs_path)
-                    cmd = 'git pull'
+            if os.path.isdir(os.path.join(packages_root,filename)):
+                os.chdir(os.path.join(packages_root,filename))
+                if os.path.isdir('.git'):
+                    cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
-                    
+
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
