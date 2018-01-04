@@ -463,7 +463,6 @@ def cmd(args):
 
         for filename in os.listdir(packages_root):
             if os.path.isdir(os.path.join(packages_root,filename)):
-                #print os.path.join(packages_root,filename)
                 os.chdir(os.path.join(packages_root,filename))
                 if os.path.isdir('.git'):
                     cmd = 'git pull origin master'
