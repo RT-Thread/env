@@ -468,7 +468,7 @@ def cmd(args):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
-                   
+
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
