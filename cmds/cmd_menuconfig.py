@@ -106,6 +106,7 @@ def find_macro_in_condfig(filename,macro_name):
 
 
 def cmd(args):
+    env_root = Import('env_root')
     currentdir = os.getcwd() 
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
     get_rtt_name = os.path.basename(dirname)
@@ -140,6 +141,13 @@ def cmd(args):
         shutil.copy(args.menuconfig_fn, fn)
     elif args.menuconfig_silent:
         os.system('kconfig-mconf Kconfig -n')
+    elif args.menuconfig_setting:
+        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        beforepath = os.getcwd()
+        os.chdir(env_kconfig_path)
+        os.system('kconfig-mconf Kconfig')
+        os.chdir(beforepath)  
+        return
     else:
         os.system('kconfig-mconf Kconfig')
 
@@ -152,6 +160,12 @@ def cmd(args):
         mk_rtconfig(fn)
 
     if platform.system() == "Windows":
+        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        fn = os.path.join(env_kconfig_path,'.config')
+
+        if not os.path.isfile(fn):
+            return
+
         print("\nEnable the auto update option,env will auto update the packages you select.")
 
         if find_macro_in_condfig(fn,'SYS_AUTO_UPDATE_PKGS'):
@@ -185,10 +199,16 @@ def add_parser(sub):
         default=False,
         dest = 'menuconfig_silent')
 
+    parser.add_argument('-s','--setting', 
+        help = 'Env config,auto update packages and create mdk/iar project',
+        action='store_true',
+        default=False,
+        dest = 'menuconfig_setting')
+
     parser.add_argument('--easy', 
-    help = 'easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
-    action='store_true',
-    default=False,
-    dest = 'menuconfig_easy')
+        help = 'easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
+        action='store_true',
+        default=False,
+        dest = 'menuconfig_easy')
 
     parser.set_defaults(func=cmd)
