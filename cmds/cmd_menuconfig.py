@@ -166,13 +166,14 @@ def cmd(args):
         if not os.path.isfile(fn):
             return
 
+        print("\nTry the command <menuconfig -s/--setting> ")
         print("\nEnable the auto update option,env will auto update the packages you select.")
 
         if find_macro_in_condfig(fn,'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
             print "Auto update packages done"
 
-        print("Select the project type your bsp support and then env will create a new project.")
+        print("Select the project type your bsp support and then env will create a new mdk/iar project.")
 
         if find_macro_in_condfig(fn,'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_condfig(fn,'SYS_CREATE_MDK4'):
