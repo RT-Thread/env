@@ -161,6 +161,9 @@ def install_pkg(env_root, bsp_root, pkg):
 
     return ret
 
+""" 
+读取bsp目录下的.config文件，列出已选用的软件包的名称的版本号
+""" 
 def package_list():
     fn = '.config'
     env_root = Import('env_root')
@@ -228,6 +231,11 @@ def OrList(aList,bList):# in a or in b
             tmp.append(a)  
     return tmp 
 
+
+""" 
+对比新旧软件包列表，对软件包进行更新。删除不需要的软件包，下载新选中的软件包。
+检查删除的软件包里的文件是否有改动，如果有那么提示用户是否保存修改的文件。
+""" 
 def package_update():
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
@@ -369,6 +377,28 @@ def package_update():
         bridge_script = file(os.path.join(target_pkgs_path, 'SConscript'), 'w')
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
+
+    #如果选择的软件包为最新版本那么在update命令之后检查目前是否是最新版本，如果不是，那么从远程仓库更新最新版本
+    #如果下载有冲突，目前使用git提供的提示信息
+    fn = '.config'
+    beforepath = os.getcwd()
+    pkgs = kconfig.parse(fn)
+    for pkg in pkgs:
+        package = Package()
+        pkg_path = pkg['path']
+        if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
+        pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+        package.parse(pkg_path)
+        pkgs_name_in_json =  package.get_name()
+        if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
+            repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
+            ver_sha = package.get_versha(pkg['ver'])
+            #print repo_path, ver_sha 
+            #只有一种追踪关系可以直接使用git pull
+            os.chdir(repo_path)
+            cmd = 'git pull'
+            os.system(cmd)
+            os.chdir(beforepath)
 
     if flag:
         print "operate successfully."
