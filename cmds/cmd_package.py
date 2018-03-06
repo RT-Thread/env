@@ -393,7 +393,8 @@ def package_update():
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
             repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
-            #print(repo_path, ver_sha)
+            #print repo_path, ver_sha 
+            #只有一种追踪关系可以直接使用git pull
             os.chdir(repo_path)
             cmd = 'git pull'
             os.system(cmd)
