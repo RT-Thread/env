@@ -29,7 +29,11 @@ for item in list:
 Return('objs')
 '''
 
+""" 
+Template for creating a new kconfig file
+""" 
 Kconfig_file = '''
+
 config PKG_USING_${name}
     bool "${description}"
     default n
@@ -65,6 +69,7 @@ if PKG_USING_${name}
     endif
 
 endif
+
 '''
 
 Package_json_file = '''
