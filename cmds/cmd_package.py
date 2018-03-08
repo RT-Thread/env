@@ -177,8 +177,8 @@ def package_list():
     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.isfile(fn):
-        print 'no system configuration file : .config.'
-        print 'you should use < menuconfig > command to config bsp first.'
+        print ('no system configuration file : .config.')
+        print ('you should use < menuconfig > command to config bsp first.')
         return
 
     #if not os.path.exists(target_pkgs_path):
@@ -209,9 +209,9 @@ def package_list():
         #print "package path:", pkg['path']
 
     if not pkgs:
-        print "Packages list is empty."
-        print 'You can use < menuconfig > command to select online packages.'
-        print 'Then use < pkgs --update > command to install them.'
+        print ("Packages list is empty.")
+        print ('You can use < menuconfig > command to select online packages.')
+        print ('Then use < pkgs --update > command to install them.')
     return
 
 def SubList(aList,bList):# in a ,not in b  
@@ -251,9 +251,9 @@ def package_update():
     #print env_root
 
     if not os.path.exists('.config'):
-        print "Can't find file .config.Maybe your working directory isn't in bsp root now."
-        print "if your working directory isn't in bsp root now,please change your working directory to bsp root."
-        print "if your working directory is in bsp root now, please use menuconfig command to create .config file first."
+        print ("Can't find file .config.Maybe your working directory isn't in bsp root now.")
+        print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
+        print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
         return
 
     packages_bsp = os.path.join(bsp_root,'packages')
@@ -287,8 +287,8 @@ def package_update():
     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.exists(pkgs_fn):
-        print "Maybe you delete the file pkgs.json by mistake."
-        print "Do you want to create a new pkgs.json ?"
+        print ("Maybe you delete the file pkgs.json by mistake.")
+        print ("Do you want to create a new pkgs.json ?")
         rc = raw_input('Press the Y Key to create a new pkgs.json.')
         if rc == 'y' or rc == 'Y':
             os.chdir(os.path.join(bsp_root,'packages'))
@@ -296,7 +296,7 @@ def package_update():
             fp.write("[]")
             fp.close()
             os.chdir(bsp_root)
-            print "Create a new file pkgs.json down."
+            print ("Create a new file pkgs.json down.")
 
     # Reading data back
     with open(pkgs_fn, 'r') as f:
@@ -325,10 +325,10 @@ def package_update():
             #gitdir = os.path.join(dirname,uppername)
             gitdir = removepath
 
-            print "\nOperation : Delete a git package or change the version of a package."
-            print "If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n"
-            print "Folder to delete: ",gitdir
-            print "The folder is managed by git,are you sure you want to delete this folder?\n"
+            print ("\nOperation : Delete a git package or change the version of a package.")
+            print ("If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n")
+            print ("Folder to delete: %s"%(gitdir))
+            print ("The folder is managed by git,are you sure you want to delete this folder?\n")
 
             rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
@@ -343,16 +343,16 @@ def package_update():
                     else:
                         cmd = 'rd /s /q ' + gitdir
                         os.system(cmd)
-                    print "Delete not entirely,try again."
+                    print ("Delete not entirely,try again.")
                 else:
-                    print "Folder has been removed."
+                    print ("Folder has been removed.")
         else:
             #生成普通解压路径并删除
             removepath = removepath + '-' + ver[1:]
             #print removepath
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
 
-    # 2. in old and in new  
+    # 2.in old and in new  
     caseinoperation = AndList(newpkgs,oldpkgs)
 
     # 3.in new not in old   下载失败应该重新处理，不需要再次配置。
@@ -408,17 +408,20 @@ def package_update():
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
 
     if flag:
-        print "operate successfully."
+        print ("Operation completed successfully.")
     else:
-        print "operate failed."
+        print ("Operation failed.")
 
+""" 
+Packages creation wizard.
+""" 
 def package_wizard():
-    print 'Welcome come to package wizard,please enter the package information.'
-    print 'The messages in [] is default setting.You can just press enter to use default Settings.'
-    print 'Please enter the name of package:'
+    print ('Welcome to package wizard,please enter the package information.')
+    print ('The messages in [] is default setting.You can just press enter to use default Settings.')
+    print ('Please enter the name of package:')
     name = raw_input()
     if name == '':
-        print 'please provide the package name.\n'
+        print ('please provide the package name.\n')
         return
 
     default_description =  'a ' + name + ' package for rt-thread'
@@ -430,27 +433,27 @@ def package_wizard():
     keyword = name
 
     packageclass = ('iot', 'language','misc', 'multimedia','security', 'system')
-    print 'Please choose a class for your packages.'
-    print 'Enter 1 for iot and 2 for language, following the table below as a guideline.'
-    print "[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:security]|[6:system]"
+    print ('Please choose a class for your packages.')
+    print ('Enter 1 for iot and 2 for language, following the table below as a guideline.')
+    print ("[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:security]|[6:system]")
 
     classnu = raw_input()
     if classnu == '':
-        print 'You must choose a class for your packages.Try again.\n'
+        print ('You must choose a class for your packages.Try again.\n')
         return
 
     if classnu >= '1' and classnu <= '6':
         pkgsclass = packageclass[int(classnu) - 1]
         #print pkgsclass
     else:
-        print 'You must type in number 1 to 6.'
+        print ('You must type in number 1 to 6.')
         return
         
     pkg_path = name
     if not os.path.exists(pkg_path):
         os.mkdir(pkg_path)
     else:
-        print "Warning: the package directory exits!"
+        print ("Warning: the package directory exits!")
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
@@ -471,7 +474,7 @@ def package_wizard():
     f.write(sconscript)
     f.close()
 
-    print 'packages making success.'
+    print ('==============================> Your package index was made successfully.')
 
 
 def cmd(args):
@@ -493,7 +496,7 @@ def cmd(args):
         if not os.path.isdir(pkgs_path):
             cmd = 'git clone '+ git_repo + ' '+ pkgs_path
             os.system(cmd)
-            print "upgrade from :",git_repo
+            print ("upgrade from :%s"%(git_repo))
 
         for filename in os.listdir(packages_root):
             if os.path.isdir(os.path.join(packages_root,filename)):
@@ -508,14 +511,15 @@ def cmd(args):
         cmd = 'git pull '+ env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
+        print("==============================>  Env upgrade done  \n")
 
     elif args.package_print_env:
-         print "Here are some environmental variables."
-         print "If you meet some problems,please check them. Make sure the configuration is correct."
-         print "RTT_EXEC_PATH:",os.getenv("RTT_EXEC_PATH")
-         print "RTT_CC:",os.getenv("RTT_CC")
-         print "SCONS:",os.getenv("SCONS")
-         print "PKGS_ROOT:",os.getenv("PKGS_ROOT")
+         print ("Here are some environmental variables.")
+         print ("If you meet some problems,please check them. Make sure the configuration is correct.")
+         print ("RTT_EXEC_PATH:%s"%(os.getenv("RTT_EXEC_PATH")))
+         print ("RTT_CC:%s"%(os.getenv("RTT_CC")))
+         print ("SCONS:%s"%(os.getenv("SCONS")))
+         print ("PKGS_ROOT:%s"%(os.getenv("PKGS_ROOT")))
 
          env_root = os.getenv('ENV_ROOT')
          if env_root == None:
@@ -523,7 +527,7 @@ def cmd(args):
              if platform.system() != 'Windows':
                  env_root = os.path.join(os.getenv('HOME'), '.env')
 
-         print "ENV_ROOT:",env_root
+         print ("ENV_ROOT:%s"%(env_root))
          #print "RTT_ROOT:",os.getenv("RTT_ROOT")
          #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
          #print "after",os.getenv("RTT_EXEC_PATH")
