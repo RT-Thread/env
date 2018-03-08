@@ -29,7 +29,11 @@ for item in list:
 Return('objs')
 '''
 
+""" 
+Template for creating a new kconfig file
+""" 
 Kconfig_file = '''
+
 config PKG_USING_${name}
     bool "${description}"
     default n
@@ -65,6 +69,7 @@ if PKG_USING_${name}
     endif
 
 endif
+
 '''
 
 Package_json_file = '''
@@ -362,6 +367,7 @@ def package_update():
             list.append(pkg)
             print pkg,'download failed.'
             flag = False
+        print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
     newpkgs = SubList(newpkgs,list)     #获得目前更新好的配置
 
@@ -399,6 +405,7 @@ def package_update():
             cmd = 'git pull'
             os.system(cmd)
             os.chdir(beforepath)
+        print("==============================>  %s update done \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
