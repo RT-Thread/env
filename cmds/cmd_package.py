@@ -405,7 +405,7 @@ def package_update():
             cmd = 'git pull'
             os.system(cmd)
             os.chdir(beforepath)
-        print("==============================>  %s update done \n"%(pkgs_name_in_json))
+            print("==============================>  %s update done \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
