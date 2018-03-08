@@ -33,7 +33,7 @@ Return('objs')
 Template for creating a new kconfig file
 """ 
 Kconfig_file = '''
-
+# Kconfig file for package ${lowercase_name}
 config PKG_USING_${name}
     bool "${description}"
     default n
@@ -405,7 +405,7 @@ def package_update():
             cmd = 'git pull'
             os.system(cmd)
             os.chdir(beforepath)
-        print("==============================>  %s update done \n"%(pkgs_name_in_json))
+            print("==============================>  %s update done \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
@@ -451,20 +451,17 @@ def package_wizard():
         os.mkdir(pkg_path)
     else:
         print "Warning: the package directory exits!"
-    pkginfo_path = os.path.join(pkg_path, 'pkginfo')
-    if not os.path.exists(pkginfo_path):
-        os.mkdir(pkginfo_path)
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
     kconfig = s.substitute(name = uppername, description = description, version = ver ,pkgs_class = pkgsclass ,lowercase_name = name ,version_standard = ver_standard)
-    f = file(os.path.join(pkginfo_path, 'Kconfig'), 'wb')
+    f = file(os.path.join(pkg_path, 'Kconfig'), 'wb')
     f.write(kconfig)
     f.close()
 
     s = Template(Package_json_file)
     package = s.substitute(name = name, description = description, version = ver, keyword = keyword)
-    f = file(os.path.join(pkginfo_path, 'package.json'), 'wb')
+    f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()
 
