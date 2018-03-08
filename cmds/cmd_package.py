@@ -367,7 +367,7 @@ def package_update():
             list.append(pkg)
             print pkg,'download failed.'
             flag = False
-        print "==============================>  ", pkg['name'] , pkg['ver'], "is downloaded "
+        print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
     newpkgs = SubList(newpkgs,list)     #获得目前更新好的配置
 
@@ -405,7 +405,7 @@ def package_update():
             cmd = 'git pull'
             os.system(cmd)
             os.chdir(beforepath)
-        print "==============================>  ",pkgs_name_in_json ,"update done \n",
+        print("==============================>  %s update done \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
