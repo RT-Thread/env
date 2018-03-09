@@ -381,7 +381,7 @@ def package_update():
             flag = False
         print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
-    newpkgs = SubList(newpkgs,list)     #获得目前更新好的配置
+    newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
     #print "update old config to:",newpkgs
 
@@ -417,9 +417,8 @@ def package_update():
             repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
-            #只有一种追踪关系可以直接使用git pull
             os.chdir(repo_path)
-            cmd = 'git pull'
+            cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
