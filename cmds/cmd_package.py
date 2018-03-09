@@ -166,10 +166,21 @@ def install_pkg(env_root, bsp_root, pkg):
 
     return ret
 
-""" 
-读取bsp目录下的.config文件，列出已选用的软件包的名称的版本号
-""" 
 def package_list():
+    """Print the packages list in env.
+
+    Read the.config file in the BSP directory, 
+    and list the version number of the selected package.
+
+    Args:
+        none
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
     fn = '.config'
     env_root = Import('env_root')
     bsp_root = Import('bsp_root')
@@ -237,11 +248,23 @@ def OrList(aList,bList):# in a or in b
     return tmp 
 
 
-""" 
-对比新旧软件包列表，对软件包进行更新。删除不需要的软件包，下载新选中的软件包。
-检查删除的软件包里的文件是否有改动，如果有那么提示用户是否保存修改的文件。
-""" 
 def package_update():
+    """Update env's packages.
+
+    Compare the old and new software package list and update the package.
+    Remove unwanted packages and download the newly selected package.
+    Check if the files in the deleted packages have been changed, and if so, 
+    remind the user saved the modified file.
+
+    Args:
+        none
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
@@ -298,7 +321,7 @@ def package_update():
             os.chdir(bsp_root)
             print ("Create a new file pkgs.json down.")
 
-    # Reading data back
+    # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
@@ -318,7 +341,8 @@ def package_update():
         removepath = os.path.join(target_pkgs_path,dirpath)
         #print "floder to delere",removepath
 
-        #处理.git目录的删除
+        # Delete. Git directory.
+
         if os.path.isdir(removepath):           
             #uppername = str.upper(str(os.path.basename(removepath)))
             #dirname = os.path.dirname(removepath)
@@ -347,7 +371,6 @@ def package_update():
                 else:
                     print ("Folder has been removed.")
         else:
-            #生成普通解压路径并删除
             removepath = removepath + '-' + ver[1:]
             #print removepath
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
@@ -355,25 +378,27 @@ def package_update():
     # 2.in old and in new  
     caseinoperation = AndList(newpkgs,oldpkgs)
 
-    # 3.in new not in old   下载失败应该重新处理，不需要再次配置。
-    
+    # 3.in new not in old 
+    # If the package download fails, record it, and then download again when the update command is executed.
+
     casedownload = SubList(newpkgs,oldpkgs)
     #print 'in new not in old:',casedownload
     list = []
 
     for pkg in casedownload:
-        if not install_pkg(env_root, bsp_root, pkg):
-            #如果pkg下载失败则记录到list中            
-            list.append(pkg)
+        if not install_pkg(env_root, bsp_root, pkg):                
+            list.append(pkg)                    # If the PKG download fails, record it in the list. 
             print pkg,'download failed.'
             flag = False
         print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
-    newpkgs = SubList(newpkgs,list)     #获得目前更新好的配置
+    newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
     #print "update old config to:",newpkgs
 
-    # update pkgs.json file  
+    # Writes the updated configuration to pkgs.json file.
+    # Packages that are not downloaded correctly will be redownloaded at the next update.
+
     pkgs_file = file(pkgs_fn, 'w')
     pkgs_file.write(json.dumps(newpkgs, indent=1))
     pkgs_file.close()
@@ -384,8 +409,11 @@ def package_update():
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
-    #如果选择的软件包为最新版本那么在update命令之后检查目前是否是最新版本，如果不是，那么从远程仓库更新最新版本
-    #如果下载有冲突，目前使用git提供的提示信息
+    # If the selected package is the latest version, 
+    # check to see if it is the latest version after the update command, 
+    # if not, then update the latest version from the remote repository.
+    # If the download has a conflict, you are currently using the prompt message provided by git.
+
     fn = '.config'
     beforepath = os.getcwd()
     pkgs = kconfig.parse(fn)
@@ -400,9 +428,8 @@ def package_update():
             repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
-            #只有一种追踪关系可以直接使用git pull
             os.chdir(repo_path)
-            cmd = 'git pull'
+            cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
@@ -412,10 +439,23 @@ def package_update():
     else:
         print ("Operation failed.")
 
-""" 
-Packages creation wizard.
-""" 
 def package_wizard():
+    """Packages creation wizard.
+
+    The user enters the package name, version number, category, and automatically generates the package index file.
+
+    Args:
+        package name
+        version number
+        category
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
+
     print ('Welcome to package wizard,please enter the package information.')
     print ('The messages in [] is default setting.You can just press enter to use default Settings.')
     print ('Please enter the name of package:')
@@ -505,13 +545,14 @@ def cmd(args):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
+                    print("==============================>  Env %s update done \n"%filename)
 
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
-        print("==============================>  Env upgrade done  \n")
+        print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
          print ("Here are some environmental variables.")
