@@ -401,11 +401,15 @@ def package_update():
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
             #只有一种追踪关系可以直接使用git pull
-            os.chdir(repo_path)
-            cmd = 'git pull'
-            os.system(cmd)
-            os.chdir(beforepath)
-            print("==============================>  %s update done \n"%(pkgs_name_in_json))
+
+            if os.path.exists(repo_path):
+                os.chdir(repo_path)
+                cmd = 'git pull'
+                os.system(cmd)
+                os.chdir(beforepath)
+                print("==============================>  %s update done \n"%(pkgs_name_in_json))
+            else:
+                print("==============================>  %s is not downloaded correctly, please download it again. \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
