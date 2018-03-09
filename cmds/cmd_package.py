@@ -166,10 +166,21 @@ def install_pkg(env_root, bsp_root, pkg):
 
     return ret
 
-""" 
-读取bsp目录下的.config文件，列出已选用的软件包的名称的版本号
-""" 
 def package_list():
+    """Print the packages list in env.
+
+    Read the.config file in the BSP directory, 
+    and list the version number of the selected package.
+
+    Args:
+        none
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
     fn = '.config'
     env_root = Import('env_root')
     bsp_root = Import('bsp_root')
@@ -310,7 +321,7 @@ def package_update():
             os.chdir(bsp_root)
             print ("Create a new file pkgs.json down.")
 
-    # Reading data back
+    # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
@@ -330,7 +341,8 @@ def package_update():
         removepath = os.path.join(target_pkgs_path,dirpath)
         #print "floder to delere",removepath
 
-        #处理.git目录的删除
+        # Delete. Git directory.
+
         if os.path.isdir(removepath):           
             #uppername = str.upper(str(os.path.basename(removepath)))
             #dirname = os.path.dirname(removepath)
@@ -359,7 +371,6 @@ def package_update():
                 else:
                     print ("Folder has been removed.")
         else:
-            #生成普通解压路径并删除
             removepath = removepath + '-' + ver[1:]
             #print removepath
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
@@ -367,16 +378,16 @@ def package_update():
     # 2.in old and in new  
     caseinoperation = AndList(newpkgs,oldpkgs)
 
-    # 3.in new not in old   下载失败应该重新处理，不需要再次配置。
-    
+    # 3.in new not in old 
+    # If the package download fails, record it, and then download again when the update command is executed.
+
     casedownload = SubList(newpkgs,oldpkgs)
     #print 'in new not in old:',casedownload
     list = []
 
     for pkg in casedownload:
-        if not install_pkg(env_root, bsp_root, pkg):
-            #如果pkg下载失败则记录到list中            
-            list.append(pkg)
+        if not install_pkg(env_root, bsp_root, pkg):                
+            list.append(pkg)                    # If the PKG download fails, record it in the list. 
             print pkg,'download failed.'
             flag = False
         print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
@@ -428,10 +439,23 @@ def package_update():
     else:
         print ("Operation failed.")
 
-""" 
-Packages creation wizard.
-""" 
 def package_wizard():
+    """Packages creation wizard.
+
+    The user enters the package name, version number, category, and automatically generates the package index file.
+
+    Args:
+        package name
+        version number
+        category
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
+
     print ('Welcome to package wizard,please enter the package information.')
     print ('The messages in [] is default setting.You can just press enter to use default Settings.')
     print ('Please enter the name of package:')
