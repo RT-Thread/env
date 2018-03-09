@@ -506,12 +506,14 @@ def cmd(args):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
+                    print("==============================>  Env %s update done \n"%filename)
 
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
+        print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
          print "Here are some environmental variables."
