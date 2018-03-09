@@ -409,7 +409,7 @@ def package_update():
                 os.chdir(beforepath)
                 print("==============================>  %s update done \n"%(pkgs_name_in_json))
             else:
-                print("==============================>  %s is not downloaded correctly,please download it again. \n"%(pkgs_name_in_json))
+                print("==============================>  %s is not downloaded correctly, please download it again. \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
