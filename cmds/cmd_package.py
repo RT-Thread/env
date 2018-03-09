@@ -401,11 +401,15 @@ def package_update():
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
             #只有一种追踪关系可以直接使用git pull
-            os.chdir(repo_path)
-            cmd = 'git pull'
-            os.system(cmd)
-            os.chdir(beforepath)
-            print("==============================>  %s update done \n"%(pkgs_name_in_json))
+
+            if os.path.exists(repo_path):
+                os.chdir(repo_path)
+                cmd = 'git pull'
+                os.system(cmd)
+                os.chdir(beforepath)
+                print("==============================>  %s update done \n"%(pkgs_name_in_json))
+            else:
+                print("==============================>  %s is not downloaded correctly, please download it again. \n"%(pkgs_name_in_json))
 
     if flag:
         print "operate successfully."
@@ -502,12 +506,14 @@ def cmd(args):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
+                    print("==============================>  Env %s update done \n"%filename)
 
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
+        print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
          print "Here are some environmental variables."
