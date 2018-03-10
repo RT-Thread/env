@@ -114,17 +114,17 @@ def cmd(args):
 
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':  
-            print "menuconfig command should be used in a bsp root path with a Kconfig file,you should check if there is a Kconfig file in your bsp root first."
-            print 'And then you can check Kconfig file and modify the default option below to your rtthread root path.\n'
+            print ("menuconfig command should be used in a bsp root path with a Kconfig file, you should check if there is a Kconfig file in your bsp root first.")
+            print ('And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
 
-            print 'config $RTT_DIR'
-            print 'string' 
-            print 'option env="RTT_ROOT"'
-            print 'default "../.."\n'
-            print 'example:  default "F:/git_repositories/rt-thread"  \n'
+            print ('config $RTT_DIR')
+            print ('string' )
+            print ('option env="RTT_ROOT"')
+            print ('default "../.."\n')
+            print ('example:  default "F:/git_repositories/rt-thread"  \n')
 
-            print "using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n"
-            print "you can ignore debug messages below."
+            print ("using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
+            print ("you can ignore debug messages below.")
             #if not args.menuconfig_easy:                
             #    return
 
