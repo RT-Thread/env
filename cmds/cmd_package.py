@@ -166,10 +166,21 @@ def install_pkg(env_root, bsp_root, pkg):
 
     return ret
 
-""" 
-读取bsp目录下的.config文件，列出已选用的软件包的名称的版本号
-""" 
 def package_list():
+    """Print the packages list in env.
+
+    Read the.config file in the BSP directory, 
+    and list the version number of the selected package.
+
+    Args:
+        none
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
     fn = '.config'
     env_root = Import('env_root')
     bsp_root = Import('bsp_root')
@@ -237,11 +248,23 @@ def OrList(aList,bList):# in a or in b
     return tmp 
 
 
-""" 
-对比新旧软件包列表，对软件包进行更新。删除不需要的软件包，下载新选中的软件包。
-检查删除的软件包里的文件是否有改动，如果有那么提示用户是否保存修改的文件。
-""" 
 def package_update():
+    """Update env's packages.
+
+    Compare the old and new software package list and update the package.
+    Remove unwanted packages and download the newly selected package.
+    Check if the files in the deleted packages have been changed, and if so, 
+    remind the user saved the modified file.
+
+    Args:
+        none
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
@@ -256,21 +279,20 @@ def package_update():
         print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
         return
 
-    packages_bsp = os.path.join(bsp_root,'packages')
-    if not os.path.exists(packages_bsp):
+    bsp_packages_path = os.path.join(bsp_root,'packages')
+    if not os.path.exists(bsp_packages_path):
         os.mkdir("packages")
-        os.chdir(os.path.join(bsp_root,'packages'))
+        os.chdir(bsp_packages_path)
         fp = open("pkgs.json",'w') 
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
 
     # prepare target packages file
-    target_pkgs_path = os.path.join(bsp_root, 'packages')
-    dbsqlite_pathname = os.path.join(target_pkgs_path,'packages.dbsqlite')
+    dbsqlite_pathname = os.path.join(bsp_packages_path,'packages.dbsqlite')
     Export('dbsqlite_pathname')
 
-    #Avoid creating tables more than one time
+    # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):                              
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
@@ -281,24 +303,24 @@ def package_update():
     pkgs = kconfig.parse(fn)
     newpkgs = pkgs
 
-    if not os.path.exists(target_pkgs_path):
-        os.mkdir(target_pkgs_path)
+    if not os.path.exists(bsp_packages_path):
+        os.mkdir(bsp_packages_path)
 
-    pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
+    pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
 
     if not os.path.exists(pkgs_fn):
         print ("Maybe you delete the file pkgs.json by mistake.")
         print ("Do you want to create a new pkgs.json ?")
         rc = raw_input('Press the Y Key to create a new pkgs.json.')
         if rc == 'y' or rc == 'Y':
-            os.chdir(os.path.join(bsp_root,'packages'))
+            os.chdir(bsp_packages_path)
             fp = open("pkgs.json",'w') 
             fp.write("[]")
             fp.close()
             os.chdir(bsp_root)
-            print ("Create a new file pkgs.json down.")
+            print ("Create a new file pkgs.json done.")
 
-    # Reading data back
+    # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
@@ -315,10 +337,11 @@ def package_update():
         #dirpath = dirpath.replace('/', '\\')
         dirpath = os.path.basename(dirpath) 
         #print "basename:",os.path.basename(dirpath)
-        removepath = os.path.join(target_pkgs_path,dirpath)
+        removepath = os.path.join(bsp_packages_path,dirpath)
         #print "floder to delere",removepath
 
-        #处理.git目录的删除
+        # Delete. Git directory.
+
         if os.path.isdir(removepath):           
             #uppername = str.upper(str(os.path.basename(removepath)))
             #dirname = os.path.dirname(removepath)
@@ -347,7 +370,6 @@ def package_update():
                 else:
                     print ("Folder has been removed.")
         else:
-            #生成普通解压路径并删除
             removepath = removepath + '-' + ver[1:]
             #print removepath
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
@@ -355,41 +377,92 @@ def package_update():
     # 2.in old and in new  
     caseinoperation = AndList(newpkgs,oldpkgs)
 
-    # 3.in new not in old   下载失败应该重新处理，不需要再次配置。
-    
+    # 3.in new not in old 
+    # If the package download fails, record it, and then download again when the update command is executed.
+
     casedownload = SubList(newpkgs,oldpkgs)
     #print 'in new not in old:',casedownload
     list = []
 
     for pkg in casedownload:
-        if not install_pkg(env_root, bsp_root, pkg):
-            #如果pkg下载失败则记录到list中            
-            list.append(pkg)
+        if not install_pkg(env_root, bsp_root, pkg):                
+            list.append(pkg)                    # If the PKG download fails, record it in the list. 
             print pkg,'download failed.'
             flag = False
         print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
-    newpkgs = SubList(newpkgs,list)     #获得目前更新好的配置
+    newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
-    #print "update old config to:",newpkgs
+    # Give hints based on the success of the download.
 
-    # update pkgs.json file  
+    if len(list):
+        print("Package download failed list: %s \n"%list)
+        print("You need to reuse the 'pkgs -update' command to download again.\n")
+
+    # Writes the updated configuration to pkgs.json file.
+    # Packages that are not downloaded correctly will be redownloaded at the next update.
+
     pkgs_file = file(pkgs_fn, 'w')
     pkgs_file.write(json.dumps(newpkgs, indent=1))
     pkgs_file.close()
 
     # update SConscript file
-    if not os.path.isfile(os.path.join(target_pkgs_path, 'SConscript')):
-        bridge_script = file(os.path.join(target_pkgs_path, 'SConscript'), 'w')
+    if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
+        bridge_script = file(os.path.join(bsp_packages_path, 'SConscript'), 'w')
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
-    #如果选择的软件包为最新版本那么在update命令之后检查目前是否是最新版本，如果不是，那么从远程仓库更新最新版本
-    #如果下载有冲突，目前使用git提供的提示信息
-    fn = '.config'
+    # Check to see if the packages stored in the Json file list actually exist, 
+    # and then download the packages if they don't exist.
+
+    with open(pkgs_fn, 'r') as f:
+       read_back_pkgs_json = json.load(f)
+
+    #print(read_back_pkgs_json)
+
+    error_packages_list = []
+    for pkg in read_back_pkgs_json:
+        dirpath = pkg['path']
+        ver = pkg['ver']
+        #print 'ver is :',ver[1:]
+        if dirpath[0] == '/' or dirpath[0] == '\\': dirpath = dirpath[1:]
+
+        dirpath = os.path.basename(dirpath) 
+        removepath = os.path.join(bsp_packages_path,dirpath)
+        #print "if floder exist",removepath
+        removepath_ver = removepath + '-' + ver[1:]
+        #print "if floder exist",removepath
+
+        if os.path.exists(removepath):
+            continue
+        elif os.path.exists(removepath_ver):
+            continue
+        else:
+            error_packages_list.append(pkg)
+
+    if len(error_packages_list):
+        print("\n==============================> Error packages list :  \n")
+        for pkg in error_packages_list:
+            print pkg['name'], pkg['ver']
+        print("\nThe package in the list above is accidentally deleted.")
+        print("You can try again using the 'pkgs --update' command to redownload them.\n")
+        write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_list)
+        read_back_pkgs_json = write_back_pkgs_json
+        #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
+        pkgs_file = file(pkgs_fn, 'w')
+        pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
+        pkgs_file.close()
+    else:
+        print("\nAll the selected packages have been downloaded successfully.\n")
+
+
+    # If the selected package is the latest version, 
+    # check to see if it is the latest version after the update command, 
+    # if not, then update the latest version from the remote repository.
+    # If the download has a conflict, you are currently using the prompt message provided by git.
+
     beforepath = os.getcwd()
-    pkgs = kconfig.parse(fn)
-    for pkg in pkgs:
+    for pkg in read_back_pkgs_json:
         package = Package()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
@@ -397,12 +470,11 @@ def package_update():
         package.parse(pkg_path)
         pkgs_name_in_json =  package.get_name()
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
-            repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
+            repo_path = os.path.join(bsp_packages_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
-            #只有一种追踪关系可以直接使用git pull
             os.chdir(repo_path)
-            cmd = 'git pull'
+            cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
@@ -412,10 +484,23 @@ def package_update():
     else:
         print ("Operation failed.")
 
-""" 
-Packages creation wizard.
-""" 
 def package_wizard():
+    """Packages creation wizard.
+
+    The user enters the package name, version number, category, and automatically generates the package index file.
+
+    Args:
+        package name
+        version number
+        category
+
+    Returns:
+        none
+
+    Raises:
+        none
+    """
+
     print ('Welcome to package wizard,please enter the package information.')
     print ('The messages in [] is default setting.You can just press enter to use default Settings.')
     print ('Please enter the name of package:')
@@ -505,13 +590,14 @@ def cmd(args):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
+                    print("==============================>  Env %s update done \n"%filename)
 
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
         cmd = 'git pull '+ env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
-        print("==============================>  Env upgrade done  \n")
+        print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
          print ("Here are some environmental variables.")
