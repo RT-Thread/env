@@ -394,7 +394,12 @@ def package_update():
 
     newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
-    #print "update old config to:",newpkgs
+    # Give hints based on the success of the download.
+
+    if len(list):
+        print("Package download failed list: %s"%list)
+    else:
+        print("All the selected packages have been downloaded successfully.")
 
     # Writes the updated configuration to pkgs.json file.
     # Packages that are not downloaded correctly will be redownloaded at the next update.
