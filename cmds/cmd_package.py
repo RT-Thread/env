@@ -279,18 +279,17 @@ def package_update():
         print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
         return
 
-    packages_bsp = os.path.join(bsp_root,'packages')
-    if not os.path.exists(packages_bsp):
+    bsp_packages_path = os.path.join(bsp_root,'packages')
+    if not os.path.exists(bsp_packages_path):
         os.mkdir("packages")
-        os.chdir(os.path.join(bsp_root,'packages'))
+        os.chdir(bsp_packages_path)
         fp = open("pkgs.json",'w') 
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
 
     # prepare target packages file
-    target_pkgs_path = os.path.join(bsp_root, 'packages')
-    dbsqlite_pathname = os.path.join(target_pkgs_path,'packages.dbsqlite')
+    dbsqlite_pathname = os.path.join(bsp_packages_path,'packages.dbsqlite')
     Export('dbsqlite_pathname')
 
     #Avoid creating tables more than one time
@@ -304,17 +303,17 @@ def package_update():
     pkgs = kconfig.parse(fn)
     newpkgs = pkgs
 
-    if not os.path.exists(target_pkgs_path):
-        os.mkdir(target_pkgs_path)
+    if not os.path.exists(bsp_packages_path):
+        os.mkdir(bsp_packages_path)
 
-    pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
+    pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
 
     if not os.path.exists(pkgs_fn):
         print ("Maybe you delete the file pkgs.json by mistake.")
         print ("Do you want to create a new pkgs.json ?")
         rc = raw_input('Press the Y Key to create a new pkgs.json.')
         if rc == 'y' or rc == 'Y':
-            os.chdir(os.path.join(bsp_root,'packages'))
+            os.chdir(bsp_packages_path)
             fp = open("pkgs.json",'w') 
             fp.write("[]")
             fp.close()
@@ -338,7 +337,7 @@ def package_update():
         #dirpath = dirpath.replace('/', '\\')
         dirpath = os.path.basename(dirpath) 
         #print "basename:",os.path.basename(dirpath)
-        removepath = os.path.join(target_pkgs_path,dirpath)
+        removepath = os.path.join(bsp_packages_path,dirpath)
         #print "floder to delere",removepath
 
         # Delete. Git directory.
@@ -397,9 +396,10 @@ def package_update():
     # Give hints based on the success of the download.
 
     if len(list):
-        print("Package download failed list: %s"%list)
+        print("Package download failed list: %s \n"%list)
+        print("You need to reuse the 'pkgs -update' command to download again.\n")
     else:
-        print("All the selected packages have been downloaded successfully.")
+        print("All the selected packages have been downloaded successfully.\n")
 
     # Writes the updated configuration to pkgs.json file.
     # Packages that are not downloaded correctly will be redownloaded at the next update.
@@ -409,8 +409,8 @@ def package_update():
     pkgs_file.close()
 
     # update SConscript file
-    if not os.path.isfile(os.path.join(target_pkgs_path, 'SConscript')):
-        bridge_script = file(os.path.join(target_pkgs_path, 'SConscript'), 'w')
+    if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
+        bridge_script = file(os.path.join(bsp_packages_path, 'SConscript'), 'w')
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
@@ -420,7 +420,9 @@ def package_update():
     with open(pkgs_fn, 'r') as f:
        read_back_pkgs_json = json.load(f)
 
-    #print(read_back_pkgs_json)
+    print(read_back_pkgs_json)
+
+
 
     # If the selected package is the latest version, 
     # check to see if it is the latest version after the update command, 
@@ -436,7 +438,7 @@ def package_update():
         package.parse(pkg_path)
         pkgs_name_in_json =  package.get_name()
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
-            repo_path = os.path.join(target_pkgs_path,pkgs_name_in_json)
+            repo_path = os.path.join(bsp_packages_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
             #print repo_path, ver_sha 
             os.chdir(repo_path)
