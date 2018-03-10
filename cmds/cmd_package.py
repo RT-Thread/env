@@ -292,7 +292,7 @@ def package_update():
     dbsqlite_pathname = os.path.join(bsp_packages_path,'packages.dbsqlite')
     Export('dbsqlite_pathname')
 
-    #Avoid creating tables more than one time
+    # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):                              
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
@@ -318,7 +318,7 @@ def package_update():
             fp.write("[]")
             fp.close()
             os.chdir(bsp_root)
-            print ("Create a new file pkgs.json down.")
+            print ("Create a new file pkgs.json done.")
 
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
@@ -398,8 +398,6 @@ def package_update():
     if len(list):
         print("Package download failed list: %s \n"%list)
         print("You need to reuse the 'pkgs -update' command to download again.\n")
-    else:
-        print("All the selected packages have been downloaded successfully.\n")
 
     # Writes the updated configuration to pkgs.json file.
     # Packages that are not downloaded correctly will be redownloaded at the next update.
@@ -420,8 +418,42 @@ def package_update():
     with open(pkgs_fn, 'r') as f:
        read_back_pkgs_json = json.load(f)
 
-    print(read_back_pkgs_json)
+    #print(read_back_pkgs_json)
 
+    error_packages_list = []
+    for pkg in read_back_pkgs_json:
+        dirpath = pkg['path']
+        ver = pkg['ver']
+        #print 'ver is :',ver[1:]
+        if dirpath[0] == '/' or dirpath[0] == '\\': dirpath = dirpath[1:]
+
+        dirpath = os.path.basename(dirpath) 
+        removepath = os.path.join(bsp_packages_path,dirpath)
+        #print "if floder exist",removepath
+        removepath_ver = removepath + '-' + ver[1:]
+        #print "if floder exist",removepath
+
+        if os.path.exists(removepath):
+            continue
+        elif os.path.exists(removepath_ver):
+            continue
+        else:
+            error_packages_list.append(pkg)
+
+    if len(error_packages_list):
+        print("\n==============================> Error packages list :  \n")
+        for pkg in error_packages_list:
+            print pkg['name'], pkg['ver']
+        print("\nThe package in the list above is accidentally deleted.")
+        print("You can try again using the 'pkgs --update' command to redownload them.\n")
+        write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_list)
+        read_back_pkgs_json = write_back_pkgs_json
+        #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
+        pkgs_file = file(pkgs_fn, 'w')
+        pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
+        pkgs_file.close()
+    else:
+        print("\nAll the selected packages have been downloaded successfully.\n")
 
 
     # If the selected package is the latest version, 
