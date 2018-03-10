@@ -409,15 +409,21 @@ def package_update():
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
+    # Check to see if the packages stored in the Json file list actually exist, 
+    # and then download the packages if they don't exist.
+
+    with open(pkgs_fn, 'r') as f:
+       read_back_pkgs_json = json.load(f)
+
+    #print(read_back_pkgs_json)
+
     # If the selected package is the latest version, 
     # check to see if it is the latest version after the update command, 
     # if not, then update the latest version from the remote repository.
     # If the download has a conflict, you are currently using the prompt message provided by git.
 
-    fn = '.config'
     beforepath = os.getcwd()
-    pkgs = kconfig.parse(fn)
-    for pkg in pkgs:
+    for pkg in read_back_pkgs_json:
         package = Package()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
