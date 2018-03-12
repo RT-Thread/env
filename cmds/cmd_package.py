@@ -458,7 +458,7 @@ def package_update():
 
         if len(error_packages_redownload_error_list):
             print("%s"%error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --updata' command again to redownload them."%pkg['name'], pkg['ver'])
+            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them."%pkg['name'], pkg['ver'])
             write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json         
             #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
