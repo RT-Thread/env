@@ -385,11 +385,12 @@ def package_update():
     list = []
 
     for pkg in casedownload:
-        if not install_pkg(env_root, bsp_root, pkg):                
+        if install_pkg(env_root, bsp_root, pkg):                
+            print("==============================>  %s %s is downloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
+        else: 
             list.append(pkg)                    # If the PKG download fails, record it in the list. 
             print pkg,'download failed.'
             flag = False
-        print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
     newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
@@ -450,11 +451,12 @@ def package_update():
         print("If you really want to remove these packages, do that in the menuconfig command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
-            if not install_pkg(env_root, bsp_root, pkg):                
+            if install_pkg(env_root, bsp_root, pkg):
+                print("==============================>  %s %s is redownloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
+            else:
                 error_packages_redownload_error_list.append(pkg)
                 print pkg,'download failed.'
                 flag = False
-            print("==============================>  %s %s is redownloaded successfully.\n"%(pkg['name'], pkg['ver'] ))
 
         if len(error_packages_redownload_error_list):
             print("%s"%error_packages_redownload_error_list)
