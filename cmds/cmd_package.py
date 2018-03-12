@@ -385,11 +385,12 @@ def package_update():
     list = []
 
     for pkg in casedownload:
-        if not install_pkg(env_root, bsp_root, pkg):                
+        if install_pkg(env_root, bsp_root, pkg):                
+            print("==============================>  %s %s is downloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
+        else: 
             list.append(pkg)                    # If the PKG download fails, record it in the list. 
             print pkg,'download failed.'
             flag = False
-        print("==============================>  %s %s is downloaded  \n"%(pkg['name'], pkg['ver'] ))
 
     newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
 
@@ -421,6 +422,7 @@ def package_update():
     #print(read_back_pkgs_json)
 
     error_packages_list = []
+    error_packages_redownload_error_list = []
     for pkg in read_back_pkgs_json:
         dirpath = pkg['path']
         ver = pkg['ver']
@@ -445,16 +447,28 @@ def package_update():
         for pkg in error_packages_list:
             print pkg['name'], pkg['ver']
         print("\nThe package in the list above is accidentally deleted.")
-        print("You can try again using the 'pkgs --update' command to redownload them.\n")
-        write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_list)
-        read_back_pkgs_json = write_back_pkgs_json
-        #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
-        pkgs_file = file(pkgs_fn, 'w')
-        pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
-        pkgs_file.close()
+        print("Env will redownload packages that have been accidentally deleted.")
+        print("If you really want to remove these packages, do that in the menuconfig command.\n")
+
+        for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
+            if install_pkg(env_root, bsp_root, pkg):
+                print("==============================>  %s %s is redownloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
+            else:
+                error_packages_redownload_error_list.append(pkg)
+                print pkg,'download failed.'
+                flag = False
+
+        if len(error_packages_redownload_error_list):
+            print("%s"%error_packages_redownload_error_list)
+            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them."%pkg['name'], pkg['ver'])
+            write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_redownload_error_list)
+            read_back_pkgs_json = write_back_pkgs_json         
+            #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
+            pkgs_file = file(pkgs_fn, 'w')
+            pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
+            pkgs_file.close()
     else:
         print("\nAll the selected packages have been downloaded successfully.\n")
-
 
     # If the selected package is the latest version, 
     # check to see if it is the latest version after the update command, 
