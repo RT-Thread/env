@@ -35,9 +35,10 @@ def mk_rtconfig(filename):
 
             comment_line = line[1:]
             if line.startswith('# CONFIG_'): line = ' ' + line[9:]
-            else: line = line[1:]
+            else: 
+                line = line[1:]
+                rtconfig.write('/*%s */\n' % line)
 
-            rtconfig.write('/*%s */\n' % line)
             empty_line = 0
         else:
             empty_line = 0
