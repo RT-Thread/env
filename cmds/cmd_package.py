@@ -53,7 +53,7 @@ if PKG_USING_${name}
             bool "v${version}"
 
         config PKG_USING_${name}_LATEST_VERSION
-            bool "latest_version"
+            bool "latest"
     endchoice
     
     if PKG_USING_${name}_V${version_standard}
@@ -65,7 +65,7 @@ if PKG_USING_${name}
     if PKG_USING_${name}_LATEST_VERSION
        config PKG_${name}_VER
        string
-       default "latest_version"    
+       default "latest"    
     endif
 
 endif
