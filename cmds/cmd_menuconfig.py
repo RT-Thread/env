@@ -105,13 +105,14 @@ def find_macro_in_condfig(filename,macro_name):
         
     return False
 
-
 def cmd(args):
     env_root = Import('env_root')
     currentdir = os.getcwd() 
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
     get_rtt_name = os.path.basename(dirname)
+    os_version = platform.platform(True)[10:13]
     #print os.path.split(currentdir)[1]
+    kconfig_win7_path = os.path.join(env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':  
@@ -141,16 +142,37 @@ def cmd(args):
         import shutil
         shutil.copy(args.menuconfig_fn, fn)
     elif args.menuconfig_silent:
-        os.system('kconfig-mconf Kconfig -n')
+        if float(os_version) >=  6.2 :
+            os.system('kconfig-mconf Kconfig -n')
+        else:
+            if os.path.isfile(kconfig_win7_path):
+                os.system('kconfig-mconf_win7 Kconfig -n')
+            else:
+                os.system('kconfig-mconf Kconfig -n')
+
     elif args.menuconfig_setting:
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
-        os.system('kconfig-mconf Kconfig')
+
+        if float(os_version) >=  6.2 :
+            os.system('kconfig-mconf Kconfig')
+        else:
+            if os.path.isfile(kconfig_win7_path):
+                os.system('kconfig-mconf_win7 Kconfig')
+            else:
+                os.system('kconfig-mconf Kconfig')
+
         os.chdir(beforepath)  
         return
     else:
-        os.system('kconfig-mconf Kconfig')
+        if float(os_version) >=  6.2 :
+            os.system('kconfig-mconf Kconfig')
+        else:
+            if os.path.isfile(kconfig_win7_path):
+                os.system('kconfig-mconf_win7 Kconfig')
+            else:
+                os.system('kconfig-mconf Kconfig')
 
     if os.path.isfile(fn):
         mtime2 = os.path.getmtime(fn)
