@@ -79,7 +79,6 @@ Package_json_file = '''
     "keywords": [
         "${keyword}"
     ],
-    "readme": "${description}",
     "site" : [
     {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
     {"version" : "latest_version", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
