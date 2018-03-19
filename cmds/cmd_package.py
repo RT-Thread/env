@@ -53,7 +53,7 @@ if PKG_USING_${name}
             bool "v${version}"
 
         config PKG_USING_${name}_LATEST_VERSION
-            bool "latest_version"
+            bool "latest"
     endchoice
     
     if PKG_USING_${name}_V${version_standard}
@@ -65,7 +65,7 @@ if PKG_USING_${name}
     if PKG_USING_${name}_LATEST_VERSION
        config PKG_${name}_VER
        string
-       default "latest_version"    
+       default "latest"    
     endif
 
 endif
@@ -79,7 +79,6 @@ Package_json_file = '''
     "keywords": [
         "${keyword}"
     ],
-    "readme": "${description}",
     "site" : [
     {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
     {"version" : "latest_version", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
