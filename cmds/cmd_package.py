@@ -81,7 +81,7 @@ Package_json_file = '''
     ],
     "site" : [
     {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
-    {"version" : "latest_version", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
+    {"version" : "latest", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
     ]
 }
 '''
@@ -128,6 +128,7 @@ def install_pkg(env_root, bsp_root, pkg):
     pkgs_name_in_json =  package.get_name()
 
     #print "get name here:",pkgs_name_in_json
+    #print "ver:",pkg['ver']
     #print "url:",package_url
     #print "name:",package_name
    
