@@ -43,7 +43,7 @@ def mk_rtconfig(filename):
         else:
             empty_line = 0
             setting = line.split('=')
-            if len(setting) >= 2:
+            if len(setting) == 2:
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
 
@@ -55,6 +55,18 @@ def mk_rtconfig(filename):
                     rtconfig.write('#define %s\n' % setting[0])
                 else:
                     rtconfig.write('#define %s %s\n' % (setting[0], setting[1]))
+
+            elif len(setting) > 2:
+                alt_data = line[len(setting[0])+1:]
+
+                if setting[0].startswith('CONFIG_'):
+                    setting[0] = setting[0][7:]
+
+                # remove CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
+                if type(setting[0]) == type('a') and (setting[0].endswith('_PATH') or setting[0].endswith('_VER')):
+                    continue
+
+                rtconfig.write('#define %s %s\n' % (setting[0], alt_data))
 
     if os.path.isfile('rtconfig_project.h'):
         rtconfig.write('#include "rtconfig_project.h"\n')
