@@ -27,5 +27,9 @@ if SYS_CREATE_MDK_IAR_PROJECT
     
 endif
 
+config USE_DOWNLOAD_ACCELERATE
+    bool "Use package download accelerate"
+    default y
+
 endmenu
 
