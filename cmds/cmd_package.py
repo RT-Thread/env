@@ -509,6 +509,15 @@ def package_update():
     # if not, then update the latest version from the remote repository.
     # If the download has a conflict, you are currently using the prompt message provided by git.
 
+    payload = {
+        "userName": "SummerGift",
+        "packages": [
+            {
+            "name": "NULL",
+            }
+        ]
+    }
+
     beforepath = os.getcwd()
     for pkg in read_back_pkgs_json:
         package = Package()
@@ -520,9 +529,29 @@ def package_update():
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
             repo_path = os.path.join(bsp_packages_path,pkgs_name_in_json)
             ver_sha = package.get_versha(pkg['ver'])
-            #print repo_path, ver_sha 
             os.chdir(repo_path)
+
+            payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+            payload["packages"][0]['name'] = payload_pkgs_name_in_json
+
+            r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+            if r.status_code == requests.codes.ok:
+                #print("Software package get Successful")
+                package_info = json.loads(r.text)
+
+                if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
+                    print("Can't find package in server.")
+                else:
+                     for item in package_info['packages'][0]['packages_info']['site']:
+                        if item['version'] == "latest_version" or item['version'] == "latest":
+                            cmd = 'git remote set-url origin ' + item['URL']
+                            os.system(cmd)
+                            #print(cmd)
+
             cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
+            os.system(cmd)
+
+            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
