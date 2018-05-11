@@ -521,6 +521,9 @@ def package_update():
         ]
     }
 
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path,'.config')
+
     beforepath = os.getcwd()
     for pkg in read_back_pkgs_json:
         package = Package()
@@ -534,22 +537,23 @@ def package_update():
             ver_sha = package.get_versha(pkg['ver'])
             os.chdir(repo_path)
 
-            payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
-            payload["packages"][0]['name'] = payload_pkgs_name_in_json
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'USE_DOWNLOAD_ACCELERATE'):
+                payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+                payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
-            r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
-            if r.status_code == requests.codes.ok:
-                #print("Software package get Successful")
-                package_info = json.loads(r.text)
+                r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+                if r.status_code == requests.codes.ok:
+                    #print("Software package get Successful")
+                    package_info = json.loads(r.text)
 
-                if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
-                    print("Can't find package in server.")
-                else:
-                     for item in package_info['packages'][0]['packages_info']['site']:
-                        if item['version'] == "latest_version" or item['version'] == "latest":
-                            cmd = 'git remote set-url origin ' + item['URL']
-                            os.system(cmd)
-                            #print(cmd)
+                    if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
+                        print("Can't find package in server.")
+                    else:
+                         for item in package_info['packages'][0]['packages_info']['site']:
+                            if item['version'] == "latest_version" or item['version'] == "latest":
+                                cmd = 'git remote set-url origin ' + item['URL']
+                                os.system(cmd)
+                                #print(cmd)
 
             cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
             os.system(cmd)
