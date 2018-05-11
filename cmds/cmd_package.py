@@ -8,6 +8,7 @@ import pkgsdb
 import json
 import shutil
 import platform
+import requests
 
 from package import Package
 from vars import Import, Export
@@ -110,25 +111,61 @@ def install_pkg(env_root, bsp_root, pkg):
     package = Package()
     pkg_path = pkg['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
-
-    #pkg_path = pkg_path.replace('/', '\\')
     pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
-
     package.parse(pkg_path)
 
+    url_from_json = package.get_url(pkg['ver'])
     package_url = package.get_url(pkg['ver'])
     package_name = pkg['name']
     pkgs_name_in_json =  package.get_name()
 
-    #print "get name here:",pkgs_name_in_json
+    #print("==================================================>")
+    #print "packages name:",pkgs_name_in_json
     #print "ver:",pkg['ver']
     #print "url:",package_url
-    #print "name:",package_name
-   
+    #print "url_from_json: ",url_from_json
+    #print("==================================================>")
+
+    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+    payload = {
+        "userName": "summer",
+        "packages": [
+            {
+            "name": "NULL",
+            }
+        ]
+    }
+    payload["packages"][0]['name'] = payload_pkgs_name_in_json
+
+    r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+    #print(r.status_code)
+
+    if r.status_code == requests.codes.ok:
+        #print("Software package get Successful")
+        package_info = json.loads(r.text)
+
+        if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
+            #print("Can't find package in server.")
+            if package_url[-4:] == '.git':
+                ver_sha = package.get_versha(pkg['ver'])
+        else:
+            for item in package_info['packages'][0]['packages_info']['site']:
+                if item['version'] == pkg['ver']:
+                    download_url = item['URL']
+                    package_url = download_url                      # Change download url
+                    #print("download_url from server: %s"%download_url)
+                    if download_url[-4:] == '.git':
+                        repo_sha = item['VER_SHA']
+                        ver_sha = repo_sha                          # Change git package SHA
+                        #print(repo_sha)
+                    break
+    else:
+        if package_url[-4:] == '.git':
+            ver_sha = package.get_versha(pkg['ver'])
+
     beforepath = os.getcwd()
 
     if package_url[-4:] == '.git':
-        ver_sha = package.get_versha(pkg['ver'])
         repo_path = os.path.join(bsp_pkgs_path,pkgs_name_in_json)
         cmd = 'git clone '+ package_url + ' '+ repo_path
         os.system(cmd)
@@ -139,7 +176,10 @@ def install_pkg(env_root, bsp_root, pkg):
         os.system(cmd)
         cmd = 'git submodule update '
         if not os.system(cmd):
-            print "Submodule update success"
+            print("Submodule update success")
+        cmd = 'git remote set-url origin ' + url_from_json
+        print(cmd)
+        os.system(cmd)
         os.chdir(beforepath)
     else:
         # download package
@@ -151,6 +191,7 @@ def install_pkg(env_root, bsp_root, pkg):
         pkg_dir = os.path.splitext(pkg_dir)[0]
 
         pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
+        #print("pkg_fullpath: %s"%pkg_fullpath)
 
         # unpack package
         if not os.path.exists(pkg_dir):
