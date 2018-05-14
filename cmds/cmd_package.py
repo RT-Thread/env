@@ -133,7 +133,7 @@ def install_pkg(env_root, bsp_root, pkg):
     #print "url_from_json: ",url_from_json
     #print("==================================================>")
 
-    if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'USE_DOWNLOAD_ACCELERATE'):
+    if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
         payload = {
             "userName": "summer",
@@ -537,7 +537,7 @@ def package_update():
             ver_sha = package.get_versha(pkg['ver'])
             os.chdir(repo_path)
 
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'USE_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
                 payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
