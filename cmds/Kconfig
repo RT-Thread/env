@@ -30,6 +30,10 @@ endif
 config USE_DOWNLOAD_ACCELERATE
     bool "Use package download accelerate"
     default y
+    help
+        When you open it, you will use the mirror address to download the software,
+        which can improve the download speed.
+        The synchronous cycle of the mirror address is usually half an hour.
 
 endmenu
 
