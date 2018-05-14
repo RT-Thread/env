@@ -136,7 +136,7 @@ def install_pkg(env_root, bsp_root, pkg):
     if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
         payload = {
-            "userName": "summer",
+            "userName": "RT-Thread",
             "packages": [
                 {
                 "name": "NULL",
@@ -513,7 +513,7 @@ def package_update():
     # If the download has a conflict, you are currently using the prompt message provided by git.
 
     payload = {
-        "userName": "SummerGift",
+        "userName": "RT-Thread",
         "packages": [
             {
             "name": "NULL",
