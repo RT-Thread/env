@@ -388,7 +388,7 @@ def package_update():
             print ("\nOperation : Delete a git package or change the version of a package.")
             print ("If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n")
             print ("Folder to delete: %s"%(gitdir))
-            print ("The folder is managed by git,are you sure you want to delete this folder?\n")
+            print ("The folder is managed by git. Do you want to delete this folder?\n")
 
             rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
