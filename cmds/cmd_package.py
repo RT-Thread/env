@@ -168,9 +168,12 @@ def install_pkg(env_root, bsp_root, pkg):
 
     beforepath = os.getcwd()
 
+    #print(package_url)
+
     if package_url[-4:] == '.git':
         repo_path = os.path.join(bsp_pkgs_path,pkgs_name_in_json)
         cmd = 'git clone '+ package_url + ' '+ repo_path
+        #print(cmd)
         os.system(cmd)
         os.chdir(repo_path)
         cmd = 'git checkout '+ ver_sha

@@ -69,9 +69,10 @@ class Package:
                     os.remove(path)
 
         retryCount  = 0
+        headers = {'User-Agent': 'curl/7.54.0'}
         while True:
             try :
-                r = requests.get(url, stream=True)
+                r = requests.get(url, stream=True, headers=headers)         
                 with open(path, 'wb') as f:
                     total_length = int(r.headers.get('content-length'))
 
