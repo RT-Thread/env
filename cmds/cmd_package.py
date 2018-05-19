@@ -189,7 +189,7 @@ def install_pkg(env_root, bsp_root, pkg):
         os.chdir(beforepath)
     else:
         # download package
-        if not package.download(pkg['ver'], local_pkgs_path):
+        if not package.download(pkg['ver'], local_pkgs_path, package_url):
             ret = False
             return ret
 
