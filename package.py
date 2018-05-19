@@ -1,7 +1,7 @@
 import os
 import json
 import archive
-
+import sys
 
 class Package:
     pkg = None
@@ -76,41 +76,51 @@ class Package:
                    'Accept': '*/*',
                    'User-Agent': 'curl/7.54.0'}
 
-        print(type(str(headers)))
+        #print("download from server:" + url_from_srv)  progress.bar(r.iter_content(chunk_size=1024), width=50, expected_size=25):
 
-        print(headers)
-
-        print("link from server:" + url_from_srv)
+        print('Start to download  software %s.'%filename)
 
         while True:
             #print("retryCount : %d"%retryCount)
             try:
                 r = requests.get(url_from_srv, stream=True, headers=headers)
-                print(r.request.headers)
+
+                flush_count = 0
+
                 with open(path, 'wb') as f:
-                    for chunk in progress.bar(r.iter_content(chunk_size=1024), width=50, expected_size=25):
+                    for chunk in r.iter_content(chunk_size=2048):
                         if chunk:
                             f.write(chunk)
                             f.flush()
+                        flush_count += 1
+                        if(flush_count%50 == 0):
+                            if(flush_count<250):
+                                sys.stdout.write('\n')
+                                sys.stdout.flush()
+                        else:
+                            if(flush_count<250):
+                                sys.stdout.write('#')
+                                sys.stdout.flush()
 
                 retryCount = retryCount + 1
                 if archive.packtest(path):  # make sure the file is right
                     ret = True
+                    print('\n===>Download Done \nBegan to unpack,wait a while...')
                     break
                 else:
                     if os.path.isfile(path):
                         os.remove(path)
                     if retryCount > 5:
-                        print "error: Have tried downloading 5 times.\nstop Downloading file", path
+                        print("error: Have tried downloading 5 times.\nstop Downloading file", path)
                         if os.path.isfile(path):
                             os.remove(path)
                         ret = False
                         break
             except Exception, e:
-                print url_from_srv
+                #print url_from_srv
                 retryCount = retryCount + 1
                 if retryCount > 5:
-                    print path, 'download fail!'
+                    print(path, 'download fail!')
                     if os.path.isfile(path):
                         os.remove(path)
                     return False
@@ -120,4 +130,4 @@ class Package:
         try:
             archive.unpack(fullpkg_path, path)
         except Exception, e:
-            print 'unpack %s failed' % os.path.basename(fullpkg_path)
+            print('unpack %s failed' % os.path.basename(fullpkg_path)) 
