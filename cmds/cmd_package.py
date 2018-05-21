@@ -378,8 +378,9 @@ def package_update():
         dirpath = os.path.basename(dirpath) 
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path,dirpath)
-        removepath_git = os.path.join(bsp_packages_path,'.git')
+        removepath_git = os.path.join(removepath,'.git')
         #print "floder to delete",removepath
+        #print "removepath_git to delete",removepath_git
 
         # Delete. Git directory.
 
@@ -412,6 +413,7 @@ def package_update():
                     print ("Folder has been removed.")
         else:
             #print 'removepath' + removepath
+            print("Start to remove %s, please wait...\n"%removepath)
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
 
     # 2.in old and in new  
