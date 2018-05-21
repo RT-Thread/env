@@ -145,26 +145,29 @@ def install_pkg(env_root, bsp_root, pkg):
         }
         payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
-        r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
-        #print(r.status_code)
+        try:
+            r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+            #print(r.status_code)
 
-        if r.status_code == requests.codes.ok:
-            #print("Software package get Successful")
-            package_info = json.loads(r.text)
+            if r.status_code == requests.codes.ok:
+                #print("Software package get Successful")
+                package_info = json.loads(r.text)
 
-            if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
-                print("No packages were found in the mirror server.")
-            else:
-                for item in package_info['packages'][0]['packages_info']['site']:
-                    if item['version'] == pkg['ver']:
-                        download_url = item['URL']
-                        package_url = download_url                      # Change download url
-                        #print("download_url from server: %s"%download_url)
-                        if download_url[-4:] == '.git':
-                            repo_sha = item['VER_SHA']
-                            ver_sha = repo_sha                          # Change git package SHA
-                            #print(repo_sha)
-                        break
+                if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
+                    print("No packages were found in the mirror server.")
+                else:
+                    for item in package_info['packages'][0]['packages_info']['site']:
+                        if item['version'] == pkg['ver']:
+                            download_url = item['URL']
+                            package_url = download_url                      # Change download url
+                            #print("download_url from server: %s"%download_url)
+                            if download_url[-4:] == '.git':
+                                repo_sha = item['VER_SHA']
+                                ver_sha = repo_sha                          # Change git package SHA
+                                #print(repo_sha)
+                            break
+        except Exception, e:
+            print("The server could not be contacted. Please check your network connection.")
 
     beforepath = os.getcwd()
 
