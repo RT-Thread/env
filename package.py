@@ -99,7 +99,8 @@ class Package:
                 retryCount = retryCount + 1
                 if archive.packtest(path):  # make sure the file is right
                     ret = True
-                    print('\nDone \nStart to unpack, wait for a little while...')
+                    print("\rDownloded %d KB  "%flush_count)
+                    print('Start to unpack. Please wait...')
                     break
                 else:
                     if os.path.isfile(path):
