@@ -378,7 +378,7 @@ def package_update():
         dirpath = os.path.basename(dirpath) 
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path,dirpath)
-        #print "floder to delere",removepath
+        #print "floder to delete",removepath
 
         # Delete. Git directory.
 

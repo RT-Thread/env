@@ -76,9 +76,9 @@ class Package:
                    'Accept': '*/*',
                    'User-Agent': 'curl/7.54.0'}
 
-        #print("download from server:" + url_from_srv)  progress.bar(r.iter_content(chunk_size=1024), width=50, expected_size=25):
+        #print("download from server:" + url_from_srv)
 
-        print('Start to download  software %s.'%filename)
+        print('Start to download package : %s '%filename)
 
         while True:
             #print("retryCount : %d"%retryCount)
@@ -88,24 +88,18 @@ class Package:
                 flush_count = 0
 
                 with open(path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=2048):
+                    for chunk in r.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
                             f.flush()
                         flush_count += 1
-                        if(flush_count%50 == 0):
-                            if(flush_count<250):
-                                sys.stdout.write('\n')
-                                sys.stdout.flush()
-                        else:
-                            if(flush_count<250):
-                                sys.stdout.write('#')
-                                sys.stdout.flush()
+                        sys.stdout.write("\rDownloding %d KB"%flush_count)
+                        sys.stdout.flush()
 
                 retryCount = retryCount + 1
                 if archive.packtest(path):  # make sure the file is right
                     ret = True
-                    print('\n===>Download Done \nBegan to unpack,wait a while...')
+                    print('\nDone \nStart to unpack, wait for a little while...')
                     break
                 else:
                     if os.path.isfile(path):
