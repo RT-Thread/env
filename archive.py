@@ -17,8 +17,8 @@ def unpack(archive_fn, path):
             arch.extract(tarinfo, path)            
             a = tarinfo.name           
             if not os.path.isdir(os.path.join(path,a)):
-                #b = a.replace('/','\\')
-                a = os.path.join(os.path.split(a)[0],os.path.split(a)[1]) 
+                right_path = a.replace('/','\\')
+                a = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
                 pkgsdb.savetodb(a,archive_fn)
         arch.close()
 
@@ -28,8 +28,8 @@ def unpack(archive_fn, path):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path,a)):
-                #b = a.replace('/','\\')
-                a = os.path.join(os.path.split(a)[0],os.path.split(a)[1]) 
+                right_path = a.replace('/','\\')
+                a = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
                 pkgsdb.savetodb(a,archive_fn)
         arch.close()
 
@@ -38,9 +38,9 @@ def unpack(archive_fn, path):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path,item)):
-                #b = item.replace('/','\\')          
+                right_path = item.replace('/','\\')          
                 #print "here to extract files:",item
-                item = os.path.join(os.path.split(item)[0],os.path.split(item)[1]) 
+                item = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
                 pkgsdb.savetodb(item,archive_fn)
         arch.close()
 
