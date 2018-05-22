@@ -146,7 +146,7 @@ def install_pkg(env_root, bsp_root, pkg):
         payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
         try:
-            r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+            r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
             #print(r.status_code)
 
             if r.status_code == requests.codes.ok:
@@ -549,7 +549,7 @@ def package_update():
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
                 payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
-                r = requests.post("http://118.31.42.51:8097/packages/queries", data=json.dumps(payload))
+                r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
                 if r.status_code == requests.codes.ok:
                     #print("Software package get Successful")
                     package_info = json.loads(r.text)
