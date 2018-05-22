@@ -154,7 +154,7 @@ def install_pkg(env_root, bsp_root, pkg):
                 package_info = json.loads(r.text)
 
                 if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
-                    print("No packages were found in the mirror server.")
+                    #print("No packages were found in the mirror server.")
                 else:
                     for item in package_info['packages'][0]['packages_info']['site']:
                         if item['version'] == pkg['ver']:
@@ -555,7 +555,7 @@ def package_update():
                     package_info = json.loads(r.text)
 
                     if len(package_info['packages']) == 0:
-                        print("No packages were found in the mirror server.")
+                        #print("No packages were found in the mirror server.")
                     else:
                          for item in package_info['packages'][0]['packages_info']['site']:
                             if item['version'] == "latest_version" or item['version'] == "latest":
