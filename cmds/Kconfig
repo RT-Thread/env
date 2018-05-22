@@ -28,7 +28,7 @@ if SYS_CREATE_MDK_IAR_PROJECT
 endif
 
 config SYS_PKGS_DOWNLOAD_ACCELERATE
-    bool "Use package download accelerate"
+    bool "pkgs download using mirror server"
     default n
     help
         When you open it, you will use the mirror address to download the software,
