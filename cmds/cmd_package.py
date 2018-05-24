@@ -415,7 +415,8 @@ def package_update():
                 else:
                     print ("Folder has been removed.")
         else:
-            removepath = removepath + '-' + ver[1:]
+            if not os.path.isdir(removepath):
+                removepath = removepath + '-' + ver[1:]
             #print 'removepath' + removepath
             print("Start to remove %s, please wait...\n"%removepath)
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
