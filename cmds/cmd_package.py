@@ -549,24 +549,27 @@ def package_update():
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
                 payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
-                r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-                if r.status_code == requests.codes.ok:
-                    #print("Software package get Successful")
-                    package_info = json.loads(r.text)
+                try:
+                    r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+                    if r.status_code == requests.codes.ok:
+                        #print("Software package get Successful")
+                        package_info = json.loads(r.text)
 
-                    if len(package_info['packages']) == 0:
-                        print("Package was NOT found on mirror server.")
-                    else:
-                         for item in package_info['packages'][0]['packages_info']['site']:
-                            if item['version'] == "latest_version" or item['version'] == "latest":
-                                cmd = 'git remote set-url origin ' + item['URL']
-                                os.system(cmd)
-                                #print(cmd)
+                        if len(package_info['packages']) == 0:
+                            print("Package was NOT found on mirror server.")
+                        else:
+                             for item in package_info['packages'][0]['packages_info']['site']:
+                                if item['version'] == "latest_version" or item['version'] == "latest":
+                                    cmd = 'git remote set-url origin ' + item['URL']                     # change origin url to the path which get from mirror server
+                                    os.system(cmd)
+                                    #print(cmd)
+                except Exception, e:
+                    print("The server could not be contacted. Please check your network connection.")
 
             cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
             os.system(cmd)
 
-            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
+            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])                             # recover origin url to the path which get from packages.json file
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n"%(pkgs_name_in_json))
