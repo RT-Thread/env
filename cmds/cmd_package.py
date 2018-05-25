@@ -33,7 +33,7 @@ Return('objs')
 
 """ 
 Template for creating a new kconfig file
-""" 
+"""
 Kconfig_file = '''
 # Kconfig file for package ${lowercase_name}
 config PKG_USING_${name}
@@ -93,35 +93,41 @@ group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
 Return('group')
 '''
 
+
 def user_input(msg, default_value):
 
-    if default_value != '': 
+    if default_value != '':
         msg = '%s[%s]' % (msg, default_value)
-    
+
     print msg,
     value = raw_input()
-    if value == '' : value = default_value
+    if value == '':
+        value = default_value
 
     return value
 
+
 def install_pkg(env_root, bsp_root, pkg):
-    ret = True                                                                # default true
+    # default true
+    ret = True
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_pkgs_path = os.path.join(bsp_root, 'packages')
 
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path,'.config')                # get the .config file from env
+    # get the .config file from env
+    env_config_file = os.path.join(env_kconfig_path, '.config')
 
     package = Package()
     pkg_path = pkg['path']
-    if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
+    if pkg_path[0] == '/' or pkg_path[0] == '\\':
+        pkg_path = pkg_path[1:]
     pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
     package.parse(pkg_path)
 
     url_from_json = package.get_url(pkg['ver'])
     package_url = package.get_url(pkg['ver'])
     #package_name = pkg['name']
-    pkgs_name_in_json =  package.get_name()
+    pkgs_name_in_json = package.get_name()
 
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
@@ -133,27 +139,30 @@ def install_pkg(env_root, bsp_root, pkg):
     #print "url_from_json: ",url_from_json
     #print("==================================================>")
 
-    if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+    if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
         payload = {
             "userName": "RT-Thread",
             "packages": [
                 {
-                "name": "NULL",
+                    "name": "NULL",
                 }
             ]
         }
         payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
         try:
-            r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+            r = requests.post(
+                "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
             #print(r.status_code)
 
             if r.status_code == requests.codes.ok:
                 #print("Software package get Successful")
                 package_info = json.loads(r.text)
 
-                if len(package_info['packages']) == 0:                      # Can't find package,change git package SHA if it's a git package
+                # Can't find package,change git package SHA if it's a git
+                # package
+                if len(package_info['packages']) == 0:
                     print("Package was NOT found on mirror server.")
                 else:
                     for item in package_info['packages'][0]['packages_info']['site']:
@@ -167,20 +176,21 @@ def install_pkg(env_root, bsp_root, pkg):
                                 #print(repo_sha)
                             break
         except Exception, e:
-            print('e.message:%s\t'%e.message)
-            print("The server could not be contacted. Please check your network connection.")
+            print('e.message:%s\t' % e.message)
+            print(
+                "The server could not be contacted. Please check your network connection.")
 
     beforepath = os.getcwd()
 
     #print(package_url)
 
     if package_url[-4:] == '.git':
-        repo_path = os.path.join(bsp_pkgs_path,pkgs_name_in_json)
-        cmd = 'git clone '+ package_url + ' '+ repo_path
+        repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
+        cmd = 'git clone ' + package_url + ' ' + repo_path
         #print(cmd)
         os.system(cmd)
         os.chdir(repo_path)
-        cmd = 'git checkout '+ ver_sha
+        cmd = 'git checkout ' + ver_sha
         os.system(cmd)
         cmd = 'git submodule init '
         os.system(cmd)
@@ -200,7 +210,8 @@ def install_pkg(env_root, bsp_root, pkg):
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
 
-        pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
+        pkg_fullpath = os.path.join(
+            local_pkgs_path, package.get_filename(pkg['ver']))
         #print("pkg_fullpath: %s"%pkg_fullpath)
 
         # unpack package
@@ -209,6 +220,7 @@ def install_pkg(env_root, bsp_root, pkg):
             ret = True
 
     return ret
+
 
 def package_list():
     """Print the packages list in env.
@@ -253,13 +265,14 @@ def package_list():
     for pkg in pkgs:
         package = Package()
         pkg_path = pkg['path']
-        if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
+        if pkg_path[0] == '/' or pkg_path[0] == '\\':
+            pkg_path = pkg_path[1:]
 
         #pkg_path = pkg_path.replace('/', '\\')
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
 
-        pkgs_name_in_json =  package.get_name()
+        pkgs_name_in_json = package.get_name()
         print pkgs_name_in_json, pkg['ver']
         #print "package path:", pkg['path']
 
@@ -269,27 +282,29 @@ def package_list():
         print ('Then use < pkgs --update > command to install them.')
     return
 
-def SubList(aList,bList):# in a ,not in b  
-    tmp = []  
-    for a in aList:  
-        if a not in bList:  
-            tmp.append(a)  
-    return tmp  
 
-def AndList(aList,bList):# in a and in b  
-    tmp = []  
-    for a in aList:  
-        if a in bList:  
-            tmp.append(a)  
-    return tmp  
+def SubList(aList, bList):  # in a ,not in b
+    tmp = []
+    for a in aList:
+        if a not in bList:
+            tmp.append(a)
+    return tmp
 
-# def OrList(aList,bList):# in a or in b  
-#     tmp = OnceForList(aList)  
-#     bList = OnceForList(bList)  
-#     for a in bList:  
-#         if a not in tmp:  
-#             tmp.append(a)  
-#     return tmp 
+
+def AndList(aList, bList):  # in a and in b
+    tmp = []
+    for a in aList:
+        if a in bList:
+            tmp.append(a)
+    return tmp
+
+# def OrList(aList,bList):# in a or in b
+#     tmp = OnceForList(aList)
+#     bList = OnceForList(bList)
+#     for a in bList:
+#         if a not in tmp:
+#             tmp.append(a)
+#     return tmp
 
 
 def package_update():
@@ -318,26 +333,27 @@ def package_update():
     #print env_root
 
     if not os.path.exists('.config'):
-        print ("Can't find file .config.Maybe your working directory isn't in bsp root now.")
+        print (
+            "Can't find file .config.Maybe your working directory isn't in bsp root now.")
         print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
         print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
         return
 
-    bsp_packages_path = os.path.join(bsp_root,'packages')
+    bsp_packages_path = os.path.join(bsp_root, 'packages')
     if not os.path.exists(bsp_packages_path):
         os.mkdir("packages")
         os.chdir(bsp_packages_path)
-        fp = open("pkgs.json",'w') 
+        fp = open("pkgs.json", 'w')
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
 
     # prepare target packages file
-    dbsqlite_pathname = os.path.join(bsp_packages_path,'packages.dbsqlite')
+    dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
 
     # Avoid creating tables more than one time
-    if not os.path.isfile(dbsqlite_pathname):                              
+    if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
@@ -358,7 +374,7 @@ def package_update():
         rc = raw_input('Press the Y Key to create a new pkgs.json.')
         if rc == 'y' or rc == 'Y':
             os.chdir(bsp_packages_path)
-            fp = open("pkgs.json",'w') 
+            fp = open("pkgs.json", 'w')
             fp.write("[]")
             fp.close()
             os.chdir(bsp_root)
@@ -371,44 +387,47 @@ def package_update():
     #print "newpkgs:",newpkgs
     #print "oldpkgs:",oldpkgs
 
-    # 1.in old ,not in new  
-    casedelete = SubList(oldpkgs,newpkgs)
+    # 1.in old ,not in new
+    casedelete = SubList(oldpkgs, newpkgs)
     for pkg in casedelete:
         dirpath = pkg['path']
         ver = pkg['ver']
         #print 'ver is :',ver[1:]
-        if dirpath[0] == '/' or dirpath[0] == '\\': dirpath = dirpath[1:]
+        if dirpath[0] == '/' or dirpath[0] == '\\':
+            dirpath = dirpath[1:]
         #dirpath = dirpath.replace('/', '\\')
-        dirpath = os.path.basename(dirpath) 
+        dirpath = os.path.basename(dirpath)
         #print "basename:",os.path.basename(dirpath)
-        removepath = os.path.join(bsp_packages_path,dirpath)
-        removepath_git = os.path.join(removepath,'.git')
+        removepath = os.path.join(bsp_packages_path, dirpath)
+        removepath_git = os.path.join(removepath, '.git')
         #print "floder to delete",removepath
         #print "removepath_git to delete",removepath_git
 
         # Delete. Git directory.
 
-        if os.path.isdir(removepath) and os.path.isdir(removepath_git):           
+        if os.path.isdir(removepath) and os.path.isdir(removepath_git):
             #uppername = str.upper(str(os.path.basename(removepath)))
             #dirname = os.path.dirname(removepath)
             #gitdir = os.path.join(dirname,uppername)
             gitdir = removepath
 
-            print ("\nOperation : Delete a git package or change the version of a package.")
+            print (
+                "\nOperation : Delete a git package or change the version of a package.")
             print ("If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n")
-            print ("Folder to delete: %s"%(gitdir))
+            print ("Folder to delete: %s" % (gitdir))
             print ("The folder is managed by git. Do you want to delete this folder?\n")
 
-            rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep the file:')
+            rc = raw_input(
+                'Press the Y Key to delete the folder or just press Enter to keep the file:')
             if rc == 'y' or rc == 'Y':
                 if platform.system() != "Windows":
-                    shutil.rmtree(gitdir) 
+                    shutil.rmtree(gitdir)
                 else:
                     cmd = 'rd /s /q ' + gitdir
                     os.system(cmd)
                 if os.path.isdir(gitdir):
                     if platform.system() != "Windows":
-                        shutil.rmtree(gitdir) 
+                        shutil.rmtree(gitdir)
                     else:
                         cmd = 'rd /s /q ' + gitdir
                         os.system(cmd)
@@ -419,37 +438,42 @@ def package_update():
             if not os.path.isdir(removepath):
                 removepath = removepath + '-' + ver[1:]
             #print 'removepath' + removepath
-            print("Start to remove %s, please wait...\n"%removepath)
-            pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
+            print("Start to remove %s, please wait...\n" % removepath)
+            pkgsdb.deletepackdir(removepath, dbsqlite_pathname)
 
-    # 2.in old and in new  
+    # 2.in old and in new
     #caseinoperation = AndList(newpkgs,oldpkgs)
 
-    # 3.in new not in old 
-    # If the package download fails, record it, and then download again when the update command is executed.
+    # 3.in new not in old
+    # If the package download fails, record it, and then download again when
+    # the update command is executed.
 
-    casedownload = SubList(newpkgs,oldpkgs)
+    casedownload = SubList(newpkgs, oldpkgs)
     #print 'in new not in old:',casedownload
     pkgs_list = []
 
     for pkg in casedownload:
         if install_pkg(env_root, bsp_root, pkg):
-            print("==============================>  %s %s is downloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
-        else: 
-            pkgs_list.append(pkg)                    # If the PKG download fails, record it in the pkgs_list. 
-            print pkg,'download failed.'
+            print("==============================>  %s %s is downloaded successfully. \n" % (
+                pkg['name'], pkg['ver']))
+        else:
+            # If the PKG download fails, record it in the pkgs_list.
+            pkgs_list.append(pkg)
+            print pkg, 'download failed.'
             flag = False
 
-    newpkgs = SubList(newpkgs,pkgs_list)     # Get the currently updated configuration.
+    # Get the currently updated configuration.
+    newpkgs = SubList(newpkgs, pkgs_list)
 
     # Give hints based on the success of the download.
 
     if len(pkgs_list):
-        print("Package download failed pkgs_list: %s \n"%pkgs_list)
+        print("Package download failed pkgs_list: %s \n" % pkgs_list)
         print("You need to reuse the 'pkgs -update' command to download again.\n")
 
     # Writes the updated configuration to pkgs.json file.
-    # Packages that are not downloaded correctly will be redownloaded at the next update.
+    # Packages that are not downloaded correctly will be redownloaded at the
+    # next update.
 
     pkgs_file = file(pkgs_fn, 'w')
     pkgs_file.write(json.dumps(newpkgs, indent=1))
@@ -457,11 +481,12 @@ def package_update():
 
     # update SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
-        bridge_script = file(os.path.join(bsp_packages_path, 'SConscript'), 'w')
+        bridge_script = file(os.path.join(
+            bsp_packages_path, 'SConscript'), 'w')
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
-    # Check to see if the packages stored in the Json file list actually exist, 
+    # Check to see if the packages stored in the Json file list actually exist,
     # and then download the packages if they don't exist.
 
     with open(pkgs_fn, 'r') as f:
@@ -475,10 +500,11 @@ def package_update():
         dirpath = pkg['path']
         ver = pkg['ver']
         #print 'ver is :',ver[1:]
-        if dirpath[0] == '/' or dirpath[0] == '\\': dirpath = dirpath[1:]
+        if dirpath[0] == '/' or dirpath[0] == '\\':
+            dirpath = dirpath[1:]
 
-        dirpath = os.path.basename(dirpath) 
-        removepath = os.path.join(bsp_packages_path,dirpath)
+        dirpath = os.path.basename(dirpath)
+        removepath = os.path.join(bsp_packages_path, dirpath)
         #print "if floder exist",removepath
         removepath_ver = removepath + '-' + ver[1:]
         #print "if floder exist",removepath
@@ -500,17 +526,20 @@ def package_update():
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
-                print("==============================>  %s %s is redownloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
+                print("==============================>  %s %s is redownloaded successfully. \n" % (
+                    pkg['name'], pkg['ver']))
             else:
                 error_packages_redownload_error_list.append(pkg)
-                print pkg,'download failed.'
+                print pkg, 'download failed.'
                 flag = False
 
         if len(error_packages_redownload_error_list):
-            print("%s"%error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them."%pkg['name'], pkg['ver'])
-            write_back_pkgs_json = SubList(read_back_pkgs_json,error_packages_redownload_error_list)
-            read_back_pkgs_json = write_back_pkgs_json         
+            print("%s" % error_packages_redownload_error_list)
+            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them." %
+                   pkg['name'], pkg['ver'])
+            write_back_pkgs_json = SubList(
+                read_back_pkgs_json, error_packages_redownload_error_list)
+            read_back_pkgs_json = write_back_pkgs_json
             #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
             pkgs_file = file(pkgs_fn, 'w')
             pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
@@ -518,42 +547,45 @@ def package_update():
     else:
         print("\nAll the selected packages have been downloaded successfully.\n")
 
-    # If the selected package is the latest version, 
-    # check to see if it is the latest version after the update command, 
+    # If the selected package is the latest version,
+    # check to see if it is the latest version after the update command,
     # if not, then update the latest version from the remote repository.
-    # If the download has a conflict, you are currently using the prompt message provided by git.
+    # If the download has a conflict, you are currently using the prompt
+    # message provided by git.
 
     payload = {
         "userName": "RT-Thread",
         "packages": [
             {
-            "name": "NULL",
+                "name": "NULL",
             }
         ]
     }
 
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path,'.config')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
 
     beforepath = os.getcwd()
     for pkg in read_back_pkgs_json:
         package = Package()
         pkg_path = pkg['path']
-        if pkg_path[0] == '/' or pkg_path[0] == '\\': pkg_path = pkg_path[1:]
+        if pkg_path[0] == '/' or pkg_path[0] == '\\':
+            pkg_path = pkg_path[1:]
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
-        pkgs_name_in_json =  package.get_name()
-        if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
-            repo_path = os.path.join(bsp_packages_path,pkgs_name_in_json)
+        pkgs_name_in_json = package.get_name()
+        if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
+            repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             #ver_sha = package.get_versha(pkg['ver'])
             os.chdir(repo_path)
 
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
                 payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
                 try:
-                    r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+                    r = requests.post(
+                        "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
                     if r.status_code == requests.codes.ok:
                         #print("Software package get Successful")
                         package_info = json.loads(r.text)
@@ -563,25 +595,33 @@ def package_update():
                         else:
                             for item in package_info['packages'][0]['packages_info']['site']:
                                 if item['version'] == "latest_version" or item['version'] == "latest":
-                                    cmd = 'git remote set-url origin ' + item['URL']                     # change origin url to the path which get from mirror server
+                                    # change origin url to the path which get
+                                    # from mirror server
+                                    cmd = 'git remote set-url origin ' + \
+                                        item['URL']
                                     os.system(cmd)
                                     #print(cmd)
                 except Exception, e:
-                    print('e.message:%s\t'%e.message)
-                    print("The server could not be contacted. Please check your network connection.")
+                    print('e.message:%s\t' % e.message)
+                    print(
+                        "The server could not be contacted. Please check your network connection.")
 
-            cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
+            # Only one trace relationship can be used directly with git pull.
+            cmd = 'git pull'
             os.system(cmd)
 
-            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])                             # recover origin url to the path which get from packages.json file
+            # recover origin url to the path which get from packages.json file
+            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
             os.system(cmd)
             os.chdir(beforepath)
-            print("==============================>  %s update done \n"%(pkgs_name_in_json))
+            print("==============================>  %s update done \n" %
+                  (pkgs_name_in_json))
 
     if flag:
         print ("Operation completed successfully.")
     else:
         print ("Operation failed.")
+
 
 def package_wizard():
     """Packages creation wizard.
@@ -608,15 +648,16 @@ def package_wizard():
         print ('please provide the package name.\n')
         return
 
-    default_description =  'a ' + name + ' package for rt-thread'
+    default_description = 'a ' + name + ' package for rt-thread'
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
-    ver = user_input('version of package,default:\n' ,'1.0.0')
-    ver_standard = ver.replace('.','')
+    ver = user_input('version of package,default:\n', '1.0.0')
+    ver_standard = ver.replace('.', '')
     #keyword = user_input('keyword,default:\n', name)
     keyword = name
 
-    packageclass = ('iot', 'language','misc', 'multimedia','security', 'system')
+    packageclass = ('iot', 'language', 'misc',
+                    'multimedia', 'security', 'system')
     print ('Please choose a class for your packages.')
     print ('Enter 1 for iot and 2 for language, following the table below as a guideline.')
     print ("[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:security]|[6:system]")
@@ -632,7 +673,7 @@ def package_wizard():
     else:
         print ('You must type in number 1 to 6.')
         return
-        
+
     pkg_path = name
     if not os.path.exists(pkg_path):
         os.mkdir(pkg_path)
@@ -641,19 +682,21 @@ def package_wizard():
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
-    kconfig = s.substitute(name = uppername, description = description, version = ver ,pkgs_class = pkgsclass ,lowercase_name = name ,version_standard = ver_standard)
+    kconfig = s.substitute(name=uppername, description=description, version=ver,
+                           pkgs_class=pkgsclass, lowercase_name=name, version_standard=ver_standard)
     f = file(os.path.join(pkg_path, 'Kconfig'), 'wb')
     f.write(kconfig)
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name = name, description = description, version = ver, keyword = keyword)
+    package = s.substitute(
+        name=name, description=description, version=ver, keyword=keyword)
     f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()
 
     s = Template(Sconscript_file)
-    sconscript = s.substitute(name = name)
+    sconscript = s.substitute(name=name)
     f = file(os.path.join(pkg_path, 'SConscript'), 'wb')
     f.write(sconscript)
     f.close()
@@ -662,7 +705,7 @@ def package_wizard():
 
 
 def cmd(args):
-    env_scripts_root = os.path.join(Import('env_root'), 'tools','scripts')
+    env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
     packages_root = os.path.join(Import('env_root'), 'packages')
     git_repo = 'https://github.com/RT-Thread/packages.git'
     env_scripts_repo = 'https://github.com/RT-Thread/env.git'
@@ -675,81 +718,84 @@ def cmd(args):
         package_list()
     elif args.package_upgrade:
         beforepath = os.getcwd()
-        pkgs_path = os.path.join(packages_root,'packages')
+        pkgs_path = os.path.join(packages_root, 'packages')
         #print pkgs_path
         if not os.path.isdir(pkgs_path):
-            cmd = 'git clone '+ git_repo + ' '+ pkgs_path
+            cmd = 'git clone ' + git_repo + ' ' + pkgs_path
             os.system(cmd)
-            print ("upgrade from :%s"%(git_repo))
+            print ("upgrade from :%s" % (git_repo))
 
         for filename in os.listdir(packages_root):
-            if os.path.isdir(os.path.join(packages_root,filename)):
-                os.chdir(os.path.join(packages_root,filename))
+            if os.path.isdir(os.path.join(packages_root, filename)):
+                os.chdir(os.path.join(packages_root, filename))
                 if os.path.isdir('.git'):
                     cmd = 'git pull origin master'
                     os.system(cmd)
                     os.chdir(beforepath)
-                    print("==============================>  Env %s update done \n"%filename)
+                    print(
+                        "==============================>  Env %s update done \n" % filename)
 
         beforepath = os.getcwd()
         os.chdir(env_scripts_root)
-        cmd = 'git pull '+ env_scripts_repo
+        cmd = 'git pull ' + env_scripts_repo
         os.system(cmd)
         os.chdir(beforepath)
         print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
         print ("Here are some environmental variables.")
-        print ("If you meet some problems,please check them. Make sure the configuration is correct.")
-        print ("RTT_EXEC_PATH:%s"%(os.getenv("RTT_EXEC_PATH")))
-        print ("RTT_CC:%s"%(os.getenv("RTT_CC")))
-        print ("SCONS:%s"%(os.getenv("SCONS")))
-        print ("PKGS_ROOT:%s"%(os.getenv("PKGS_ROOT")))
+        print (
+            "If you meet some problems,please check them. Make sure the configuration is correct.")
+        print ("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
+        print ("RTT_CC:%s" % (os.getenv("RTT_CC")))
+        print ("SCONS:%s" % (os.getenv("SCONS")))
+        print ("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
 
         env_root = os.getenv('ENV_ROOT')
         if env_root == None:
             if platform.system() != 'Windows':
                 env_root = os.path.join(os.getenv('HOME'), '.env')
-        
-        print ("ENV_ROOT:%s"%(env_root))
+
+        print ("ENV_ROOT:%s" % (env_root))
         #print "RTT_ROOT:",os.getenv("RTT_ROOT")
         #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
         #print "after",os.getenv("RTT_EXEC_PATH")
     else:
         os.system('pkgs -h')
 
+
 def add_parser(sub):
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
-    parser.add_argument('--update', 
-        help = 'update packages, install or remove the packages as you set in menuconfig',
-        action='store_true',
-        default=False,
-        dest = 'package_update')
+    parser.add_argument('--update',
+                        help='update packages, install or remove the packages as you set in menuconfig',
+                        action='store_true',
+                        default=False,
+                        dest='package_update')
 
-    parser.add_argument('--list', 
-        help = 'list target packages',
-        action='store_true',
-        default=False,
-        dest = 'package_list')
+    parser.add_argument('--list',
+                        help='list target packages',
+                        action='store_true',
+                        default=False,
+                        dest='package_list')
 
-    parser.add_argument('--wizard', 
-        help = 'create a package with wizard',
-        action='store_true',
-        default=False,
-        dest = 'package_create')
+    parser.add_argument('--wizard',
+                        help='create a package with wizard',
+                        action='store_true',
+                        default=False,
+                        dest='package_create')
 
-    parser.add_argument('--upgrade', 
-        help = 'update local packages list from git repo',
-        action='store_true',
-        default=False,
-        dest = 'package_upgrade')
+    parser.add_argument('--upgrade',
+                        help='update local packages list from git repo',
+                        action='store_true',
+                        default=False,
+                        dest='package_upgrade')
 
-    parser.add_argument('--printenv', 
-        help = 'print environmental variables to check',
-        action='store_true',
-        default=False,
-        dest = 'package_print_env')
+    parser.add_argument('--printenv',
+                        help='print environmental variables to check',
+                        action='store_true',
+                        default=False,
+                        dest='package_print_env')
 
     #parser.add_argument('--upgrade', dest='reposource', required=False,
     #            help='add source & update packages repo ')
