@@ -1,6 +1,5 @@
-import argparse
 import os
-from vars import Import, Export
+from vars import Import
 
 '''RT-Thread environment package system'''
 

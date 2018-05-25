@@ -120,7 +120,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
     url_from_json = package.get_url(pkg['ver'])
     package_url = package.get_url(pkg['ver'])
-    package_name = pkg['name']
+    #package_name = pkg['name']
     pkgs_name_in_json =  package.get_name()
 
     if package_url[-4:] == '.git':
@@ -167,6 +167,7 @@ def install_pkg(env_root, bsp_root, pkg):
                                 #print(repo_sha)
                             break
         except Exception, e:
+            print('e.message:%s\t'%e.message)
             print("The server could not be contacted. Please check your network connection.")
 
     beforepath = os.getcwd()
@@ -226,9 +227,9 @@ def package_list():
     """
     fn = '.config'
     env_root = Import('env_root')
-    bsp_root = Import('bsp_root')
-    target_pkgs_path = os.path.join(bsp_root, 'packages')
-    pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
+#     bsp_root = Import('bsp_root')
+#     target_pkgs_path = os.path.join(bsp_root, 'packages')
+#     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.isfile(fn):
         print ('no system configuration file : .config.')
@@ -422,29 +423,29 @@ def package_update():
             pkgsdb.deletepackdir(removepath,dbsqlite_pathname)
 
     # 2.in old and in new  
-    caseinoperation = AndList(newpkgs,oldpkgs)
+    #caseinoperation = AndList(newpkgs,oldpkgs)
 
     # 3.in new not in old 
     # If the package download fails, record it, and then download again when the update command is executed.
 
     casedownload = SubList(newpkgs,oldpkgs)
     #print 'in new not in old:',casedownload
-    list = []
+    pkgs_list = []
 
     for pkg in casedownload:
         if install_pkg(env_root, bsp_root, pkg):
             print("==============================>  %s %s is downloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
         else: 
-            list.append(pkg)                    # If the PKG download fails, record it in the list. 
+            pkgs_list.append(pkg)                    # If the PKG download fails, record it in the pkgs_list. 
             print pkg,'download failed.'
             flag = False
 
-    newpkgs = SubList(newpkgs,list)     # Get the currently updated configuration.
+    newpkgs = SubList(newpkgs,pkgs_list)     # Get the currently updated configuration.
 
     # Give hints based on the success of the download.
 
-    if len(list):
-        print("Package download failed list: %s \n"%list)
+    if len(pkgs_list):
+        print("Package download failed pkgs_list: %s \n"%pkgs_list)
         print("You need to reuse the 'pkgs -update' command to download again.\n")
 
     # Writes the updated configuration to pkgs.json file.
@@ -544,7 +545,7 @@ def package_update():
         pkgs_name_in_json =  package.get_name()
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest" :
             repo_path = os.path.join(bsp_packages_path,pkgs_name_in_json)
-            ver_sha = package.get_versha(pkg['ver'])
+            #ver_sha = package.get_versha(pkg['ver'])
             os.chdir(repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file,'SYS_PKGS_DOWNLOAD_ACCELERATE'):
@@ -566,6 +567,7 @@ def package_update():
                                     os.system(cmd)
                                     #print(cmd)
                 except Exception, e:
+                    print('e.message:%s\t'%e.message)
                     print("The server could not be contacted. Please check your network connection.")
 
             cmd = 'git pull'  # Only one trace relationship can be used directly with git pull.
