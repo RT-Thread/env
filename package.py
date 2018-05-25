@@ -47,9 +47,8 @@ class Package:
     def download(self, ver, path, url_from_srv):
         ret = True
         import requests
-        from clint.textui import progress
 
-        #url = self.get_url(ver)
+        url = self.get_url(ver)
 
         site = self.get_site(ver)
         if site and site.has_key('filename'):
