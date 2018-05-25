@@ -192,14 +192,21 @@ def install_pkg(env_root, bsp_root, pkg):
         os.chdir(repo_path)
         cmd = 'git checkout ' + ver_sha
         os.system(cmd)
-        cmd = 'git submodule init '
-        os.system(cmd)
-        cmd = 'git submodule update '
-        if not os.system(cmd):
-            print("Submodule update success")
+        
+        # If there is a .gitmodules file in the package, prepare to update the
+        # submodule.
+        submod_path = os.path.join(repo_path, '.gitmodules')
+        if os.path.isfile(submod_path):
+            print("Start to update submodule")
+            cmd = 'git submodule init '
+            os.system(cmd)
+            cmd = 'git submodule update '
+            if not os.system(cmd):
+                print("Submodule update success")
+
         cmd = 'git remote set-url origin ' + url_from_json
-        #print(cmd)
         os.system(cmd)
+
         os.chdir(beforepath)
     else:
         # download package
