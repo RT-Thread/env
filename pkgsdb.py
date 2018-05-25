@@ -146,9 +146,10 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
         conn.commit()
         os.remove(pathname)
     else:
-        print pathname, "has been changed."
-        print 'Are you sure you want to permanently delete the file:', os.path.basename(pathname), '?'
-        print 'If you choose to keep the changed file,you should copy the file to another folder. becaues it may be covered by the next update.'
+        print ("%s has been changed." % pathname)
+        print ('Are you sure you want to permanently delete the file: %s?' %
+               os.path.basename(pathname))
+        print ('If you choose to keep the changed file,you should copy the file to another folder. \nbecaues it may be covered by the next update.')
         rc = raw_input(
             'Press the Y Key to delete the file or just press Enter to keep the file.')
         if rc == 'y' or rc == 'Y':
@@ -156,7 +157,7 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
             cursor = c.execute(sql)
             conn.commit()
             os.remove(pathname)
-            print("%s has been removed.\n"%pathname)
+            print("%s has been removed.\n" % pathname)
         else:
             flag = False
     conn.close()
