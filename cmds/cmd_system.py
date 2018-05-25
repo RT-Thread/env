@@ -8,11 +8,11 @@ def cmd(args):
     packages_root = os.path.join(Import('env_root'), 'packages')
 
     if args.system_update:
-        list = os.listdir(packages_root)
+        dir_list = os.listdir(packages_root)
 
         kconfig = file(os.path.join(packages_root, 'Kconfig'), 'w')
 
-        for item in list:
+        for item in dir_list:
             if os.path.isfile(os.path.join(packages_root, item, 'Kconfig')):
                 kconfig.write('source "$PKGS_DIR/' + item + '/Kconfig"')
                 kconfig.write('\n')
