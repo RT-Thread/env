@@ -105,12 +105,12 @@ def user_input(msg, default_value):
     return value
 
 def install_pkg(env_root, bsp_root, pkg):
-    ret = True
+    ret = True                                                                # default true
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_pkgs_path = os.path.join(bsp_root, 'packages')
 
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path,'.config')
+    env_config_file = os.path.join(env_kconfig_path,'.config')                # get the .config file from env
 
     package = Package()
     pkg_path = pkg['path']
@@ -282,13 +282,13 @@ def AndList(aList,bList):# in a and in b
             tmp.append(a)  
     return tmp  
 
-def OrList(aList,bList):# in a or in b  
-    tmp = OnceForList(aList)  
-    bList = OnceForList(bList)  
-    for a in bList:  
-        if a not in tmp:  
-            tmp.append(a)  
-    return tmp 
+# def OrList(aList,bList):# in a or in b  
+#     tmp = OnceForList(aList)  
+#     bList = OnceForList(bList)  
+#     for a in bList:  
+#         if a not in tmp:  
+#             tmp.append(a)  
+#     return tmp 
 
 
 def package_update():
@@ -432,7 +432,7 @@ def package_update():
     list = []
 
     for pkg in casedownload:
-        if install_pkg(env_root, bsp_root, pkg):                
+        if install_pkg(env_root, bsp_root, pkg):
             print("==============================>  %s %s is downloaded successfully. \n"%(pkg['name'], pkg['ver'] ))
         else: 
             list.append(pkg)                    # If the PKG download fails, record it in the list. 
@@ -464,7 +464,7 @@ def package_update():
     # and then download the packages if they don't exist.
 
     with open(pkgs_fn, 'r') as f:
-       read_back_pkgs_json = json.load(f)
+        read_back_pkgs_json = json.load(f)
 
     #print(read_back_pkgs_json)
 
@@ -560,7 +560,7 @@ def package_update():
                         if len(package_info['packages']) == 0:
                             print("Package was NOT found on mirror server.")
                         else:
-                             for item in package_info['packages'][0]['packages_info']['site']:
+                            for item in package_info['packages'][0]['packages_info']['site']:
                                 if item['version'] == "latest_version" or item['version'] == "latest":
                                     cmd = 'git remote set-url origin ' + item['URL']                     # change origin url to the path which get from mirror server
                                     os.system(cmd)
@@ -697,25 +697,24 @@ def cmd(args):
         print("==============================>  Env scripts update done \n")
 
     elif args.package_print_env:
-         print ("Here are some environmental variables.")
-         print ("If you meet some problems,please check them. Make sure the configuration is correct.")
-         print ("RTT_EXEC_PATH:%s"%(os.getenv("RTT_EXEC_PATH")))
-         print ("RTT_CC:%s"%(os.getenv("RTT_CC")))
-         print ("SCONS:%s"%(os.getenv("SCONS")))
-         print ("PKGS_ROOT:%s"%(os.getenv("PKGS_ROOT")))
+        print ("Here are some environmental variables.")
+        print ("If you meet some problems,please check them. Make sure the configuration is correct.")
+        print ("RTT_EXEC_PATH:%s"%(os.getenv("RTT_EXEC_PATH")))
+        print ("RTT_CC:%s"%(os.getenv("RTT_CC")))
+        print ("SCONS:%s"%(os.getenv("SCONS")))
+        print ("PKGS_ROOT:%s"%(os.getenv("PKGS_ROOT")))
 
-         env_root = os.getenv('ENV_ROOT')
-         if env_root == None:
-             import platform
-             if platform.system() != 'Windows':
-                 env_root = os.path.join(os.getenv('HOME'), '.env')
-
-         print ("ENV_ROOT:%s"%(env_root))
-         #print "RTT_ROOT:",os.getenv("RTT_ROOT")
-         #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
-         #print "after",os.getenv("RTT_EXEC_PATH")
+        env_root = os.getenv('ENV_ROOT')
+        if env_root == None:
+            if platform.system() != 'Windows':
+                env_root = os.path.join(os.getenv('HOME'), '.env')
+        
+        print ("ENV_ROOT:%s"%(env_root))
+        #print "RTT_ROOT:",os.getenv("RTT_ROOT")
+        #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
+        #print "after",os.getenv("RTT_EXEC_PATH")
     else:
-         os.system('pkgs -h')
+        os.system('pkgs -h')
 
 def add_parser(sub):
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
