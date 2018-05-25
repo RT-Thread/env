@@ -187,10 +187,9 @@ def install_pkg(env_root, bsp_root, pkg):
     if package_url[-4:] == '.git':
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         cmd = 'git clone ' + package_url + ' ' + repo_path
-        #print(cmd)
         os.system(cmd)
         os.chdir(repo_path)
-        cmd = 'git checkout ' + ver_sha
+        cmd = 'git checkout -q ' + ver_sha
         os.system(cmd)
         
         # If there is a .gitmodules file in the package, prepare to update the
@@ -198,11 +197,11 @@ def install_pkg(env_root, bsp_root, pkg):
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
-            cmd = 'git submodule init '
+            cmd = 'git submodule init -q'
             os.system(cmd)
-            cmd = 'git submodule update '
+            cmd = 'git submodule update'
             if not os.system(cmd):
-                print("Submodule update success")
+                print("Submodule update successful")
 
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
