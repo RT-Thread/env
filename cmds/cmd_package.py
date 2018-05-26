@@ -1,11 +1,8 @@
 # -*- coding:utf-8 -*-
-import argparse
 import os
 import json
 import kconfig
-import hashlib
 import pkgsdb
-import json
 import shutil
 import platform
 import requests
@@ -138,6 +135,10 @@ def modify_submod_file_to_mirror(submod_path):
         print('e.message:%s\t' % e.message)
     
 def install_pkg(env_root, bsp_root, pkg):
+    """Install the required packages.
+
+    The types of packages are git packages and compression packages
+    """
     # default true
     ret = True
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
@@ -341,24 +342,20 @@ def AndList(aList, bList):  # in a and in b
             tmp.append(a)
     return tmp
 
-# def OrList(aList,bList):# in a or in b
-#     tmp = OnceForList(aList)
-#     bList = OnceForList(bList)
-#     for a in bList:
-#         if a not in tmp:
-#             tmp.append(a)
-#     return tmp
+
 
 
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
+    """ update the packages that are latest version.
+    
+    If the selected package is the latest version,
+    check to see if it is the latest version after the update command,
+    if not, then update the latest version from the remote repository.
+    If the download has a conflict, you are currently using the prompt
+    message provided by git.
+    """
 
     env_root = Import('env_root')
-
-    # If the selected package is the latest version,
-    # check to see if it is the latest version after the update command,
-    # if not, then update the latest version from the remote repository.
-    # If the download has a conflict, you are currently using the prompt
-    # message provided by git.
 
     payload = {
         "userName": "RT-Thread",
