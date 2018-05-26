@@ -106,7 +106,37 @@ def user_input(msg, default_value):
 
     return value
 
+def get_mirror_giturl(submod_name):
+    mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submod_name + '.git'
+    return mirror_url
 
+def modify_submod_file_to_mirror(submod_path):
+    replace_list = []
+    try:
+        with open(submod_path, 'r') as f:
+            for line in f:
+                line = line.replace('\t', '').replace(' ', '').replace('\n', '').replace('\r', '')
+                if line.startswith('url'):
+                    submod_git_url = line.split('=')[1]
+                    submodule_name = submod_git_url.split('/')[-1].replace('.git', '')
+                    replace_url = get_mirror_giturl(submodule_name)
+                    replace_list.append(
+                        (submod_git_url, replace_url, submodule_name))
+                            
+        with open(submod_path, 'r+') as f:
+            submod_file_count = f.read()
+             
+        write_content = submod_file_count
+    
+        for item in replace_list:
+            write_content = write_content.replace(item[0],item[1])
+        
+        with open(submod_path, 'w') as f:
+            f.write(str(write_content))
+            
+    except Exception, e:
+        print('e.message:%s\t' % e.message)
+    
 def install_pkg(env_root, bsp_root, pkg):
     # default true
     ret = True
@@ -197,6 +227,10 @@ def install_pkg(env_root, bsp_root, pkg):
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
+            
+            # Modify .gitmodules file
+            modify_submod_file_to_mirror(submod_path)
+            
             cmd = 'git submodule init -q'
             os.system(cmd)
             cmd = 'git submodule update'
