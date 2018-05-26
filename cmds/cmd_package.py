@@ -472,7 +472,7 @@ def package_update():
                     if platform.system() != "Windows":
                         shutil.rmtree(gitdir)
                     else:
-                        cmd = 'rd /s /q ' + gitdir
+                        cmd = 'rmdir /s /q ' + gitdir
                         os.system(cmd)
                     print ("Delete not entirely,try again.")
                 else:
