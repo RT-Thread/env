@@ -1,9 +1,9 @@
 # -*- coding:utf-8 -*-
 import os
-import argparse
-from vars import Import, Export
-'''menuconfig for system configuration'''
 import platform
+from vars import Import, Export
+
+'''menuconfig for system configuration'''
 
 # make rtconfig.h from .config
 
@@ -36,7 +36,7 @@ def mk_rtconfig(filename):
                 empty_line = 1
                 continue
 
-            comment_line = line[1:]
+            #comment_line = line[1:]
             if line.startswith('# CONFIG_'):
                 line = ' ' + line[9:]
             else:
@@ -104,7 +104,7 @@ def find_macro_in_condfig(filename, macro_name):
                 empty_line = 1
                 continue
 
-            comment_line = line[1:]
+            #comment_line = line[1:]
             if line.startswith('# CONFIG_'):
                 line = ' ' + line[9:]
             else:

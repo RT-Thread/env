@@ -93,7 +93,6 @@ def savetodb(pathname, pkgspathname):
     dbpathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
     bsppkgs = os.path.join(bsp_root, 'packages')
-    #print bsppkgs
 
     conn = get_conn(dbpathname)
     save_sql = '''insert into packagefile values (?, ?, ?)'''

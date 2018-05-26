@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 import tarfile
-import bz2
 import zipfile
 import os
 import pkgsdb
