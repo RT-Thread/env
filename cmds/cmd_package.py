@@ -107,6 +107,7 @@ def get_mirror_giturl(submod_name):
     mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submod_name + '.git'
     return mirror_url
 
+
 def modify_submod_file_to_mirror(submod_path):
     replace_list = []
     try:
@@ -119,18 +120,20 @@ def modify_submod_file_to_mirror(submod_path):
                     replace_url = get_mirror_giturl(submodule_name)
                     replace_list.append(
                         (submod_git_url, replace_url, submodule_name))
-                            
+
         with open(submod_path, 'r+') as f:
             submod_file_count = f.read()
-             
+
         write_content = submod_file_count
-    
+
         for item in replace_list:
-            write_content = write_content.replace(item[0],item[1])
-        
+            write_content = write_content.replace(item[0], item[1])
+
         with open(submod_path, 'w') as f:
             f.write(str(write_content))
-            
+
+        return replace_list
+
     except Exception, e:
         print('e.message:%s\t' % e.message)
     
@@ -243,7 +246,7 @@ def install_pkg(env_root, bsp_root, pkg):
         
         cmd = 'git reset --hard origin/master'
         os.system(cmd)
-
+        
         os.chdir(beforepath)
     else:
         # download package
