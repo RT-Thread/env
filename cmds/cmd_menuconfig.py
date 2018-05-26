@@ -1,10 +1,12 @@
+# -*- coding:utf-8 -*-
 import os
-import argparse
-from vars import Import, Export
-'''menuconfig for system configuration'''
 import platform
+from vars import Import, Export
+
+'''menuconfig for system configuration'''
 
 # make rtconfig.h from .config
+
 
 def mk_rtconfig(filename):
     try:
@@ -22,7 +24,8 @@ def mk_rtconfig(filename):
     for line in config:
         line = line.lstrip(' ').replace('\n', '').replace('\r', '')
 
-        if len(line) == 0: continue
+        if len(line) == 0:
+            continue
 
         if line[0] == '#':
             if len(line) == 1:
@@ -33,9 +36,10 @@ def mk_rtconfig(filename):
                 empty_line = 1
                 continue
 
-            comment_line = line[1:]
-            if line.startswith('# CONFIG_'): line = ' ' + line[9:]
-            else: 
+            #comment_line = line[1:]
+            if line.startswith('# CONFIG_'):
+                line = ' ' + line[9:]
+            else:
                 line = line[1:]
                 rtconfig.write('/*%s */\n' % line)
 
@@ -54,10 +58,11 @@ def mk_rtconfig(filename):
                 if setting[1] == 'y':
                     rtconfig.write('#define %s\n' % setting[0])
                 else:
-                    rtconfig.write('#define %s %s\n' % (setting[0], setting[1]))
+                    rtconfig.write('#define %s %s\n' %
+                                   (setting[0], setting[1]))
 
             elif len(setting) > 2:
-                alt_data = line[len(setting[0])+1:]
+                alt_data = line[len(setting[0]) + 1:]
 
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
@@ -76,7 +81,7 @@ def mk_rtconfig(filename):
     rtconfig.close()
 
 
-def find_macro_in_condfig(filename,macro_name):
+def find_macro_in_condfig(filename, macro_name):
     try:
         config = file(filename)
     except:
@@ -88,9 +93,10 @@ def find_macro_in_condfig(filename,macro_name):
     for line in config:
         line = line.lstrip(' ').replace('\n', '').replace('\r', '')
 
-        if len(line) == 0: continue
+        if len(line) == 0:
+            continue
 
-        if line[0] == '#':   
+        if line[0] == '#':
             if len(line) == 1:
                 if empty_line:
                     continue
@@ -98,14 +104,16 @@ def find_macro_in_condfig(filename,macro_name):
                 empty_line = 1
                 continue
 
-            comment_line = line[1:]
-            if line.startswith('# CONFIG_'): line = ' ' + line[9:]
-            else: line = line[1:]
+            #comment_line = line[1:]
+            if line.startswith('# CONFIG_'):
+                line = ' ' + line[9:]
+            else:
+                line = line[1:]
 
             #print line
 
             empty_line = 0
-        else: 
+        else:
             empty_line = 0
             setting = line.split('=')
             if len(setting) >= 2:
@@ -114,32 +122,36 @@ def find_macro_in_condfig(filename,macro_name):
 
                     if setting[0] == macro_name and setting[1] == 'y':
                         return True
-        
+
     return False
+
 
 def cmd(args):
     env_root = Import('env_root')
-    currentdir = os.getcwd() 
+    currentdir = os.getcwd()
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
     get_rtt_name = os.path.basename(dirname)
     os_version = platform.platform(True)[10:13]
     #print os.path.split(currentdir)[1]
-    kconfig_win7_path = os.path.join(env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
+    kconfig_win7_path = os.path.join(
+        env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
     if not os.getenv("RTT_ROOT"):
-        if get_rtt_name != 'rt-thread':  
+        if get_rtt_name != 'rt-thread':
             print ("menuconfig command should be used in a bsp root path with a Kconfig file, you should check if there is a Kconfig file in your bsp root first.")
-            print ('And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
+            print (
+                'And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
 
             print ('config $RTT_DIR')
-            print ('string' )
+            print ('string')
             print ('option env="RTT_ROOT"')
             print ('default "../.."\n')
             print ('example:  default "F:/git_repositories/rt-thread"  \n')
 
-            print ("using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
+            print (
+                "using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
             print ("you can ignore debug messages below.")
-            #if not args.menuconfig_easy:                
+            #if not args.menuconfig_easy:
             #    return
 
     fn = '.config'
@@ -154,7 +166,7 @@ def cmd(args):
         import shutil
         shutil.copy(args.menuconfig_fn, fn)
     elif args.menuconfig_silent:
-        if float(os_version) >=  6.2 :
+        if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig -n')
         else:
             if os.path.isfile(kconfig_win7_path):
@@ -167,7 +179,7 @@ def cmd(args):
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
 
-        if float(os_version) >=  6.2 :
+        if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig')
         else:
             if os.path.isfile(kconfig_win7_path):
@@ -175,10 +187,10 @@ def cmd(args):
             else:
                 os.system('kconfig-mconf Kconfig')
 
-        os.chdir(beforepath)  
+        os.chdir(beforepath)
         return
     else:
-        if float(os_version) >=  6.2 :
+        if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig')
         else:
             if os.path.isfile(kconfig_win7_path):
@@ -196,28 +208,29 @@ def cmd(args):
 
     if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
-        fn = os.path.join(env_kconfig_path,'.config')
+        fn = os.path.join(env_kconfig_path, '.config')
 
         if not os.path.isfile(fn):
             return
 
         print("\nTry the command <menuconfig -s/--setting> ")
-        print("\nEnable the auto update option,env will auto update the packages you select.")
+        print(
+            "\nEnable the auto update option,env will auto update the packages you select.")
 
-        if find_macro_in_condfig(fn,'SYS_AUTO_UPDATE_PKGS'):
+        if find_macro_in_condfig(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
             print "Auto update packages done"
 
         print("Select the project type your bsp support and then env will create a new mdk/iar project.")
 
-        if find_macro_in_condfig(fn,'SYS_CREATE_MDK_IAR_PROJECT'):
-            if find_macro_in_condfig(fn,'SYS_CREATE_MDK4'):
+        if find_macro_in_condfig(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
+            if find_macro_in_condfig(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
                 print "Create mdk4 project done"
-            elif find_macro_in_condfig(fn,'SYS_CREATE_MDK5'):
+            elif find_macro_in_condfig(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
                 print "Create mdk5 project done"
-            elif find_macro_in_condfig(fn,'SYS_CREATE_IAR'):
+            elif find_macro_in_condfig(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
                 print "Create iar project done"
 
@@ -225,26 +238,26 @@ def cmd(args):
 def add_parser(sub):
     parser = sub.add_parser('menuconfig', help=__doc__, description=__doc__)
 
-    parser.add_argument('--config', 
-        help = 'Using the user specified configuration file.',
-        dest = 'menuconfig_fn')
+    parser.add_argument('--config',
+                        help='Using the user specified configuration file.',
+                        dest='menuconfig_fn')
 
-    parser.add_argument('--silent', 
-        help = 'Silent mode,don\'t display menuconfig window.',
-        action='store_true',
-        default=False,
-        dest = 'menuconfig_silent')
+    parser.add_argument('--silent',
+                        help='Silent mode,don\'t display menuconfig window.',
+                        action='store_true',
+                        default=False,
+                        dest='menuconfig_silent')
 
-    parser.add_argument('-s','--setting', 
-        help = 'Env config,auto update packages and create mdk/iar project',
-        action='store_true',
-        default=False,
-        dest = 'menuconfig_setting')
+    parser.add_argument('-s', '--setting',
+                        help='Env config,auto update packages and create mdk/iar project',
+                        action='store_true',
+                        default=False,
+                        dest='menuconfig_setting')
 
-    parser.add_argument('--easy', 
-        help = 'easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
-        action='store_true',
-        default=False,
-        dest = 'menuconfig_easy')
+    parser.add_argument('--easy',
+                        help='easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
+                        action='store_true',
+                        default=False,
+                        dest='menuconfig_easy')
 
     parser.set_defaults(func=cmd)

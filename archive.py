@@ -1,16 +1,11 @@
 # -*- coding:utf-8 -*-
 import tarfile
-import bz2
 import zipfile
 import os
 import pkgsdb
 
-from vars import Import, Export
 
 def unpack(archive_fn, path):
-    flag = False
-
-
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
         for tarinfo in arch:
@@ -55,6 +50,7 @@ def packtest(path):
                     ret = False
                 arch.close()                    
         except Exception, e:
+            print('e.message:%s\t'%e.message)
             arch.close()
             ret = False
                 
