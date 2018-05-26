@@ -63,7 +63,7 @@ class Package:
                 os.remove(path)
             else:
                 if archive.packtest(path):
-                    #print "the file is rigit do not need to download"
+                    #print "The file is rigit."
                     return True
                 else:
                     os.remove(path)

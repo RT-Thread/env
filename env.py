@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+import platform
 
 from cmds    import *
 from vars    import Import, Export
@@ -26,7 +27,6 @@ if __name__ == '__main__':
     script_root = os.path.split(os.path.realpath(__file__))[0]
     env_root = os.getenv("ENV_ROOT")
     if env_root == None:
-        import platform
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
 
