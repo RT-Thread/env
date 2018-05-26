@@ -6,6 +6,8 @@ import pkgsdb
 import shutil
 import platform
 import requests
+import subprocess
+import time
 
 from package import Package
 from vars import Import, Export
@@ -89,6 +91,21 @@ group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
 
 Return('group')
 '''
+
+
+def execute_command(cmdstring, cwd=None, shell=True):
+    if shell:
+        cmdstring_list = cmdstring
+
+    sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
+                           stdout=subprocess.PIPE, shell=shell, bufsize=4096)
+
+    stdout_str = ''
+    while sub.poll() is None:
+        stdout_str += sub.stdout.read()
+        time.sleep(0.1)
+
+    return stdout_str
 
 
 def user_input(msg, default_value):
