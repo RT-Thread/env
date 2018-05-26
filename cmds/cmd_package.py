@@ -350,6 +350,81 @@ def AndList(aList, bList):  # in a and in b
 #     return tmp
 
 
+def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
+
+    env_root = Import('env_root')
+
+    # If the selected package is the latest version,
+    # check to see if it is the latest version after the update command,
+    # if not, then update the latest version from the remote repository.
+    # If the download has a conflict, you are currently using the prompt
+    # message provided by git.
+
+    payload = {
+        "userName": "RT-Thread",
+        "packages": [
+            {
+                "name": "NULL",
+            }
+        ]
+    }
+
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+
+    beforepath = os.getcwd()
+    for pkg in read_back_pkgs_json:
+        package = Package()
+        pkg_path = pkg['path']
+        if pkg_path[0] == '/' or pkg_path[0] == '\\':
+            pkg_path = pkg_path[1:]
+        pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+        package.parse(pkg_path)
+        pkgs_name_in_json = package.get_name()
+        if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
+            repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
+            #ver_sha = package.get_versha(pkg['ver'])
+            os.chdir(repo_path)
+
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+                payload["packages"][0]['name'] = payload_pkgs_name_in_json
+
+                try:
+                    r = requests.post(
+                        "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+                    if r.status_code == requests.codes.ok:
+                        #print("Software package get Successful")
+                        package_info = json.loads(r.text)
+
+                        if len(package_info['packages']) == 0:
+                            print("Package was NOT found on mirror server.")
+                        else:
+                            for item in package_info['packages'][0]['packages_info']['site']:
+                                if item['version'] == "latest_version" or item['version'] == "latest":
+                                    # change origin url to the path which get
+                                    # from mirror server
+                                    cmd = 'git remote set-url origin ' + \
+                                        item['URL']
+                                    os.system(cmd)
+                                    #print(cmd)
+                except Exception, e:
+                    print('e.message:%s\t' % e.message)
+                    print(
+                        "The server could not be contacted. Please check your network connection.")
+
+            # Only one trace relationship can be used directly with git pull.
+            cmd = 'git pull'
+            os.system(cmd)
+
+            # recover origin url to the path which get from packages.json file
+            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
+            os.system(cmd)
+            os.chdir(beforepath)
+            print("==============================>  %s update done \n" %
+                  (pkgs_name_in_json))
+
+
 def package_update():
     """Update env's packages.
 
@@ -590,76 +665,8 @@ def package_update():
     else:
         print("\nAll the selected packages have been downloaded successfully.\n")
 
-    # If the selected package is the latest version,
-    # check to see if it is the latest version after the update command,
-    # if not, then update the latest version from the remote repository.
-    # If the download has a conflict, you are currently using the prompt
-    # message provided by git.
-
-    payload = {
-        "userName": "RT-Thread",
-        "packages": [
-            {
-                "name": "NULL",
-            }
-        ]
-    }
-
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
-
-    beforepath = os.getcwd()
-    for pkg in read_back_pkgs_json:
-        package = Package()
-        pkg_path = pkg['path']
-        if pkg_path[0] == '/' or pkg_path[0] == '\\':
-            pkg_path = pkg_path[1:]
-        pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
-        package.parse(pkg_path)
-        pkgs_name_in_json = package.get_name()
-        if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
-            repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
-            #ver_sha = package.get_versha(pkg['ver'])
-            os.chdir(repo_path)
-
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-                payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
-                payload["packages"][0]['name'] = payload_pkgs_name_in_json
-
-                try:
-                    r = requests.post(
-                        "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-                    if r.status_code == requests.codes.ok:
-                        #print("Software package get Successful")
-                        package_info = json.loads(r.text)
-
-                        if len(package_info['packages']) == 0:
-                            print("Package was NOT found on mirror server.")
-                        else:
-                            for item in package_info['packages'][0]['packages_info']['site']:
-                                if item['version'] == "latest_version" or item['version'] == "latest":
-                                    # change origin url to the path which get
-                                    # from mirror server
-                                    cmd = 'git remote set-url origin ' + \
-                                        item['URL']
-                                    os.system(cmd)
-                                    #print(cmd)
-                except Exception, e:
-                    print('e.message:%s\t' % e.message)
-                    print(
-                        "The server could not be contacted. Please check your network connection.")
-
-            # Only one trace relationship can be used directly with git pull.
-            cmd = 'git pull'
-            os.system(cmd)
-
-            # recover origin url to the path which get from packages.json file
-            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
-            os.system(cmd)
-            os.chdir(beforepath)
-            print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json))
-
+    update_latest_packages(read_back_pkgs_json, bsp_packages_path)
+    
     if flag:
         print ("Operation completed successfully.")
     else:
