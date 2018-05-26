@@ -239,6 +239,9 @@ def install_pkg(env_root, bsp_root, pkg):
 
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
+        
+        cmd = 'git reset --hard origin/master'
+        os.system(cmd)
 
         os.chdir(beforepath)
     else:
