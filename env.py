@@ -28,16 +28,18 @@ import sys
 import argparse
 import platform
 
-from cmds    import *
-from vars    import Export
+from cmds import *
+from vars import Export
 
 __version__ = 'rt-thread packages v1.0.0'
+
 
 def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers()
 
-    parser.add_argument('-v', '--version', action='version', version=__version__)
+    parser.add_argument('-v', '--version',
+                        action='version', version=__version__)
 
     cmd_system.add_parser(subs)
     cmd_menuconfig.add_parser(subs)
@@ -45,8 +47,8 @@ def init_argparse():
 
     return parser
 
-if __name__ == '__main__':
 
+def main():
     bsp_root = os.getcwd()
     script_root = os.path.split(os.path.realpath(__file__))[0]
     env_root = os.getenv("ENV_ROOT")
@@ -62,3 +64,8 @@ if __name__ == '__main__':
     parser = init_argparse()
     args = parser.parse_args()
     args.func(args)
+
+
+if __name__ == '__main__':
+    main()
+
