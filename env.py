@@ -29,7 +29,7 @@ import argparse
 import platform
 
 from cmds    import *
-from vars    import Import, Export
+from vars    import Export
 
 __version__ = 'rt-thread packages v1.0.0'
 

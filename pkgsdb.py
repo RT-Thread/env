@@ -27,7 +27,7 @@ import sqlite3
 import os
 import hashlib
 
-from vars import Import, Export
+from vars import Import
 SHOW_SQL = False
 
 
