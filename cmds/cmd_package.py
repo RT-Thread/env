@@ -9,88 +9,12 @@ import requests
 import subprocess
 import time
 
-from package import Package
+from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
 from string import Template
 from cmd_menuconfig import find_macro_in_condfig
 
 """package command"""
-
-"""Template for creating a new file"""
-
-Bridge_SConscript = '''import os
-from building import *
-
-objs = []
-cwd  = GetCurrentDir()
-list = os.listdir(cwd)
-
-for item in list:
-    if os.path.isfile(os.path.join(cwd, item, 'SConscript')):
-        objs = objs + SConscript(os.path.join(item, 'SConscript'))
-
-Return('objs')
-'''
-
-Kconfig_file = '''
-# Kconfig file for package ${lowercase_name}
-config PKG_USING_${name}
-    bool "${description}"
-    default n
-
-if PKG_USING_${name}
-
-    config PKG_${name}_PATH
-        string
-        default "/packages/${pkgs_class}/${lowercase_name}"
-
-    choice
-        prompt "${lowercase_name} version"
-        help
-            Select the ${lowercase_name} version
-
-        config PKG_USING_${name}_V${version_standard}
-            bool "v${version}"
-
-        config PKG_USING_${name}_LATEST_VERSION
-            bool "latest"
-    endchoice
-          
-    config PKG_${name}_VER
-       string
-       default "v${version}"    if PKG_USING_${name}_V${version_standard}
-       default "latest"    if PKG_USING_${name}_LATEST_VERSION
-
-endif
-
-'''
-
-Package_json_file = '''
-{
-    "name": "${name}",
-    "description": "${description}",
-    "keywords": [
-        "${keyword}"
-    ],
-    "site" : [
-    {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
-    {"version" : "latest", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
-    ]
-}
-'''
-
-Sconscript_file = '''
-from building import *
-
-cwd     = GetCurrentDir()
-src     = Glob('*.c') + Glob('*.cpp')
-CPPPATH = [cwd]
-
-group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
-
-Return('group')
-'''
-
 
 def execute_command(cmdstring, cwd=None, shell=True):
     if shell:
@@ -112,7 +36,7 @@ def user_input(msg, default_value):
     if default_value != '':
         msg = '%s[%s]' % (msg, default_value)
 
-    print msg,
+    print(msg)
     value = raw_input()
     if value == '':
         value = default_value
