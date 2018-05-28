@@ -41,6 +41,8 @@ from cmd_menuconfig import find_macro_in_condfig
 """package command"""
 
 def execute_command(cmdstring, cwd=None, shell=True):
+    """Execute the system command at the specified address."""
+    
     if shell:
         cmdstring_list = cmdstring
 
@@ -56,6 +58,7 @@ def execute_command(cmdstring, cwd=None, shell=True):
 
 
 def user_input(msg, default_value):
+    """Gets the user's keyboard input."""
 
     if default_value != '':
         msg = '%s[%s]' % (msg, default_value)
@@ -67,12 +70,20 @@ def user_input(msg, default_value):
 
     return value
 
+
 def get_mirror_giturl(submod_name):
+    """Gets the submodule's url on mirror server.
+    
+    Retrurn the download address of the submodule on the mirror server from the submod_name.
+    """
+
     mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submod_name + '.git'
     return mirror_url
 
 
 def modify_submod_file_to_mirror(submod_path):
+    """Modify the.gitmodules file based on the submodule to be updated"""
+    
     replace_list = []
     try:
         with open(submod_path, 'r') as f:
@@ -223,7 +234,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
         os.chdir(beforepath)
     else:
-        # download package
+        # Download a package of compressed package type.
         if not package.download(pkg['ver'], local_pkgs_path, package_url):
             ret = False
             return ret
@@ -700,6 +711,8 @@ def package_wizard():
 
 
 def cmd(args):
+    """Env's pkgs command execution options."""
+    
     env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
     packages_root = os.path.join(Import('env_root'), 'packages')
     git_repo = 'https://github.com/RT-Thread/packages.git'
@@ -760,6 +773,8 @@ def cmd(args):
 
 
 def add_parser(sub):
+    """The pkgs command parser for env."""
+    
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
     parser.add_argument('--update',
