@@ -306,7 +306,7 @@ def package_list():
     return
 
 
-def SubList(aList, bList):
+def sub_list(aList, bList):
     """Item in aList ,not in bList."""
     tmp = []
     for a in aList:
@@ -315,7 +315,7 @@ def SubList(aList, bList):
     return tmp
 
 
-def AndList(aList, bList):
+def and_list(aList, bList):
     """Item in aList and in bList."""
     tmp = []
     for a in aList:
@@ -473,7 +473,7 @@ def package_update():
     #print "oldpkgs:",oldpkgs
 
     # 1.in old ,not in new
-    casedelete = SubList(oldpkgs, newpkgs)
+    casedelete = sub_list(oldpkgs, newpkgs)
     for pkg in casedelete:
         dirpath = pkg['path']
         ver = pkg['ver']
@@ -527,13 +527,13 @@ def package_update():
             pkgsdb.deletepackdir(removepath, dbsqlite_pathname)
 
     # 2.in old and in new
-    #caseinoperation = AndList(newpkgs,oldpkgs)
+    #caseinoperation = and_list(newpkgs,oldpkgs)
 
     # 3.in new not in old
     # If the package download fails, record it, and then download again when
     # the update command is executed.
 
-    casedownload = SubList(newpkgs, oldpkgs)
+    casedownload = sub_list(newpkgs, oldpkgs)
     #print 'in new not in old:',casedownload
     pkgs_list = []
 
@@ -548,7 +548,7 @@ def package_update():
             flag = False
 
     # Get the currently updated configuration.
-    newpkgs = SubList(newpkgs, pkgs_list)
+    newpkgs = sub_list(newpkgs, pkgs_list)
 
     # Give hints based on the success of the download.
 
@@ -622,7 +622,7 @@ def package_update():
             print("%s" % error_packages_redownload_error_list)
             print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them." %
                    pkg['name'], pkg['ver'])
-            write_back_pkgs_json = SubList(
+            write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
             #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
