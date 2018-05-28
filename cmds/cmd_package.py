@@ -762,9 +762,26 @@ def upgrade_env_script():
 
 def package_upgrade():
     """Update the package repository directory and env function scripts."""
-    
+
     upgrade_packages_index()
     upgrade_env_script()
+
+
+def package_print_env():
+    print ("Here are some environmental variables.")
+    print (
+        "If you meet some problems,please check them. Make sure the configuration is correct.")
+    print ("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
+    print ("RTT_CC:%s" % (os.getenv("RTT_CC")))
+    print ("SCONS:%s" % (os.getenv("SCONS")))
+    print ("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
+
+    env_root = os.getenv('ENV_ROOT')
+    if env_root == None:
+        if platform.system() != 'Windows':
+            env_root = os.path.join(os.getenv('HOME'), '.env')
+
+    print ("ENV_ROOT:%s" % (env_root))
 
 
 def cmd(args):
@@ -779,20 +796,7 @@ def cmd(args):
     elif args.package_upgrade:
         package_upgrade()
     elif args.package_print_env:
-        print ("Here are some environmental variables.")
-        print (
-            "If you meet some problems,please check them. Make sure the configuration is correct.")
-        print ("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
-        print ("RTT_CC:%s" % (os.getenv("RTT_CC")))
-        print ("SCONS:%s" % (os.getenv("SCONS")))
-        print ("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
-
-        env_root = os.getenv('ENV_ROOT')
-        if env_root == None:
-            if platform.system() != 'Windows':
-                env_root = os.path.join(os.getenv('HOME'), '.env')
-
-        print ("ENV_ROOT:%s" % (env_root))
+        package_print_env()
     else:
         os.system('pkgs -h')
 
