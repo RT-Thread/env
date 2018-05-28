@@ -14,7 +14,9 @@ from vars import Import, Export
 from string import Template
 from cmd_menuconfig import find_macro_in_condfig
 
-'''package command'''
+"""package command"""
+
+"""Template for creating a new file"""
 
 Bridge_SConscript = '''import os
 from building import *
@@ -30,9 +32,6 @@ for item in list:
 Return('objs')
 '''
 
-""" 
-Template for creating a new kconfig file
-"""
 Kconfig_file = '''
 # Kconfig file for package ${lowercase_name}
 config PKG_USING_${name}
@@ -155,10 +154,8 @@ def modify_submod_file_to_mirror(submod_path):
         print('e.message:%s\t' % e.message)
     
 def install_pkg(env_root, bsp_root, pkg):
-    """Install the required packages.
+    """Install the required packages."""
 
-    The types of packages are git packages and compression packages
-    """
     # default true
     ret = True
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
@@ -298,15 +295,6 @@ def package_list():
 
     Read the.config file in the BSP directory, 
     and list the version number of the selected package.
-
-    Args:
-        none
-
-    Returns:
-        none
-
-    Raises:
-        none
     """
     fn = '.config'
     env_root = Import('env_root')
@@ -354,7 +342,8 @@ def package_list():
     return
 
 
-def SubList(aList, bList):  # in a ,not in b
+def SubList(aList, bList):
+    """Item in aList ,not in bList."""
     tmp = []
     for a in aList:
         if a not in bList:
@@ -362,14 +351,13 @@ def SubList(aList, bList):  # in a ,not in b
     return tmp
 
 
-def AndList(aList, bList):  # in a and in b
+def AndList(aList, bList):
+    """Item in aList and in bList."""
     tmp = []
     for a in aList:
         if a in bList:
             tmp.append(a)
     return tmp
-
-
 
 
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
@@ -456,15 +444,6 @@ def package_update():
     Remove unwanted packages and download the newly selected package.
     Check if the files in the deleted packages have been changed, and if so, 
     remind the user saved the modified file.
-
-    Args:
-        none
-
-    Returns:
-        none
-
-    Raises:
-        none
     """
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
@@ -701,17 +680,6 @@ def package_wizard():
     """Packages creation wizard.
 
     The user enters the package name, version number, category, and automatically generates the package index file.
-
-    Args:
-        package name
-        version number
-        category
-
-    Returns:
-        none
-
-    Raises:
-        none
     """
 
     print ('Welcome to package wizard,please enter the package information.')
