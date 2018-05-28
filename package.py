@@ -220,9 +220,9 @@ class Package:
                     return False
         return ret
 
-    def unpack(self, fullpkg_path, path):
+    def unpack(self, fullpkg_path, path, pkg):
         try:
-            archive.unpack(fullpkg_path, path)
+            archive.unpack(fullpkg_path, path, pkg)
         except Exception, e:
             print('e.message:%s\t' % e.message)
             print('unpack %s failed' % os.path.basename(fullpkg_path))

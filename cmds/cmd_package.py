@@ -249,7 +249,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
         # unpack package
         if not os.path.exists(pkg_dir):
-            package.unpack(pkg_fullpath, bsp_pkgs_path)
+            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg)
             ret = True
 
     return ret
@@ -609,6 +609,7 @@ def package_update():
 
         dirpath = os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
+        git_removepath = removepath + '-' + ver
         #print "if floder exist",removepath
         removepath_ver = removepath + '-' + ver[1:]
         #print "if floder exist",removepath
@@ -617,6 +618,8 @@ def package_update():
             continue
         elif os.path.exists(removepath_ver):
             continue
+        elif os.path.exists(git_removepath):
+            continue   
         else:
             error_packages_list.append(pkg)
 

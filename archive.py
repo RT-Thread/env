@@ -29,7 +29,10 @@ import os
 import pkgsdb
 
 
-def unpack(archive_fn, path):
+def unpack(archive_fn, path, pkg):
+    
+    flag = True
+    
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
         for tarinfo in arch:
@@ -57,11 +60,16 @@ def unpack(archive_fn, path):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path,item)):
-                right_path = item.replace('/','\\')          
+                right_path = item.replace('/','\\')
+                if flag:
+                    dir_name = os.path.split(right_path)[0]
+                    flag = False     
                 #print "here to extract files:",item
                 item = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
                 pkgsdb.savetodb(item,archive_fn)
         arch.close()
+        
+    return dir_name
 
 def packtest(path):
     ret = True
