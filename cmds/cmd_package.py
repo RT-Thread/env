@@ -100,7 +100,49 @@ def modify_submod_file_to_mirror(submod_path):
 
     except Exception, e:
         print('e.message:%s\t' % e.message)
-    
+        
+
+def get_url_from_mirror_server(pkgs_name_in_json, pkg):
+    """Get the download address from the mirror server based on the package name."""
+
+    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+    payload = {
+        "userName": "RT-Thread",
+        "packages": [
+            {
+                "name": "NULL",
+            }
+        ]
+    }
+    payload["packages"][0]['name'] = payload_pkgs_name_in_json
+
+    try:
+        r = requests.post(
+            "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+
+        if r.status_code == requests.codes.ok:
+            package_info = json.loads(r.text)
+
+            # Can't find package,change git package SHA if it's a git
+            # package
+            if len(package_info['packages']) == 0:
+                print("Package was NOT found on mirror server.")
+            else:
+                for item in package_info['packages'][0]['packages_info']['site']:
+                    if item['version'] == pkg['ver']:
+                        # Change download url
+                        download_url = item['URL']
+                        if download_url[-4:] == '.git':
+                            # Change git package SHA
+                            repo_sha = item['VER_SHA']
+                            return download_url, repo_sha
+                        return download_url, None
+    except Exception, e:
+        print('e.message:%s\t' % e.message)
+        print(
+            "The server could not be contacted. Please check your network connection.")
+
+
 def install_pkg(env_root, bsp_root, pkg):
     """Install the required packages."""
 
@@ -136,45 +178,8 @@ def install_pkg(env_root, bsp_root, pkg):
     #print("==================================================>")
 
     if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
-        payload = {
-            "userName": "RT-Thread",
-            "packages": [
-                {
-                    "name": "NULL",
-                }
-            ]
-        }
-        payload["packages"][0]['name'] = payload_pkgs_name_in_json
-
-        try:
-            r = requests.post(
-                "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-            #print(r.status_code)
-
-            if r.status_code == requests.codes.ok:
-                #print("Software package get Successful")
-                package_info = json.loads(r.text)
-
-                # Can't find package,change git package SHA if it's a git
-                # package
-                if len(package_info['packages']) == 0:
-                    print("Package was NOT found on mirror server.")
-                else:
-                    for item in package_info['packages'][0]['packages_info']['site']:
-                        if item['version'] == pkg['ver']:
-                            download_url = item['URL']
-                            package_url = download_url                      # Change download url
-                            #print("download_url from server: %s"%download_url)
-                            if download_url[-4:] == '.git':
-                                repo_sha = item['VER_SHA']
-                                ver_sha = repo_sha                          # Change git package SHA
-                                #print(repo_sha)
-                            break
-        except Exception, e:
-            print('e.message:%s\t' % e.message)
-            print(
-                "The server could not be contacted. Please check your network connection.")
+        package_url, ver_sha = get_url_from_mirror_server(
+            pkgs_name_in_json, pkg)
 
     beforepath = os.getcwd()
 
@@ -187,35 +192,35 @@ def install_pkg(env_root, bsp_root, pkg):
         os.chdir(repo_path)
         cmd = 'git checkout -q ' + ver_sha
         os.system(cmd)
-        
+
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
-            
+
             # Modify .gitmodules file
             replace_list = modify_submod_file_to_mirror(submod_path)
-   
+
             cmd = 'git submodule init -q'
             os.system(cmd)
             cmd = 'git submodule update'
             if not os.system(cmd):
                 print("Submodule update successful")
-                
+
             if len(replace_list):
                 for item in replace_list:
                     submod_dir_path = os.path.join(repo_path, item[2])
                     if os.path.isdir(submod_dir_path):
                         cmd = 'git remote set-url origin ' + item[0]
                         execute_command(cmd, cwd=submod_dir_path)
-                        
+
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
-        
+
         cmd = 'git reset --hard origin/master'
         os.system(cmd)
-        
+
         os.chdir(beforepath)
     else:
         # download package
