@@ -307,7 +307,8 @@ def package_list():
 
 
 def sub_list(aList, bList):
-    """Item in aList ,not in bList."""
+    """Return the items in aList but not in bList."""
+    
     tmp = []
     for a in aList:
         if a not in bList:
@@ -316,13 +317,25 @@ def sub_list(aList, bList):
 
 
 def and_list(aList, bList):
-    """Item in aList and in bList."""
+    """Return the items in aList and in bList."""
+    
     tmp = []
     for a in aList:
         if a in bList:
             tmp.append(a)
     return tmp
 
+def update_submodule(repo_path):
+    """Update the submodules in the repository."""
+    
+    submod_path = os.path.join(repo_path, '.gitmodules')
+    if os.path.isfile(submod_path):
+        cmd = 'git submodule init -q'
+        execute_command(cmd, cwd=repo_path)
+        cmd = 'git submodule update'
+        if not os.system(cmd):
+            print("Submodule update successful")
+    
 
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
     """ update the packages that are latest version.
@@ -392,6 +405,9 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
             # Only one trace relationship can be used directly with git pull.
             cmd = 'git pull'
             os.system(cmd)
+
+            # If the package has submodules, update the submodules.
+            update_submodule(repo_path)
 
             # recover origin url to the path which get from packages.json file
             cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
