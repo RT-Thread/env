@@ -198,6 +198,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
     if package_url[-4:] == '.git':
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
+        repo_path = repo_path + '-' + pkg['ver']
         cmd = 'git clone ' + package_url + ' ' + repo_path
         os.system(cmd)
         os.chdir(repo_path)
@@ -373,6 +374,7 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             #ver_sha = package.get_versha(pkg['ver'])
+            repo_path = repo_path + '-' + pkg['ver']
             os.chdir(repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
@@ -501,17 +503,17 @@ def package_update():
         dirpath = os.path.basename(dirpath)
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
-        removepath_git = os.path.join(removepath, '.git')
+        
+        # Handles the deletion of git repository folders with version Numbers
+        git_removepath = removepath + '-' + ver
+        removepath_git = os.path.join(git_removepath, '.git')
         #print "floder to delete",removepath
         #print "removepath_git to delete",removepath_git
 
         # Delete. Git directory.
 
-        if os.path.isdir(removepath) and os.path.isdir(removepath_git):
-            #uppername = str.upper(str(os.path.basename(removepath)))
-            #dirname = os.path.dirname(removepath)
-            #gitdir = os.path.join(dirname,uppername)
-            gitdir = removepath
+        if os.path.isdir(git_removepath) and os.path.isdir(removepath_git):
+            gitdir = git_removepath
 
             print (
                 "\nOperation : Delete a git package or change the version of a package.")
