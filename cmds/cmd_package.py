@@ -425,6 +425,7 @@ def package_update():
     Check if the files in the deleted packages have been changed, and if so, 
     remind the user saved the modified file.
     """
+    
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
@@ -726,13 +727,48 @@ def package_wizard():
     print ('==============================> Your package index was made successfully.')
 
 
-def cmd(args):
-    """Env's pkgs command execution options."""
+def upgrade_packages_index():
+    """Update the package repository index."""
     
-    env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
     packages_root = os.path.join(Import('env_root'), 'packages')
     git_repo = 'https://github.com/RT-Thread/packages.git'
+    pkgs_path = os.path.join(packages_root, 'packages')
+
+    if not os.path.isdir(pkgs_path):
+        cmd = 'git clone ' + git_repo + ' ' + pkgs_path
+        os.system(cmd)
+        print ("upgrade from :%s" % (git_repo))
+    
+    for filename in os.listdir(packages_root):
+        package_path = os.path.join(packages_root, filename)
+        if os.path.isdir(package_path):
+            if os.path.isdir(os.path.join(package_path, '.git')):
+                cmd = r'git pull'
+                execute_command(cmd, cwd=package_path)
+                print("==============================>  Env %s update done \n" % filename)
+
+
+def upgrade_env_script():
+    """Update env function scripts."""
+    
+    env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
     env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+
+    cmd = r'git pull -q' + env_scripts_repo
+    execute_command(cmd, cwd=env_scripts_root)
+
+    print("==============================>  Env scripts update done \n")
+
+
+def package_upgrade():
+    """Update the package repository directory and env function scripts."""
+    
+    upgrade_packages_index()
+    upgrade_env_script()
+
+
+def cmd(args):
+    """Env's pkgs command execution options."""
 
     if args.package_update:
         package_update()
@@ -741,31 +777,7 @@ def cmd(args):
     elif args.package_list:
         package_list()
     elif args.package_upgrade:
-        beforepath = os.getcwd()
-        pkgs_path = os.path.join(packages_root, 'packages')
-        #print pkgs_path
-        if not os.path.isdir(pkgs_path):
-            cmd = 'git clone ' + git_repo + ' ' + pkgs_path
-            os.system(cmd)
-            print ("upgrade from :%s" % (git_repo))
-
-        for filename in os.listdir(packages_root):
-            if os.path.isdir(os.path.join(packages_root, filename)):
-                os.chdir(os.path.join(packages_root, filename))
-                if os.path.isdir('.git'):
-                    cmd = 'git pull origin master'
-                    os.system(cmd)
-                    os.chdir(beforepath)
-                    print(
-                        "==============================>  Env %s update done \n" % filename)
-
-        beforepath = os.getcwd()
-        os.chdir(env_scripts_root)
-        cmd = 'git pull ' + env_scripts_repo
-        os.system(cmd)
-        os.chdir(beforepath)
-        print("==============================>  Env scripts update done \n")
-
+        package_upgrade()
     elif args.package_print_env:
         print ("Here are some environmental variables.")
         print (
@@ -781,9 +793,6 @@ def cmd(args):
                 env_root = os.path.join(os.getenv('HOME'), '.env')
 
         print ("ENV_ROOT:%s" % (env_root))
-        #print "RTT_ROOT:",os.getenv("RTT_ROOT")
-        #os.putenv("RTT_EXEC_PATH","rtt_gcc_path")
-        #print "after",os.getenv("RTT_EXEC_PATH")
     else:
         os.system('pkgs -h')
 
