@@ -154,7 +154,7 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
     c = get_cursor(conn)
 
     #print('pathname : %s'%pathname)
-    #print 'dbsqlname : %s'%dbsqlname
+    #print('dbsqlname : %s'%dbsqlname) 
 
     filemd5 = GetFileMd5(pathname)
     #print("filemd5 : %s"%filemd5)
