@@ -29,9 +29,11 @@ import os
 import pkgsdb
 
 
-def unpack(archive_fn, path, pkg):
+def unpack(archive_fn, path, pkg, pkgs_name_in_json):
 
     flag = True
+    
+    #print(pkg)
     
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
@@ -66,7 +68,7 @@ def unpack(archive_fn, path, pkg):
                 # Gets the folder name and change_dirname only once
                 if flag:
                     dir_name = os.path.split(right_path)[0]
-                    change_dirname = dir_name + '-' + pkg['ver']
+                    change_dirname = pkgs_name_in_json + '-' + pkg['ver']
                     flag = False
     
                 right_name_to_db = right_path.replace(
@@ -76,9 +78,12 @@ def unpack(archive_fn, path, pkg):
         arch.close()
         
     #Change the folder name
+    
+    change_dirname = pkgs_name_in_json + '-' + pkg['ver']
     #print(os.path.join(path, dir_name))
-    #rint(os.path.join(path, change_dirname))
-
+    #print(os.path.join(path, change_dirname))
+    #print(pkgs_name_in_json)
+    
     if os.path.isdir(os.path.join(path, change_dirname)):
         cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
         os.system(cmd)

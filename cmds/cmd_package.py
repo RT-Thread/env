@@ -196,7 +196,10 @@ def install_pkg(env_root, bsp_root, pkg):
     #print "url:",package_url
     #print "url_from_json: ",url_from_json
     #print("==================================================>")
-
+    
+    get_package_url = None
+    get_ver_sha     = None
+    
     if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(
             pkgs_name_in_json, pkg['ver'])
@@ -264,7 +267,7 @@ def install_pkg(env_root, bsp_root, pkg):
 
         # unpack package
         if not os.path.exists(pkg_dir):
-            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg)
+            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json)
             ret = True
 
     return ret
