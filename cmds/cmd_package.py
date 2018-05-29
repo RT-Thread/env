@@ -683,8 +683,11 @@ def package_update():
     else:
         print("\nAll the selected packages have been downloaded successfully.\n")
 
-    update_latest_packages(read_back_pkgs_json, bsp_packages_path)
-    
+    try:
+        update_latest_packages(read_back_pkgs_json, bsp_packages_path)
+    except KeyboardInterrupt:
+        flag = 0
+
     if flag:
         print ("Operation completed successfully.")
     else:
