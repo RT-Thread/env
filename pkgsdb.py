@@ -82,7 +82,7 @@ def create_table(conn, sql):
 
 
 def save(conn, sql, data):
-    '''插入数据'''
+    '''insert data to database'''
     if sql is not None and sql != '':
         if data is not None:
             cu = get_cursor(conn)
@@ -113,7 +113,7 @@ def isdataexist(pathname):
 
 
 #将数据添加到数据库，如果数据库中已经存在则不重复添加
-def savetodb(pathname, pkgspathname):
+def savetodb(pathname, pkgspathname, before_change_name):
     dbpathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
     bsppkgs = os.path.join(bsp_root, 'packages')
@@ -121,10 +121,15 @@ def savetodb(pathname, pkgspathname):
     conn = get_conn(dbpathname)
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
-    #print "pathname",pathname
-    md5pathname = os.path.join(bsppkgs, pathname)
+    md5pathname = os.path.join(bsppkgs, before_change_name)
+	#print("pathname to save : %s"%pathname)
+	#print("md5pathname : %s"%md5pathname) 
+    
+    if not os.path.isfile(md5pathname):
+        print("md5pathname is Invalid")
+    
     md5 = GetFileMd5(md5pathname)
-    #print "md5",md5
+	#print("md5 to save : %s"%md5) 
     data = [(pathname, package, md5)]
     save(conn, save_sql, data)
 
@@ -148,11 +153,11 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
     conn = get_conn(dbpathname)
     c = get_cursor(conn)
 
-    #print 'pathname',pathname
-    #print 'dbsqlname',dbsqlname
+    #print('pathname : %s'%pathname)
+    #print 'dbsqlname : %s'%dbsqlname
 
     filemd5 = GetFileMd5(pathname)
-    #print "filemd5:",filemd5
+    #print("filemd5 : %s"%filemd5)
     dbmd5 = 0
 
     sql = 'SELECT md5 from packagefile where pathname = "' + dbsqlname + '"'
@@ -160,7 +165,7 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
     cursor = c.execute(sql)
     for row in cursor:
         dbmd5 = row[0]  # fetch md5 from databas
-    #print "dbmd5:",dbmd5
+    #print("dbmd5 : %s"%dbmd5)
 
     if dbmd5 == filemd5:
         # delete file info from database
@@ -216,7 +221,7 @@ def displaydir(filepath, basepath, length, dbpathname):
             else:
                 pathname = os.path.join(filepath, fi_d)
                 dbsqlname = basepath + os.path.join(filepath, fi_d)[length:]
-                #print dbsqlname
+                #print("dbsqlname : %s"%dbsqlname) 
                 if not remove_unchangedfile(pathname, dbpathname, dbsqlname):
                     flag = False
     return flag

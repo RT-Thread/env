@@ -30,18 +30,19 @@ import pkgsdb
 
 
 def unpack(archive_fn, path, pkg):
-    
+
     flag = True
     
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
         for tarinfo in arch:
-            arch.extract(tarinfo, path)            
-            a = tarinfo.name           
-            if not os.path.isdir(os.path.join(path,a)):
-                right_path = a.replace('/','\\')
-                a = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
-                pkgsdb.savetodb(a,archive_fn)
+            arch.extract(tarinfo, path)
+            a = tarinfo.name
+            if not os.path.isdir(os.path.join(path, a)):
+                right_path = a.replace('/', '\\')
+                a = os.path.join(os.path.split(right_path)[
+                                 0], os.path.split(right_path)[1])
+                pkgsdb.savetodb(a, archive_fn)
         arch.close()
 
     if ".tar.gz" in archive_fn:
@@ -49,27 +50,41 @@ def unpack(archive_fn, path, pkg):
         for tarinfo in arch:
             arch.extract(tarinfo, path)
             a = tarinfo.name
-            if not os.path.isdir(os.path.join(path,a)):
-                right_path = a.replace('/','\\')
-                a = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
-                pkgsdb.savetodb(a,archive_fn)
+            if not os.path.isdir(os.path.join(path, a)):
+                right_path = a.replace('/', '\\')
+                a = os.path.join(os.path.split(right_path)[
+                                 0], os.path.split(right_path)[1])
+                pkgsdb.savetodb(a, archive_fn)
         arch.close()
 
     if ".zip" in archive_fn:
         arch = zipfile.ZipFile(archive_fn, "r")
         for item in arch.namelist():
             arch.extract(item, path)
-            if not os.path.isdir(os.path.join(path,item)):
-                right_path = item.replace('/','\\')
+            if not os.path.isdir(os.path.join(path, item)):
+                right_path = item.replace('/', '\\')
+                # Gets the folder name and change_dirname only once
                 if flag:
                     dir_name = os.path.split(right_path)[0]
-                    flag = False     
-                #print "here to extract files:",item
-                item = os.path.join(os.path.split(right_path)[0],os.path.split(right_path)[1]) 
-                pkgsdb.savetodb(item,archive_fn)
+                    change_dirname = dir_name + '-' + pkg['ver']
+                    flag = False
+    
+                right_name_to_db = right_path.replace(
+                    dir_name, change_dirname, 1)
+                #print(right_name_to_db)
+                pkgsdb.savetodb(right_name_to_db, archive_fn, right_path)
         arch.close()
         
-    return dir_name
+    #Change the folder name
+    #print(os.path.join(path, dir_name))
+    #rint(os.path.join(path, change_dirname))
+
+    if os.path.isdir(os.path.join(path, change_dirname)):
+        cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
+        os.system(cmd)
+    
+    os.rename(os.path.join(path, dir_name),os.path.join(path, change_dirname)) 
+
 
 def packtest(path):
     ret = True
