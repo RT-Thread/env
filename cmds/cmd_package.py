@@ -511,11 +511,9 @@ def package_update():
     for pkg in casedelete:
         dirpath = pkg['path']
         ver = pkg['ver']
-        #print 'ver is :',ver[1:]
         if dirpath[0] == '/' or dirpath[0] == '\\':
             dirpath = dirpath[1:]
-        #dirpath = dirpath.replace('/', '\\')
-        dirpath = os.path.basename(dirpath)
+        dirpath = os.path.basename(dirpath.replace('/', '\\'))
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
 
@@ -553,7 +551,6 @@ def package_update():
         else:
             if not os.path.isdir(removepath):
                 removepath = removepath + '-' + ver
-            #print 'removepath' + removepath
             print("Start to remove %s, please wait...\n" % removepath)
             pkgsdb.deletepackdir(removepath, dbsqlite_pathname)
 
