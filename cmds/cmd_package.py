@@ -113,7 +113,7 @@ def modify_submod_file_to_mirror(submod_path):
         print('e.message:%s\t' % e.message)
         
 
-def get_url_from_mirror_server(pkgs_name_in_json, pkg):
+def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     """Get the download address from the mirror server based on the package name."""
 
     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
@@ -126,21 +126,26 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkg):
         ]
     }
     payload["packages"][0]['name'] = payload_pkgs_name_in_json
-
+    
     try:
         r = requests.post(
             "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
 
+        # print(r.status_code)
+
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
-
+            
+            # print(package_info)
+            
             # Can't find package,change git package SHA if it's a git
             # package
             if len(package_info['packages']) == 0:
                 print("Package was NOT found on mirror server.")
+                return None, None
             else:
                 for item in package_info['packages'][0]['packages_info']['site']:
-                    if item['version'] == pkg['ver']:
+                    if item['version'] == pkgs_ver:
                         # Change download url
                         download_url = item['URL']
                         if download_url[-4:] == '.git':
@@ -148,6 +153,10 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkg):
                             repo_sha = item['VER_SHA']
                             return download_url, repo_sha
                         return download_url, None
+                    
+            print("\nTips : \nThe system needs to be upgraded. \nPlease use the <pkgs --upgrade> command to upgrade packages index.\n")
+            return None, None
+        
     except Exception, e:
         print('e.message:%s\t' % e.message)
         print(
@@ -189,8 +198,14 @@ def install_pkg(env_root, bsp_root, pkg):
     #print("==================================================>")
 
     if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        package_url, ver_sha = get_url_from_mirror_server(
-            pkgs_name_in_json, pkg)
+        get_package_url, get_ver_sha = get_url_from_mirror_server(
+            pkgs_name_in_json, pkg['ver'])
+
+    if get_package_url != None:
+        package_url = get_package_url
+      
+    if get_ver_sha != None:  
+        ver_sha = get_ver_sha
 
     beforepath = os.getcwd()
 
