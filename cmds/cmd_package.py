@@ -518,26 +518,23 @@ def package_update():
         dirpath = os.path.basename(dirpath)
         #print "basename:",os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
-        
+
         # Handles the deletion of git repository folders with version Numbers
         git_removepath = removepath + '-' + ver
         removepath_git = os.path.join(git_removepath, '.git')
         #print "floder to delete",removepath
         #print "removepath_git to delete",removepath_git
-
+        
         # Delete. Git directory.
 
         if os.path.isdir(git_removepath) and os.path.isdir(removepath_git):
             gitdir = git_removepath
 
-            print (
-                "\nOperation : Delete a git package or change the version of a package.")
-            print ("If you want to change the version of a package,you should aslo delete the old package before update.\nOtherwise,you may fail to update.\n")
-            print ("Folder to delete: %s" % (gitdir))
+            print ("\nStart to remove %s, please wait...\n" % gitdir)
             print ("The folder is managed by git. Do you want to delete this folder?\n")
 
             rc = raw_input(
-                'Press the Y Key to delete the folder or just press Enter to keep the file:')
+                'Press the Y Key to delete the folder or just press Enter to keep them :')
             if rc == 'y' or rc == 'Y':
                 if platform.system() != "Windows":
                     shutil.rmtree(gitdir)
