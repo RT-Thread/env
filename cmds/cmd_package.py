@@ -353,6 +353,12 @@ def update_submodule(repo_path):
             print("Submodule update successful")
     
 
+def get_pkg_folder_by_orign_path(orign_path, version):
+    # TODO fix for old version project, will remove after new major version release
+    if os.path.exists(orign_path + '-' + version):
+        return orign_path + '-' + version
+    return orign_path
+    
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
     """ update the packages that are latest version.
     
@@ -389,7 +395,7 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             #ver_sha = package.get_versha(pkg['ver'])
-            repo_path = repo_path + '-' + pkg['ver']
+            repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
             os.chdir(repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
@@ -518,7 +524,7 @@ def package_update():
         removepath = os.path.join(bsp_packages_path, dirpath)
 
         # Handles the deletion of git repository folders with version Numbers
-        git_removepath = removepath + '-' + ver
+        git_removepath = get_pkg_folder_by_orign_path(removepath, ver)
         removepath_git = os.path.join(git_removepath, '.git')
         #print "floder to delete",removepath
         #print "removepath_git to delete",removepath_git
@@ -549,8 +555,7 @@ def package_update():
                 else:
                     print ("Folder has been removed.")
         else:
-            if not os.path.isdir(removepath):
-                removepath = removepath + '-' + ver
+            removepath = get_pkg_folder_by_orign_path(removepath, ver)
             print("Start to remove %s, please wait...\n" % removepath)
             pkgsdb.deletepackdir(removepath, dbsqlite_pathname)
 
@@ -618,9 +623,10 @@ def package_update():
 
         dirpath = os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
-        git_removepath = removepath + '-' + ver
+        
+        git_removepath = get_pkg_folder_by_orign_path(removepath, ver)
         #print "if floder exist",removepath
-        removepath_ver = removepath + '-' + ver[1:]
+        removepath_ver = get_pkg_folder_by_orign_path(removepath, ver[1:])
         #print "if floder exist",removepath
 
         if os.path.exists(removepath):
