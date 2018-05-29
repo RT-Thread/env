@@ -434,22 +434,9 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
                   (pkgs_name_in_json))
 
 
-def package_update():
-    """Update env's packages.
+def pre_package_update():
 
-    Compare the old and new software package list and update the package.
-    Remove unwanted packages and download the newly selected package.
-    Check if the files in the deleted packages have been changed, and if so, 
-    remind the user saved the modified file.
-    """
-    
     bsp_root = Import('bsp_root')
-    env_root = Import('env_root')
-
-    flag = True
-
-    #print bsp_root
-    #print env_root
 
     if not os.path.exists('.config'):
         print (
@@ -502,6 +489,30 @@ def package_update():
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
+
+    return [oldpkgs, newpkgs, pkgs_fn, bsp_packages_path, dbsqlite_pathname]
+
+
+def package_update():
+    """Update env's packages.
+
+    Compare the old and new software package list and update the package.
+    Remove unwanted packages and download the newly selected package.
+    Check if the files in the deleted packages have been changed, and if so, 
+    remind the user saved the modified file.
+    """
+    
+    bsp_root = Import('bsp_root')
+    env_root = Import('env_root')
+
+    flag = True
+    
+    sys_value = pre_package_update()
+    oldpkgs = sys_value[0]
+    newpkgs = sys_value[1]
+    pkgs_fn = sys_value[2]
+    bsp_packages_path = sys_value[3]
+    dbsqlite_pathname = sys_value[4]
 
     #print "newpkgs:",newpkgs
     #print "oldpkgs:",oldpkgs
