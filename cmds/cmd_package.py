@@ -361,7 +361,16 @@ def get_pkg_folder_by_orign_path(orign_path, version):
     if os.path.exists(orign_path + '-' + version):
         return orign_path + '-' + version
     return orign_path
+  
+
+def git_cmd_exec(cmd, cwd):
+    try:
+        execute_command(cmd, cwd=cwd)
+    except Exception, e:
+        print('error message:%s%s. %s \nYou can solve this problem by manually removing old packages and re-downloading them using env.\t' %
+              (cwd, " path doesn't exist", e.message))
     
+  
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
     """ update the packages that are latest version.
     
@@ -386,7 +395,6 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    beforepath = os.getcwd()
     for pkg in read_back_pkgs_json:
         package = Package()
         pkg_path = pkg['path']
@@ -397,9 +405,7 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
         pkgs_name_in_json = package.get_name()
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
-            #ver_sha = package.get_versha(pkg['ver'])
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
-            os.chdir(repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
@@ -421,7 +427,9 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
                                     # from mirror server
                                     cmd = 'git remote set-url origin ' + \
                                         item['URL']
-                                    os.system(cmd)
+                                    
+                                    git_cmd_exec(cmd, repo_path)
+                                    
                                     #print(cmd)
                 except Exception, e:
                     print('e.message:%s\t' % e.message)
@@ -430,7 +438,7 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
 
             # Only one trace relationship can be used directly with git pull.
             cmd = 'git pull'
-            os.system(cmd)
+            git_cmd_exec(cmd, repo_path)
 
             # If the package has submodules, update the submodules.
             update_submodule(repo_path)
@@ -438,8 +446,8 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
             # recover origin url to the path which get from packages.json file
             if package.get_url(pkg['ver']) :
                 cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
-            os.system(cmd)
-            os.chdir(beforepath)
+            git_cmd_exec(cmd, repo_path)
+            
             print("==============================>  %s update done \n" %
                   (pkgs_name_in_json))
 
