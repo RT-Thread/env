@@ -436,7 +436,8 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
             update_submodule(repo_path)
 
             # recover origin url to the path which get from packages.json file
-            cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
+            if package.get_url(pkg['ver']) :
+                cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
             os.system(cmd)
             os.chdir(beforepath)
             print("==============================>  %s update done \n" %
