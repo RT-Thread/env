@@ -503,6 +503,48 @@ def pre_package_update():
     return [oldpkgs, newpkgs, pkgs_fn, bsp_packages_path, dbsqlite_pathname]
 
 
+def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
+    bsp_root = Import('bsp_root')
+    env_root = Import('env_root')
+
+    flag = None
+
+    error_packages_redownload_error_list = []
+
+    if len(error_packages_list):
+        print("\n==============================> Error packages list :  \n")
+        for pkg in error_packages_list:
+            print pkg['name'], pkg['ver']
+        print("\nThe package in the list above is accidentally deleted.")
+        print("Env will redownload packages that have been accidentally deleted.")
+        print("If you really want to remove these packages, do that in the menuconfig command.\n")
+
+        for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
+            if install_pkg(env_root, bsp_root, pkg):
+                print("==============================>  %s %s is redownloaded successfully. \n" % (
+                    pkg['name'], pkg['ver']))
+            else:
+                error_packages_redownload_error_list.append(pkg)
+                print pkg, 'download failed.'
+                flag = False
+
+        if len(error_packages_redownload_error_list):
+            print("%s" % error_packages_redownload_error_list)
+            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them." %
+                   pkg['name'], pkg['ver'])
+            write_back_pkgs_json = sub_list(
+                read_back_pkgs_json, error_packages_redownload_error_list)
+            read_back_pkgs_json = write_back_pkgs_json
+            #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
+            pkgs_file = file(pkgs_fn, 'w')
+            pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
+            pkgs_file.close()
+    else:
+        print("\nAll the selected packages have been downloaded successfully.\n")
+
+    return flag
+
+
 def package_update():
     """Update env's packages.
 
@@ -511,12 +553,12 @@ def package_update():
     Check if the files in the deleted packages have been changed, and if so, 
     remind the user saved the modified file.
     """
-    
+
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
     flag = True
-    
+
     sys_value = pre_package_update()
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
@@ -543,7 +585,7 @@ def package_update():
         removepath_git = os.path.join(git_removepath, '.git')
         #print "floder to delete",removepath
         #print "removepath_git to delete",removepath_git
-        
+
         # Delete. Git directory.
 
         if os.path.isdir(git_removepath) and os.path.isdir(removepath_git):
@@ -628,7 +670,7 @@ def package_update():
     #print(read_back_pkgs_json)
 
     error_packages_list = []
-    error_packages_redownload_error_list = []
+
     for pkg in read_back_pkgs_json:
         dirpath = pkg['path']
         ver = pkg['ver']
@@ -638,56 +680,33 @@ def package_update():
 
         dirpath = os.path.basename(dirpath)
         removepath = os.path.join(bsp_packages_path, dirpath)
-        
+        #print("if floder exist : %s"%removepath)
         git_removepath = get_pkg_folder_by_orign_path(removepath, ver)
-        #print "if floder exist",removepath
+        #print("if floder exist : %s"%git_removepath)
         removepath_ver = get_pkg_folder_by_orign_path(removepath, ver[1:])
-        #print "if floder exist",removepath
+        #print("if floder exist : %s"%removepath_ver)
 
         if os.path.exists(removepath):
             continue
         elif os.path.exists(removepath_ver):
             continue
         elif os.path.exists(git_removepath):
-            continue   
+            continue
         else:
             error_packages_list.append(pkg)
 
-    if len(error_packages_list):
-        print("\n==============================> Error packages list :  \n")
-        for pkg in error_packages_list:
-            print pkg['name'], pkg['ver']
-        print("\nThe package in the list above is accidentally deleted.")
-        print("Env will redownload packages that have been accidentally deleted.")
-        print("If you really want to remove these packages, do that in the menuconfig command.\n")
+    # Handle the failed download packages
+    get_flag = error_packages_handle(
+        error_packages_list, read_back_pkgs_json, pkgs_fn)
 
-        for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
-            if install_pkg(env_root, bsp_root, pkg):
-                print("==============================>  %s %s is redownloaded successfully. \n" % (
-                    pkg['name'], pkg['ver']))
-            else:
-                error_packages_redownload_error_list.append(pkg)
-                print pkg, 'download failed.'
-                flag = False
+    if get_flag != None:
+        flag = get_flag
 
-        if len(error_packages_redownload_error_list):
-            print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them." %
-                   pkg['name'], pkg['ver'])
-            write_back_pkgs_json = sub_list(
-                read_back_pkgs_json, error_packages_redownload_error_list)
-            read_back_pkgs_json = write_back_pkgs_json
-            #print("write_back_pkgs_json:%s"%write_back_pkgs_json)
-            pkgs_file = file(pkgs_fn, 'w')
-            pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
-            pkgs_file.close()
-    else:
-        print("\nAll the selected packages have been downloaded successfully.\n")
-
+    # Update the software packages, which the version is 'latest'
     try:
         update_latest_packages(read_back_pkgs_json, bsp_packages_path)
     except KeyboardInterrupt:
-        flag = 0
+        flag = False
 
     if flag:
         print ("Operation completed successfully.")
