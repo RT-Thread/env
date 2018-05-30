@@ -370,7 +370,7 @@ def git_cmd_exec(cmd, cwd):
         print('error message:%s%s. %s \nYou can solve this problem by manually removing old packages and re-downloading them using env.\t' %
               (cwd, " path doesn't exist", e.message))
     
-  
+
 def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
     """ update the packages that are latest version.
     
@@ -383,15 +383,6 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
 
     env_root = Import('env_root')
 
-    payload = {
-        "userName": "RT-Thread",
-        "packages": [
-            {
-                "name": "NULL",
-            }
-        ]
-    }
-
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
@@ -400,43 +391,28 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
+            
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
         pkgs_name_in_json = package.get_name()
+        
+        # Find out the packages which version is 'latest' 
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
+            # If mirror acceleration is enabled, get the update address from the mirror server.
             if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
-                payload["packages"][0]['name'] = payload_pkgs_name_in_json
-
-                try:
-                    r = requests.post(
-                        "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-                    if r.status_code == requests.codes.ok:
-                        #print("Software package get Successful")
-                        package_info = json.loads(r.text)
-
-                        if len(package_info['packages']) == 0:
-                            print("Package was NOT found on mirror server.")
-                        else:
-                            for item in package_info['packages'][0]['packages_info']['site']:
-                                if item['version'] == "latest_version" or item['version'] == "latest":
-                                    # change origin url to the path which get
-                                    # from mirror server
-                                    cmd = 'git remote set-url origin ' + \
-                                        item['URL']
-                                    
-                                    git_cmd_exec(cmd, repo_path)
-                                    
-                                    #print(cmd)
-                except Exception, e:
-                    print('e.message:%s\t' % e.message)
-                    print(
-                        "The server could not be contacted. Please check your network connection.")
-
-            # Only one trace relationship can be used directly with git pull.
+                
+                # Change repo's upstream address.
+                mirror_url = get_url_from_mirror_server(payload_pkgs_name_in_json, pkg['ver'])
+                
+                if mirror_url[0] != None:
+                    cmd = 'git remote set-url origin ' + mirror_url[0]
+                    git_cmd_exec(cmd, repo_path)
+                        
+            # Update the package repository from upstream.
             cmd = 'git pull'
             git_cmd_exec(cmd, repo_path)
 
@@ -444,10 +420,14 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
             update_submodule(repo_path)
 
             # recover origin url to the path which get from packages.json file
-            if package.get_url(pkg['ver']) :
-                cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
-            git_cmd_exec(cmd, repo_path)
-            
+            if package.get_url(pkg['ver']):
+                cmd = 'git remote set-url origin ' + \
+                    package.get_url(pkg['ver'])
+                git_cmd_exec(cmd, repo_path)
+            else:
+                print("Can't find the package : %s's url in file : %s" %
+                      (payload_pkgs_name_in_json, pkg_path))
+
             print("==============================>  %s update done \n" %
                   (pkgs_name_in_json))
 
