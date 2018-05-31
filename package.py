@@ -58,7 +58,7 @@ if PKG_USING_${name}
         default "/packages/${pkgs_class}/${lowercase_name}"
 
     choice
-        prompt "${lowercase_name} version"
+        prompt "Version"
         help
             Select the ${lowercase_name} version
 
