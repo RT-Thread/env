@@ -1,10 +1,108 @@
 # -*- coding:utf-8 -*-
+#
+# File      : package.py
+# This file is part of RT-Thread RTOS
+# COPYRIGHT (C) 2006 - 2018, RT-Thread Development Team
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Change Logs:
+# Date           Author          Notes
+# 2018-5-28      SummerGift      Add copyright information
+#
+
 import os
 import json
 import archive
 import sys
 import requests
 
+"""Template for creating a new file"""
+
+Bridge_SConscript = '''import os
+from building import *
+
+objs = []
+cwd  = GetCurrentDir()
+list = os.listdir(cwd)
+
+for item in list:
+    if os.path.isfile(os.path.join(cwd, item, 'SConscript')):
+        objs = objs + SConscript(os.path.join(item, 'SConscript'))
+
+Return('objs')
+'''
+
+Kconfig_file = '''
+# Kconfig file for package ${lowercase_name}
+config PKG_USING_${name}
+    bool "${description}"
+    default n
+
+if PKG_USING_${name}
+
+    config PKG_${name}_PATH
+        string
+        default "/packages/${pkgs_class}/${lowercase_name}"
+
+    choice
+        prompt "Version"
+        help
+            Select the ${lowercase_name} version
+
+        config PKG_USING_${name}_V${version_standard}
+            bool "v${version}"
+
+        config PKG_USING_${name}_LATEST_VERSION
+            bool "latest"
+    endchoice
+          
+    config PKG_${name}_VER
+       string
+       default "v${version}"    if PKG_USING_${name}_V${version_standard}
+       default "latest"    if PKG_USING_${name}_LATEST_VERSION
+
+endif
+
+'''
+
+Package_json_file = '''
+{
+    "name": "${name}",
+    "description": "${description}",
+    "keywords": [
+        "${keyword}"
+    ],
+    "site" : [
+    {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
+    {"version" : "latest", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name,such as mater"}
+    ]
+}
+'''
+
+Sconscript_file = '''
+from building import *
+
+cwd     = GetCurrentDir()
+src     = Glob('*.c') + Glob('*.cpp')
+CPPPATH = [cwd]
+
+group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
+
+Return('group')
+'''
 
 class Package:
     pkg = None
@@ -122,9 +220,9 @@ class Package:
                     return False
         return ret
 
-    def unpack(self, fullpkg_path, path):
+    def unpack(self, fullpkg_path, path, pkg, pkgs_name_in_json):
         try:
-            archive.unpack(fullpkg_path, path)
+            archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
         except Exception, e:
             print('e.message:%s\t' % e.message)
             print('unpack %s failed' % os.path.basename(fullpkg_path))
