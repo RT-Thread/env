@@ -708,45 +708,43 @@ def package_wizard():
     The user enters the package name, version number, category, and automatically generates the package index file.
     """
 
-    print ('Welcome to package wizard,please enter the package information.')
-    print ('The messages in [] is default setting.You can just press enter to use default Settings.')
-    print ('Please enter the name of package:')
+    print ('Welcome to using package wizard, please enter the package information.')
+    print ('The messages in [] is default setting. Press enter to use the default settings.')
+    print ('Please enter package name:')
     name = raw_input()
     if name == '':
-        print ('please provide the package name.\n')
+        print ('Error: you must enter the package name. Try again.\n')
         return
 
     default_description = 'a ' + name + ' package for rt-thread'
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
-    ver = user_input('version of package,default:\n', '1.0.0')
+    ver = user_input('Version of this package, default:\n', '1.0.0')
     ver_standard = ver.replace('.', '')
     #keyword = user_input('keyword,default:\n', name)
     keyword = name
 
-    packageclass = ('iot', 'language', 'misc',
-                    'multimedia', 'security', 'system')
-    print ('Please choose a class for your packages.')
-    print ('Enter 1 for iot and 2 for language, following the table below as a guideline.')
-    print ("[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:security]|[6:system]")
+    packageclass = ('iot', 'language', 'misc', 'multimedia', 'peripherals', 'security', 'system', 'tools')
+    print ('Please choose a class for your package. Such as 1 is an iot pacakge, 2 is a language package.')
+    print ("[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]")
 
     classnu = raw_input()
     if classnu == '':
-        print ('You must choose a class for your packages.Try again.\n')
+        print ('Error: you must choose a class for your package. Try again.\n')
         return
 
-    if classnu >= '1' and classnu <= '6':
+    if classnu >= '1' and classnu <= '8':
         pkgsclass = packageclass[int(classnu) - 1]
         #print pkgsclass
     else:
-        print ('You must type in number 1 to 6.')
+        print ('Error: input out of bound. You must enter the number from 1 to 8.')
         return
 
     pkg_path = name
     if not os.path.exists(pkg_path):
         os.mkdir(pkg_path)
     else:
-        print ("Warning: the package directory exits!")
+        print ("Error: the package directory is exits!")
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
@@ -769,7 +767,7 @@ def package_wizard():
     f.write(sconscript)
     f.close()
 
-    print ('==============================> Your package index was made successfully.')
+    print ('\nYour package index was created successfully.')
 
 
 def upgrade_packages_index():
