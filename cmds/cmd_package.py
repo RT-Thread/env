@@ -532,8 +532,23 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
     return flag
 
-
-def package_update():
+def rm_package(dir):
+    if platform.system() != "Windows":
+        shutil.rmtree(dir)
+    else:
+        cmd = 'rd /s /q ' + dir
+        os.system(cmd)
+    if os.path.isdir(dir):
+        if platform.system() != "Windows":
+            shutil.rmtree(dir)
+        else:
+            cmd = 'rmdir /s /q ' + dir
+            os.system(cmd)
+        print ("Delete not entirely,try again.")
+    else:
+        print ("Folder has been removed.")
+        
+def package_update(isDeleteOld=False):
     """Update env's packages.
 
     Compare the old and new software package list and update the package.
@@ -580,25 +595,14 @@ def package_update():
             gitdir = git_removepath
 
             print ("\nStart to remove %s, please wait...\n" % gitdir)
-            print ("The folder is managed by git. Do you want to delete this folder?\n")
-
-            rc = raw_input(
-                'Press the Y Key to delete the folder or just press Enter to keep them :')
-            if rc == 'y' or rc == 'Y':
-                if platform.system() != "Windows":
-                    shutil.rmtree(gitdir)
-                else:
-                    cmd = 'rd /s /q ' + gitdir
-                    os.system(cmd)
-                if os.path.isdir(gitdir):
-                    if platform.system() != "Windows":
-                        shutil.rmtree(gitdir)
-                    else:
-                        cmd = 'rmdir /s /q ' + gitdir
-                        os.system(cmd)
-                    print ("Delete not entirely,try again.")
-                else:
-                    print ("Folder has been removed.")
+            if isDeleteOld:
+                rm_package(gitdir)
+            else:
+                print ("The folder is managed by git. Do you want to delete this folder?\n")
+                rc = raw_input(
+                    'Press the Y Key to delete the folder or just press Enter to keep them :')
+                if rc == 'y' or rc == 'Y':
+                    rm_package(gitdir)
         else:
             removepath = get_pkg_folder_by_orign_path(removepath, ver)
             print("Start to remove %s, please wait...\n" % removepath)
@@ -830,7 +834,9 @@ def package_print_env():
 def cmd(args):
     """Env's pkgs command execution options."""
 
-    if args.package_update:
+    if args.package_update_y:
+        package_update(True)
+    elif args.package_update:
         package_update()
     elif args.package_create:
         package_wizard()
@@ -848,6 +854,12 @@ def add_parser(sub):
     """The pkgs command parser for env."""
     
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
+
+    parser.add_argument('--force-update',
+                        help='update and clean packages, install or remove the packages as you set in menuconfig',
+                        action='store_true',
+                        default=False,
+                        dest='package_update_y')
 
     parser.add_argument('--update',
                         help='update packages, install or remove the packages as you set in menuconfig',
