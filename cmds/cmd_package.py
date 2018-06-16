@@ -850,7 +850,7 @@ def add_parser(sub):
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
     parser.add_argument('--update',
-                        help='update packages, install or remove the packages as you set in menuconfig',
+                        help='update packages, install or remove the packages as your settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update')
@@ -862,13 +862,13 @@ def add_parser(sub):
                         dest='package_list')
 
     parser.add_argument('--wizard',
-                        help='create a package with wizard',
+                        help='create a new package with wizard',
                         action='store_true',
                         default=False,
                         dest='package_create')
 
     parser.add_argument('--upgrade',
-                        help='update local packages list from git repo',
+                        help='upgrade local packages list and ENV scripts from git repo',
                         action='store_true',
                         default=False,
                         dest='package_upgrade')
