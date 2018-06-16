@@ -189,6 +189,8 @@ def cmd(args):
         print 'use', args.menuconfig_fn
         import shutil
         shutil.copy(args.menuconfig_fn, fn)
+    elif args.menuconfig_g:
+        mk_rtconfig(fn)
     elif args.menuconfig_silent:
         if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig -n')
@@ -265,6 +267,12 @@ def add_parser(sub):
     parser.add_argument('--config',
                         help='Using the user specified configuration file.',
                         dest='menuconfig_fn')
+
+    parser.add_argument('--generate',
+                        help='generate rtconfig.h by .config.',
+                        action='store_true',
+                        default=False,
+                        dest='menuconfig_g')
 
     parser.add_argument('--silent',
                         help='Silent mode,don\'t display menuconfig window.',
