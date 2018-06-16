@@ -856,13 +856,13 @@ def add_parser(sub):
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
     parser.add_argument('--force-update',
-                        help='update and clean packages, install or remove the packages as you set in menuconfig',
+                        help='force update and clean packages, install or remove the packages by your settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update_y')
 
     parser.add_argument('--update',
-                        help='update packages, install or remove the packages as your settings in menuconfig',
+                        help='update packages, install or remove the packages by your settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update')
