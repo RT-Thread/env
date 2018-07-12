@@ -220,7 +220,9 @@ def install_pkg(env_root, bsp_root, pkg):
         cmd = 'git clone ' + package_url + ' ' + repo_path
         os.system(cmd)
         os.chdir(repo_path)
-        cmd = 'git checkout -q ' + ver_sha
+        
+        #print("Checkout SHA : %s"%ver_sha)
+        cmd = 'git reset --hard ' + ver_sha
         os.system(cmd)
 
         # If there is a .gitmodules file in the package, prepare to update the
@@ -246,9 +248,6 @@ def install_pkg(env_root, bsp_root, pkg):
                         execute_command(cmd, cwd=submod_dir_path)
 
         cmd = 'git remote set-url origin ' + url_from_json
-        os.system(cmd)
-
-        cmd = 'git reset --hard origin/master'
         os.system(cmd)
 
         os.chdir(beforepath)
