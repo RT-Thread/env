@@ -800,7 +800,7 @@ def upgrade_env_script():
     env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
     env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
-    cmd = r'git pull -q' + env_scripts_repo
+    cmd = r'git pull ' + env_scripts_repo
     execute_command(cmd, cwd=env_scripts_root)
 
     print("==============================>  Env scripts update done \n")
