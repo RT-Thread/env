@@ -231,21 +231,20 @@ def install_pkg(env_root, bsp_root, pkg):
         if os.path.isfile(submod_path):
             print("Start to update submodule")
 
-            # Modify .gitmodules file
-            replace_list = modify_submod_file_to_mirror(submod_path)
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
-            cmd = 'git submodule init -q'
-            os.system(cmd)
-            cmd = 'git submodule update'
+            cmd = 'git submodule update --init --recursive'
             if not os.system(cmd):
                 print("Submodule update successful")
 
-            if len(replace_list):
-                for item in replace_list:
-                    submod_dir_path = os.path.join(repo_path, item[2])
-                    if os.path.isdir(submod_dir_path):
-                        cmd = 'git remote set-url origin ' + item[0]
-                        execute_command(cmd, cwd=submod_dir_path)
+            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                if len(replace_list):
+                    for item in replace_list:
+                        submod_dir_path = os.path.join(repo_path, item[2])
+                        if os.path.isdir(submod_dir_path):
+                            cmd = 'git remote set-url origin ' + item[0]
+                            execute_command(cmd, cwd=submod_dir_path)
 
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
