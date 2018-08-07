@@ -147,7 +147,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             # Can't find package,change git package SHA if it's a git
             # package
             if len(package_info['packages']) == 0:
-                print("Package was NOT found on mirror server.")
+                print("Package was NOT found on mirror server. Using a non-mirrored address to download.")
                 return None, None
             else:
                 for item in package_info['packages'][0]['packages_info']['site']:
@@ -231,6 +231,13 @@ def install_pkg(env_root, bsp_root, pkg):
 #         cmd = 'git reset --hard ' + ver_sha
 #         os.system(cmd)
 
+#         print("cwd : %s"%os.getcwd())
+#         print("repo_path : %s"%repo_path)
+        
+        if os.getcwd() != repo_path:
+            print("Error : Can't find dir : repo_path.\n %s download fail.", pkgs_name_in_json)
+            return
+        
         cmd = 'git checkout ' + ver_sha
         os.system(cmd)
 
@@ -258,8 +265,10 @@ def install_pkg(env_root, bsp_root, pkg):
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
         
-        cmd = 'git checkout .gitmodules'
-        os.system(cmd)
+        if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(submod_path):
+                cmd = 'git checkout .gitmodules'
+                os.system(cmd)
 
         os.chdir(beforepath)
         
