@@ -105,7 +105,7 @@ def mk_rtconfig(filename):
     rtconfig.close()
 
 
-def find_macro_in_condfig(filename, macro_name):
+def find_macro_in_config(filename, macro_name):
     try:
         config = file(filename)
     except:
@@ -243,20 +243,20 @@ def cmd(args):
         print(
             "\nEnable the auto update option,env will auto update the packages you select.")
 
-        if find_macro_in_condfig(fn, 'SYS_AUTO_UPDATE_PKGS'):
+        if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
             print "Auto update packages done"
 
         print("Select the project type your bsp support and then env will create a new mdk/iar project.")
 
-        if find_macro_in_condfig(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
-            if find_macro_in_condfig(fn, 'SYS_CREATE_MDK4'):
+        if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
+            if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
                 print "Create mdk4 project done"
-            elif find_macro_in_condfig(fn, 'SYS_CREATE_MDK5'):
+            elif find_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
                 print "Create mdk5 project done"
-            elif find_macro_in_condfig(fn, 'SYS_CREATE_IAR'):
+            elif find_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
                 print "Create iar project done"
 

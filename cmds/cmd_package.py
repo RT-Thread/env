@@ -36,7 +36,7 @@ import time
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
 from string import Template
-from cmd_menuconfig import find_macro_in_condfig
+from cmd_menuconfig import find_macro_in_config
 
 """package command"""
 
@@ -200,7 +200,7 @@ def install_pkg(env_root, bsp_root, pkg):
     get_package_url = None
     get_ver_sha     = None
     
-    if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(
             pkgs_name_in_json, pkg['ver'])
 
@@ -231,14 +231,14 @@ def install_pkg(env_root, bsp_root, pkg):
         if os.path.isfile(submod_path):
             print("Start to update submodule")
 
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
             if not os.system(cmd):
                 print("Submodule update successful")
 
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
                     for item in replace_list:
                         submod_dir_path = os.path.join(repo_path, item[2])
@@ -400,7 +400,7 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
             # If mirror acceleration is enabled, get the update address from the mirror server.
-            if os.path.isfile(env_config_file) and find_macro_in_condfig(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
                 
                 # Change repo's upstream address.
