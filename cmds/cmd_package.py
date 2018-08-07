@@ -93,8 +93,14 @@ def modify_submod_file_to_mirror(submod_path):
                     submod_git_url = line.split('=')[1]
                     submodule_name = submod_git_url.split('/')[-1].replace('.git', '')
                     replace_url = get_mirror_giturl(submodule_name)
-                    replace_list.append(
-                        (submod_git_url, replace_url, submodule_name))
+                    # print(replace_url)
+                    query_submodule_name = 'submod_' + submodule_name
+                    # print(query_submodule_name)
+                    get_package_url, get_ver_sha = get_url_from_mirror_server(query_submodule_name, 'latest')
+                    
+                    if get_package_url != None:
+                        replace_list.append(
+                            (submod_git_url, replace_url, submodule_name))
 
         with open(submod_path, 'r+') as f:
             submod_file_count = f.read()
@@ -221,8 +227,11 @@ def install_pkg(env_root, bsp_root, pkg):
         os.system(cmd)
         os.chdir(repo_path)
         
-        #print("Checkout SHA : %s"%ver_sha)
-        cmd = 'git reset --hard ' + ver_sha
+#         #print("Checkout SHA : %s"%ver_sha)
+#         cmd = 'git reset --hard ' + ver_sha
+#         os.system(cmd)
+
+        cmd = 'git checkout ' + ver_sha
         os.system(cmd)
 
         # If there is a .gitmodules file in the package, prepare to update the
@@ -248,8 +257,12 @@ def install_pkg(env_root, bsp_root, pkg):
 
         cmd = 'git remote set-url origin ' + url_from_json
         os.system(cmd)
+        
+        cmd = 'git checkout .gitmodules'
+        os.system(cmd)
 
         os.chdir(beforepath)
+        
     else:
         # Download a package of compressed package type.
         if not package.download(pkg['ver'], local_pkgs_path, package_url):
