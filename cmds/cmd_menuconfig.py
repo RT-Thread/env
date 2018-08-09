@@ -245,9 +245,9 @@ def cmd(args):
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
-            print "Auto update packages done"
+            print "Auto package update ends."
 
-        print("Select the project type your bsp support and then env will create a new mdk/iar project.")
+        print("If you want to automatically generate a new MDK/IAR project, \nyou can select the type of project you need in the <menuconfig -s> option.")
 
         if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
