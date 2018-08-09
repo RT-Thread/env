@@ -33,11 +33,13 @@ import requests
 import subprocess
 import time
 import logging
+import sys
 
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
 from string import Template
 from cmd_menuconfig import find_macro_in_config
+
 
 """package command"""
 
@@ -442,9 +444,8 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
                 mirror_url = get_url_from_mirror_server(
                     payload_pkgs_name_in_json, pkg['ver'])
 
-                #print(os.getcwd())
-
-                #print(repo_path)
+                # print(os.getcwd())
+                # print(repo_path)
 
                 if mirror_url[0] != None:
                     cmd = 'git remote set-url origin ' + mirror_url[0]
@@ -598,7 +599,7 @@ class Logger:
         self.logger = logging.getLogger(log_name)
         self.logger.setLevel(logging.DEBUG)
         fmt = logging.Formatter(
-            '[%(levelname)s] %(filename)s %(funcName)s %(lineno)d %(message)s')
+            '%(asctime)s [%(levelname)s] [%(filename)s] %(message)s')
 
         # set cmd log
         sh = logging.StreamHandler()
@@ -631,6 +632,11 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
+    pkgs_update_log = Logger('pkgs_update', logging.ERROR)
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : Begin to update packages]' % sys._getframe().f_lineno)
+
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
@@ -643,8 +649,11 @@ def package_update(isDeleteOld=False):
     bsp_packages_path = sys_value[3]
     dbsqlite_pathname = sys_value[4]
 
-    #print "newpkgs:",newpkgs
-    #print "oldpkgs:",oldpkgs
+    # print "newpkgs:",newpkgs
+    # print "oldpkgs:",oldpkgs
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : Begin to remove packages]' % sys._getframe().f_lineno)
 
     # 1.in old ,not in new : Software packages that need to be removed.
     casedelete = sub_list(oldpkgs, newpkgs)
@@ -711,6 +720,9 @@ def package_update(isDeleteOld=False):
     # If the package download fails, record it, and then download again when
     # the update command is executed.
 
+    pkgs_update_log.info(
+        '[Line: %d][Message : Begin to download packages]' % sys._getframe().f_lineno)
+
     casedownload = sub_list(newpkgs, oldpkgs)
     # print 'in new not in old:', casedownload
     pkgs_download_fail_list = []
@@ -726,9 +738,14 @@ def package_update(isDeleteOld=False):
             print pkg, 'download failed.'
             flag = False
 
+    pkgs_update_log.info(
+        '[Line: %d][Message : Get the list of packages that have been updated]' % sys._getframe().f_lineno)
+
     # Get the currently updated configuration.
     newpkgs = sub_list(newpkgs, pkgs_download_fail_list)
 
+    pkgs_update_log.info(
+        '[Line: %d][Message : Print the list of software packages that failed to download]' % sys._getframe().f_lineno)
     # Give hints based on the success of the download.
 
     if len(pkgs_download_fail_list):
@@ -743,9 +760,15 @@ def package_update(isDeleteOld=False):
     # print("write to %s" % pkgs_fn)
     # print("newpkgs %s" % newpkgs)
 
+    pkgs_update_log.info(
+        '[Line: %d][Message : Write to pkgs.json file]' % sys._getframe().f_lineno)
+
     pkgs_file = file(pkgs_fn, 'w')
     pkgs_file.write(json.dumps(newpkgs, indent=1))
     pkgs_file.close()
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : Write to SConscript file]' % sys._getframe().f_lineno)
 
     # update SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
@@ -794,6 +817,9 @@ def package_update(isDeleteOld=False):
 
     if get_flag != None:
         flag = get_flag
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : Begin to update latest version packages]' % sys._getframe().f_lineno)
 
     # Update the software packages, which the version is 'latest'
     try:
