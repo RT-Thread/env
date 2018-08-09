@@ -134,7 +134,7 @@ def find_macro_in_config(filename, macro_name):
             else:
                 line = line[1:]
 
-            #print line
+            # print line
 
             empty_line = 0
         else:
@@ -156,7 +156,7 @@ def cmd(args):
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
     get_rtt_name = os.path.basename(dirname)
     os_version = platform.platform(True)[10:13]
-    #print os.path.split(currentdir)[1]
+    # print os.path.split(currentdir)[1]
     kconfig_win7_path = os.path.join(
         env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
@@ -175,7 +175,7 @@ def cmd(args):
             print (
                 "using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
             print ("you can ignore debug messages below.")
-            #if not args.menuconfig_easy:
+            # if not args.menuconfig_easy:
             #    return
 
     fn = '.config'
@@ -241,7 +241,7 @@ def cmd(args):
 
         print("\nTry the command <menuconfig -s/--setting> ")
         print(
-            "\nEnable the auto update option,env will auto update the packages you select.")
+            "\nEnable the auto update option, env will auto update the packages you select.")
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
