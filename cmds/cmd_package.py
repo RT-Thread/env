@@ -42,7 +42,7 @@ from cmd_menuconfig import find_macro_in_config
 
 def execute_command(cmdstring, cwd=None, shell=True):
     """Execute the system command at the specified address."""
-    
+
     if shell:
         cmdstring_list = cmdstring
 
@@ -366,6 +366,8 @@ def and_list(aList, bList):
 
 def update_submodule(repo_path):
     """Update the submodules in the repository."""
+    
+    print("Please wait a few seconds in order to update the submodule.")
     
     submod_path = os.path.join(repo_path, '.gitmodules')
     if os.path.isfile(submod_path):
