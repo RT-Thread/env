@@ -41,6 +41,35 @@ from string import Template
 from cmd_menuconfig import find_macro_in_config
 
 
+class Logger:
+    def __init__(self, log_name, clevel=logging.DEBUG):
+        self.logger = logging.getLogger(log_name)
+        self.logger.setLevel(logging.DEBUG)
+        fmt = logging.Formatter(
+            '[%(levelname)s] %(message)s')
+
+        # set cmd log
+        sh = logging.StreamHandler()
+        sh.setFormatter(fmt)
+        sh.setLevel(clevel)
+        self.logger.addHandler(sh)
+
+    def debug(self, message):
+        self.logger.debug(message)
+
+    def info(self, message):
+        self.logger.info(message)
+
+    def war(self, message):
+        self.logger.warn(message)
+
+    def error(self, message):
+        self.logger.error(message)
+
+    def cri(self, message):
+        self.logger.critical(message)
+
+
 """package command"""
 
 
@@ -405,7 +434,7 @@ def git_cmd_exec(cmd, cwd):
               (cwd, " path doesn't exist", e.message))
 
 
-def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
+def update_latest_packages(pkgs_fn, bsp_packages_path):
     """ update the packages that are latest version.
 
     If the selected package is the latest version,
@@ -419,6 +448,9 @@ def update_latest_packages(read_back_pkgs_json, bsp_packages_path):
 
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
+
+    with open(pkgs_fn, 'r') as f:
+        read_back_pkgs_json = json.load(f)
 
     for pkg in read_back_pkgs_json:
         package = Package()
@@ -552,6 +584,13 @@ def pre_package_update():
     with open(pkgs_error_list_fn, 'r') as f:
         pkgs_delete_error_list = json.load(f)
 
+    # create SConscript file
+    if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
+        bridge_script = file(os.path.join(
+            bsp_packages_path, 'SConscript'), 'w')
+        bridge_script.write(Bridge_SConscript)
+        bridge_script.close()
+
     return [oldpkgs, newpkgs, pkgs_delete_error_list, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
 
@@ -564,7 +603,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     error_packages_redownload_error_list = []
 
     if len(error_packages_list):
-        print("\n==============================> Error packages list :  \n")
+        print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
             print pkg['name'], pkg['ver']
         print("\nThe package in the list above is accidentally deleted.")
@@ -619,35 +658,6 @@ def rm_package(dir):
         return True
 
 
-class Logger:
-    def __init__(self, log_name, clevel=logging.DEBUG):
-        self.logger = logging.getLogger(log_name)
-        self.logger.setLevel(logging.DEBUG)
-        fmt = logging.Formatter(
-            '%(asctime)s [%(levelname)s] [%(filename)s] %(message)s')
-
-        # set cmd log
-        sh = logging.StreamHandler()
-        sh.setFormatter(fmt)
-        sh.setLevel(clevel)
-        self.logger.addHandler(sh)
-
-    def debug(self, message):
-        self.logger.debug(message)
-
-    def info(self, message):
-        self.logger.info(message)
-
-    def war(self, message):
-        self.logger.warn(message)
-
-    def error(self, message):
-        self.logger.error(message)
-
-    def cri(self, message):
-        self.logger.critical(message)
-
-
 def get_package_remove_path(pkg, bsp_packages_path):
     dirpath = pkg['path']
     ver = pkg['ver']
@@ -662,6 +672,47 @@ def get_package_remove_path(pkg, bsp_packages_path):
     return removepath_ver
 
 
+def handle_download_error_packages(pkgs_fn, bsp_packages_path):
+    """ handle download error packages.
+
+    Check to see if the packages stored in the Json file list actually exist,
+    and then download the packages if they don't exist.
+    """
+
+    with open(pkgs_fn, 'r') as f:
+        read_back_pkgs_json = json.load(f)
+
+    error_packages_list = []
+
+    for pkg in read_back_pkgs_json:
+        removepath = get_package_remove_path(pkg, bsp_packages_path)
+
+        if os.path.exists(removepath):
+            continue
+        else:
+            pkgs_update_log.war(
+                '[Line: %d][Message : Path add to error list : %s ]' % (sys._getframe().f_lineno, removepath))
+            error_packages_list.append(pkg)
+
+    # Handle the failed download packages
+    get_flag = error_packages_handle(
+        error_packages_list, read_back_pkgs_json, pkgs_fn)
+
+    return get_flag
+
+
+def write_storage_file(pkgs_fn, newpkgs):
+    """Writes the updated configuration to pkgs.json file.
+
+    Packages that are not downloaded correctly will be redownloaded at the
+    next update.
+    """
+
+    pkgs_file = file(pkgs_fn, 'w')
+    pkgs_file.write(json.dumps(newpkgs, indent=1))
+    pkgs_file.close()
+
+
 def package_update(isDeleteOld=False):
     """Update env's packages.
 
@@ -671,16 +722,10 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    pkgs_update_log = Logger('pkgs_update', logging.ERROR)
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to update packages]' % sys._getframe().f_lineno)
-
+    pkgs_update_log = Logger('pkgs_update', logging.WARNING)
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
-
     flag = True
-
     sys_value = pre_package_update()
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
@@ -690,18 +735,12 @@ def package_update(isDeleteOld=False):
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
 
-    # print "newpkgs:",newpkgs
-    # print "oldpkgs:",oldpkgs
-
     pkgs_update_log.info(
         '[Line: %d][Message : Begin to remove packages]' % sys._getframe().f_lineno)
-
     pkgs_update_log.info(
         '[Line: %d][Message : oldpkgs: %s ]' % (sys._getframe().f_lineno, oldpkgs))
-
     pkgs_update_log.info(
         '[Line: %d][Message : newpkgs: %s ]' % (sys._getframe().f_lineno, newpkgs))
-
     pkgs_update_log.info(
         '[Line: %d][Message : pkgs_delete_error_list: %s ]' % (sys._getframe().f_lineno, pkgs_delete_error_list))
 
@@ -731,7 +770,6 @@ def package_update(isDeleteOld=False):
         removepath_git = os.path.join(removepath_ver, '.git')
 
         # print "removepath_git to delete",removepath_git
-
         # Delete. Git directory.
 
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
@@ -770,7 +808,6 @@ def package_update(isDeleteOld=False):
               pkgs_delete_fail_list)
 
         # write error messages
-
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
         pkgs_file.close()
@@ -779,15 +816,11 @@ def package_update(isDeleteOld=False):
     else:
 
         # write error messages
-
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
         pkgs_file.close()
 
-    # 2.in old and in new
-    #caseinoperation = and_list(newpkgs,oldpkgs)
-
-    # 3.in new not in old : Software packages to be installed.
+    # 2.in new not in old : Software packages to be installed.
     # If the package download fails, record it, and then download again when
     # the update command is executed.
 
@@ -824,67 +857,12 @@ def package_update(isDeleteOld=False):
               pkgs_download_fail_list)
         print("You need to reuse the <pkgs -update> command to download again.\n")
 
-    # Writes the updated configuration to pkgs.json file.
-    # Packages that are not downloaded correctly will be redownloaded at the
-    # next update.
+    # update pkgs.json and SConscript
+    write_storage_file(pkgs_fn, newpkgs)
 
-    # print("write to %s" % pkgs_fn)
-    # print("newpkgs %s" % newpkgs)
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Write to pkgs.json file]' % sys._getframe().f_lineno)
-
-    pkgs_file = file(pkgs_fn, 'w')
-    pkgs_file.write(json.dumps(newpkgs, indent=1))
-    pkgs_file.close()
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Write to SConscript file]' % sys._getframe().f_lineno)
-
-    # update SConscript file
-    if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
-        bridge_script = file(os.path.join(
-            bsp_packages_path, 'SConscript'), 'w')
-        bridge_script.write(Bridge_SConscript)
-        bridge_script.close()
-
-    # Check to see if the packages stored in the Json file list actually exist,
-    # and then download the packages if they don't exist.
-
-    with open(pkgs_fn, 'r') as f:
-        read_back_pkgs_json = json.load(f)
-
-    # print("read_back_pkgs_json : %s" % read_back_pkgs_json)
-
-    error_packages_list = []
-
-    for pkg in read_back_pkgs_json:
-        dirpath = pkg['path']
-        ver = pkg['ver']
-        # print 'ver is :',ver[1:]
-        if dirpath[0] == '/' or dirpath[0] == '\\':
-            dirpath = dirpath[1:]
-
-        dirpath = os.path.basename(dirpath)
-        removepath = os.path.join(bsp_packages_path, dirpath)
-        #print("if floder exist : %s"%removepath)
-        git_removepath = get_pkg_folder_by_orign_path(removepath, ver)
-        #print("if floder exist : %s"%git_removepath)
-        removepath_ver = get_pkg_folder_by_orign_path(removepath, ver[1:])
-        #print("if floder exist : %s"%removepath_ver)
-
-        if os.path.exists(removepath):
-            continue
-        elif os.path.exists(removepath_ver):
-            continue
-        elif os.path.exists(git_removepath):
-            continue
-        else:
-            error_packages_list.append(pkg)
-
-    # Handle the failed download packages
-    get_flag = error_packages_handle(
-        error_packages_list, read_back_pkgs_json, pkgs_fn)
+    # handle download error packages.
+    get_flag = handle_download_error_packages(
+        pkgs_fn, bsp_packages_path)
 
     if get_flag != None:
         flag = get_flag
@@ -894,7 +872,7 @@ def package_update(isDeleteOld=False):
 
     # Update the software packages, which the version is 'latest'
     try:
-        update_latest_packages(read_back_pkgs_json, bsp_packages_path)
+        update_latest_packages(pkgs_fn, bsp_packages_path)
     except KeyboardInterrupt:
         flag = False
 
