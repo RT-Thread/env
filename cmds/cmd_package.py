@@ -489,6 +489,11 @@ def pre_package_update():
         fp = open("pkgs.json", 'w')
         fp.write("[]")
         fp.close()
+
+        fp = open("pkgs_delete_error_list.json", 'w')
+        fp.write("[]")
+        fp.close()
+
         os.chdir(bsp_root)
 
     # prepare target packages file
@@ -527,7 +532,27 @@ def pre_package_update():
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
-    return [oldpkgs, newpkgs, pkgs_fn, bsp_packages_path, dbsqlite_pathname]
+    pkgs_error_list_fn = os.path.join(
+        bsp_packages_path, 'pkgs_delete_error_list.json')
+
+    if not os.path.exists(pkgs_error_list_fn):
+        print ("Maybe you delete the file pkgs_delete_error_list.json by mistake.")
+        print ("Do you want to create a new pkgs_delete_error_list.json ?")
+        rc = raw_input(
+            'Press the Y Key to create a new pkgs_delete_error_list.json.')
+        if rc == 'y' or rc == 'Y':
+            os.chdir(bsp_packages_path)
+            fp = open("pkgs_delete_error_list.json", 'w')
+            fp.write("[]")
+            fp.close()
+            os.chdir(bsp_root)
+            print ("Create a new file pkgs_delete_error_list.json done.")
+
+    # Reading data back from pkgs_delete_error_list.json
+    with open(pkgs_error_list_fn, 'r') as f:
+        pkgs_delete_error_list = json.load(f)
+
+    return [oldpkgs, newpkgs, pkgs_delete_error_list, pkgs_fn, bsp_packages_path, dbsqlite_pathname]
 
 
 def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
@@ -557,7 +582,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use 'pkgs --update' command again to redownload them." %
+            print ("Packages:%s,%s redownloed error,you need to use <pkgs --update> command again to redownload them." %
                    pkg['name'], pkg['ver'])
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
@@ -623,6 +648,20 @@ class Logger:
         self.logger.critical(message)
 
 
+def get_package_remove_path(pkg, bsp_packages_path):
+    dirpath = pkg['path']
+    ver = pkg['ver']
+    if dirpath[0] == '/' or dirpath[0] == '\\':
+        dirpath = dirpath[1:]
+    dirpath = os.path.basename(dirpath.replace('/', '\\'))
+    # print "basename:",os.path.basename(dirpath)
+    removepath = os.path.join(bsp_packages_path, dirpath)
+
+    # Handles the deletion of git repository folders with version Numbers
+    removepath_ver = get_pkg_folder_by_orign_path(removepath, ver)
+    return removepath_ver
+
+
 def package_update(isDeleteOld=False):
     """Update env's packages.
 
@@ -645,9 +684,10 @@ def package_update(isDeleteOld=False):
     sys_value = pre_package_update()
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
-    pkgs_fn = sys_value[2]
-    bsp_packages_path = sys_value[3]
-    dbsqlite_pathname = sys_value[4]
+    pkgs_delete_error_list = sys_value[2]
+    pkgs_fn = sys_value[3]
+    bsp_packages_path = sys_value[4]
+    dbsqlite_pathname = sys_value[5]
 
     # print "newpkgs:",newpkgs
     # print "oldpkgs:",oldpkgs
@@ -655,29 +695,34 @@ def package_update(isDeleteOld=False):
     pkgs_update_log.info(
         '[Line: %d][Message : Begin to remove packages]' % sys._getframe().f_lineno)
 
+    pkgs_update_log.info(
+        '[Line: %d][Message : oldpkgs: %s ]' % (sys._getframe().f_lineno, oldpkgs))
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : newpkgs: %s ]' % (sys._getframe().f_lineno, newpkgs))
+
+    pkgs_update_log.info(
+        '[Line: %d][Message : pkgs_delete_error_list: %s ]' % (sys._getframe().f_lineno, pkgs_delete_error_list))
+
+    if len(pkgs_delete_error_list):
+        print(pkgs_delete_error_list)
+        return
+
     # 1.in old ,not in new : Software packages that need to be removed.
     casedelete = sub_list(oldpkgs, newpkgs)
     pkgs_delete_fail_list = []
 
     for pkg in casedelete:
-        dirpath = pkg['path']
-        ver = pkg['ver']
-        if dirpath[0] == '/' or dirpath[0] == '\\':
-            dirpath = dirpath[1:]
-        dirpath = os.path.basename(dirpath.replace('/', '\\'))
-        # print "basename:",os.path.basename(dirpath)
-        removepath = os.path.join(bsp_packages_path, dirpath)
 
-        # Handles the deletion of git repository folders with version Numbers
-        git_removepath = get_pkg_folder_by_orign_path(removepath, ver)
-        removepath_git = os.path.join(git_removepath, '.git')
-        # print "floder to delete",removepath
+        removepath_ver = get_package_remove_path(pkg, bsp_packages_path)
+        removepath_git = os.path.join(removepath_ver, '.git')
+
         # print "removepath_git to delete",removepath_git
 
         # Delete. Git directory.
 
-        if os.path.isdir(git_removepath) and os.path.isdir(removepath_git):
-            gitdir = git_removepath
+        if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
+            gitdir = removepath_ver
 
             print ("\nStart to remove %s, please wait...\n" % gitdir)
             if isDeleteOld:
@@ -698,18 +743,17 @@ def package_update(isDeleteOld=False):
                         print('Error message:%s%s. error.message: %s\n\t' %
                               ("Delete folder failed: ", gitdir, e.message))
         else:
-            removepath = get_pkg_folder_by_orign_path(removepath, ver)
-            print("Start to remove %s, please wait...\n" % removepath)
+            print("Start to remove %s, please wait...\n" % removepath_ver)
 
             try:
-                pkgsdb.deletepackdir(removepath, dbsqlite_pathname)
+                pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
             except Exception, e:
                 pkgs_delete_fail_list.append(pkg)
                 print('Error message:\n%s %s. %s \n\t' % (
-                    "Delete folder failed, please delete the folder manually", removepath, e.message))
+                    "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
 
     if len(pkgs_delete_fail_list):
-        print("Package download failed pkgs_delete_fail_list: %s \n" %
+        print("Packages deletion failed list: %s \n" %
               pkgs_delete_fail_list)
         return
 
