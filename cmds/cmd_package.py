@@ -552,7 +552,7 @@ def pre_package_update():
     with open(pkgs_error_list_fn, 'r') as f:
         pkgs_delete_error_list = json.load(f)
 
-    return [oldpkgs, newpkgs, pkgs_delete_error_list, pkgs_fn, bsp_packages_path, dbsqlite_pathname]
+    return [oldpkgs, newpkgs, pkgs_delete_error_list, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
 
 def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
@@ -612,7 +612,7 @@ def rm_package(dir):
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Delete folder failed!!! Folder path: %s." % dir)
+            print ("Error : Delete folder failed!!! Folder path: %s." % dir)
             return False
     else:
         print ("Folder has been removed.")
@@ -686,8 +686,9 @@ def package_update(isDeleteOld=False):
     newpkgs = sys_value[1]
     pkgs_delete_error_list = sys_value[2]
     pkgs_fn = sys_value[3]
-    bsp_packages_path = sys_value[4]
-    dbsqlite_pathname = sys_value[5]
+    pkgs_error_list_fn = sys_value[4]
+    bsp_packages_path = sys_value[5]
+    dbsqlite_pathname = sys_value[6]
 
     # print "newpkgs:",newpkgs
     # print "oldpkgs:",oldpkgs
@@ -705,8 +706,18 @@ def package_update(isDeleteOld=False):
         '[Line: %d][Message : pkgs_delete_error_list: %s ]' % (sys._getframe().f_lineno, pkgs_delete_error_list))
 
     if len(pkgs_delete_error_list):
-        print(pkgs_delete_error_list)
-        return
+        for error_package in pkgs_delete_error_list:
+            removepath_ver = get_package_remove_path(
+                error_package, bsp_packages_path)
+
+            if os.path.isdir(removepath_ver):
+                print("\nError : Packages deletion failed list: %s" %
+                      error_package['name'])
+
+                if rm_package(removepath_ver) == False:
+                    print("Please delete the folder manually: %s \n" %
+                          removepath_ver)
+                    return
 
     # 1.in old ,not in new : Software packages that need to be removed.
     casedelete = sub_list(oldpkgs, newpkgs)
@@ -755,7 +766,21 @@ def package_update(isDeleteOld=False):
     if len(pkgs_delete_fail_list):
         print("Packages deletion failed list: %s \n" %
               pkgs_delete_fail_list)
+
+        # write error messages
+
+        pkgs_file = file(pkgs_error_list_fn, 'w')
+        pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
+        pkgs_file.close()
+
         return
+    else:
+
+        # write error messages
+
+        pkgs_file = file(pkgs_error_list_fn, 'w')
+        pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
+        pkgs_file.close()
 
     # 2.in old and in new
     #caseinoperation = and_list(newpkgs,oldpkgs)
