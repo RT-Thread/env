@@ -570,7 +570,7 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-        print ("Create a new error file : pkgs_error.json.")
+#         print ("Create a new error file : pkgs_error.json.")
 
     # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
