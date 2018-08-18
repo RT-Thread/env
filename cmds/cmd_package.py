@@ -244,8 +244,7 @@ def install_pkg(env_root, bsp_root, pkg):
     get_ver_sha = None
 
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        get_package_url, get_ver_sha = get_url_from_mirror_server(
-            pkgs_name_in_json, pkg['ver'])
+        get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
     if get_package_url != None:
         package_url = get_package_url
@@ -286,8 +285,7 @@ def install_pkg(env_root, bsp_root, pkg):
             print("Start to update submodule")
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-                replace_list = modify_submod_file_to_mirror(
-                    submod_path)  # Modify .gitmodules file
+                replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
             if not os.system(cmd):
@@ -568,17 +566,12 @@ def pre_package_update():
         bsp_packages_path, 'pkgs_delete_error_list.json')
 
     if not os.path.exists(pkgs_error_list_fn):
-        print ("Maybe you delete the file pkgs_delete_error_list.json by mistake.")
-        print ("Do you want to create a new pkgs_delete_error_list.json ?")
-        rc = raw_input(
-            'Press the Y Key to create a new pkgs_delete_error_list.json.')
-        if rc == 'y' or rc == 'Y':
-            os.chdir(bsp_packages_path)
-            fp = open("pkgs_delete_error_list.json", 'w')
-            fp.write("[]")
-            fp.close()
-            os.chdir(bsp_root)
-            print ("Create a new file pkgs_delete_error_list.json done.")
+        os.chdir(bsp_packages_path)
+        fp = open("pkgs_delete_error_list.json", 'w')
+        fp.write("[]")
+        fp.close()
+        os.chdir(bsp_root)
+        print ("Create a new error file : pkgs_delete_error_list.json.")
 
     # Reading data back from pkgs_delete_error_list.json
     with open(pkgs_error_list_fn, 'r') as f:
@@ -969,8 +962,7 @@ def upgrade_packages_index():
             if os.path.isdir(os.path.join(package_path, '.git')):
                 cmd = r'git pull'
                 execute_command(cmd, cwd=package_path)
-                print(
-                    "==============================>  Env %s update done \n" % filename)
+                print("==============================>  Env %s update done \n" % filename)
 
 
 def upgrade_env_script():
