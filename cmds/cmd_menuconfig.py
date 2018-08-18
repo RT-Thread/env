@@ -239,15 +239,10 @@ def cmd(args):
         if not os.path.isfile(fn):
             return
 
-        print("\nTry the command <menuconfig -s/--setting> ")
-        print(
-            "\nEnable the auto update option, env will auto update the packages you select.")
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
-            print "Auto package update ends."
-
-        print("If you want to automatically generate a new MDK/IAR project, \nyou can select the type of project you need in the <menuconfig -s> option.")
+            print "==============================>The packages have been updated completely."
 
         if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):

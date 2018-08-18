@@ -121,12 +121,10 @@ def modify_submod_file_to_mirror(submod_path):
     try:
         with open(submod_path, 'r') as f:
             for line in f:
-                line = line.replace('\t', '').replace(
-                    ' ', '').replace('\n', '').replace('\r', '')
+                line = line.replace('\t', '').replace(' ', '').replace('\n', '').replace('\r', '')
                 if line.startswith('url'):
                     submod_git_url = line.split('=')[1]
-                    submodule_name = submod_git_url.split(
-                        '/')[-1].replace('.git', '')
+                    submodule_name = submod_git_url.split('/')[-1].replace('.git', '')
                     replace_url = get_mirror_giturl(submodule_name)
                     # print(replace_url)
                     query_submodule_name = 'submod_' + submodule_name
@@ -197,7 +195,9 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
                             return download_url, repo_sha
                         return download_url, None
 
-            print("\nTips : \nThe system needs to be upgraded. \nPlease use the <pkgs --upgrade> command to upgrade packages index.\n")
+            print("\nTips : \nThe system needs to be upgraded.")
+            print("Please use the <pkgs --upgrade> command to upgrade packages index.\n")
+                   
             return None, None
 
     except Exception, e:
@@ -345,8 +345,8 @@ def package_list():
 #     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.isfile(fn):
-        print ('no system configuration file : .config.')
-        print ('you should use < menuconfig > command to config bsp first.')
+        print ('No system configuration file : .config.')
+        print ('You should use < menuconfig > command to config bsp first.')
         return
 
     # if not os.path.exists(target_pkgs_path):
@@ -948,7 +948,7 @@ def package_wizard():
     f.write(sconscript)
     f.close()
 
-    print ('\nYour package index was created successfully.')
+    print ('\nThe package index was created successfully.')
 
 
 def upgrade_packages_index():
