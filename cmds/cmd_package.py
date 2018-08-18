@@ -405,10 +405,9 @@ def and_list(aList, bList):
 def update_submodule(repo_path):
     """Update the submodules in the repository."""
 
-    print("Please wait a few seconds in order to update the submodule.")
-
     submod_path = os.path.join(repo_path, '.gitmodules')
     if os.path.isfile(submod_path):
+        print("Please wait a few seconds in order to update the submodule.")
         cmd = 'git submodule init -q'
         execute_command(cmd, cwd=repo_path)
         cmd = 'git submodule update'
