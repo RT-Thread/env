@@ -519,7 +519,7 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
 
-        fp = open("pkgs_delete_error_list.json", 'w')
+        fp = open("pkgs_error.json", 'w')
         fp.write("[]")
         fp.close()
 
@@ -562,19 +562,19 @@ def pre_package_update():
         oldpkgs = json.load(f)
 
     pkgs_error_list_fn = os.path.join(
-        bsp_packages_path, 'pkgs_delete_error_list.json')
+        bsp_packages_path, 'pkgs_error.json')
 
     if not os.path.exists(pkgs_error_list_fn):
         os.chdir(bsp_packages_path)
-        fp = open("pkgs_delete_error_list.json", 'w')
+        fp = open("pkgs_error.json", 'w')
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-        print ("Create a new error file : pkgs_delete_error_list.json.")
+        print ("Create a new error file : pkgs_error.json.")
 
-    # Reading data back from pkgs_delete_error_list.json
+    # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
-        pkgs_delete_error_list = json.load(f)
+        pkgs_error = json.load(f)
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
@@ -583,7 +583,7 @@ def pre_package_update():
         bridge_script.write(Bridge_SConscript)
         bridge_script.close()
 
-    return [oldpkgs, newpkgs, pkgs_delete_error_list, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
+    return [oldpkgs, newpkgs, pkgs_error, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
 
 def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
@@ -598,9 +598,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
             print pkg['name'], pkg['ver']
-        print("\nThe package in the list above is accidentally deleted.")
-        print("Env will redownload packages that have been accidentally deleted.")
-        print("If you really want to remove these packages, do that in the menuconfig command.\n")
+        print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
+        print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
@@ -643,10 +642,10 @@ def rm_package(dir):
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Error : Delete folder failed!!! Folder path: %s" % dir)
+            print ("Error: Delete folder failed!!! Folder path: %s" % dir)
             return False
     else:
-        print ("Success : Folder has been removed : %s" % dir)
+        print ("Path: %s \nSuccess: Folder has been removed. " % dir)
         return True
 
 
@@ -740,14 +739,14 @@ def package_update(isDeleteOld=False):
                 error_package, bsp_packages_path)
 
             if os.path.isdir(removepath_ver):
-                print("\nError : Packages deletion failed list: %s" %
+                print("\nError: Packages deletion failed list: %s" %
                       error_package['name'])
 
-                print("Error : Begin to remove package : %s" %
+                print("Error: Begin to remove package : %s" %
                       error_package['name'])
 
                 if rm_package(removepath_ver) == False:
-                    print("Error : Please delete the folder manually.\n")
+                    print("Error: Please delete the folder manually.\n")
                     return
 
     # 1.in old ,not in new : Software packages that need to be removed.
@@ -774,7 +773,7 @@ def package_update(isDeleteOld=False):
                 print (
                     "The folder is managed by git. Do you want to delete this folder?\n")
                 rc = raw_input(
-                    'Press the Y Key to delete the folder or just press Enter to keep them :')
+                    'Press the Y Key to delete the folder or just press Enter to keep it : ')
                 if rc == 'y' or rc == 'Y':
                     try:
                         if rm_package(gitdir) == False:
