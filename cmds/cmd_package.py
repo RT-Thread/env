@@ -642,7 +642,7 @@ def rm_package(dir):
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Error: Delete folder failed!!! Folder path: %s" % dir)
+            print ("Folder path: %s" % dir)
             return False
     else:
         print ("Path: %s \nSuccess: Folder has been removed. " % dir)
@@ -739,14 +739,11 @@ def package_update(isDeleteOld=False):
                 error_package, bsp_packages_path)
 
             if os.path.isdir(removepath_ver):
-                print("\nError: Packages deletion failed list: %s" %
-                      error_package['name'])
-
-                print("Error: Begin to remove package : %s" %
+                print("\nError: %s package delete failed, begin to remove it."%
                       error_package['name'])
 
                 if rm_package(removepath_ver) == False:
-                    print("Error: Please delete the folder manually.\n")
+                    print("Error: Delete package %s failed! Please delete the folder manually.\n"%error_package['name'])
                     return
 
     # 1.in old ,not in new : Software packages that need to be removed.
@@ -767,7 +764,7 @@ def package_update(isDeleteOld=False):
             print ("\nStart to remove %s, please wait...\n" % gitdir)
             if isDeleteOld:
                 if rm_package(gitdir) == False:
-                    print("floder delete fail: %s" % gitdir)
+                    print("Floder delete fail: %s" % gitdir)
                     print("Please delete this folder manually.")
             else:
                 print (
@@ -793,8 +790,8 @@ def package_update(isDeleteOld=False):
                         "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
 
     if len(pkgs_delete_fail_list):
-        print("Packages deletion failed list: %s \n" %
-              pkgs_delete_fail_list)
+#         print("Packages deletion failed list: %s \n" %
+#               pkgs_delete_fail_list)
 
         # write error messages
         pkgs_file = file(pkgs_error_list_fn, 'w')
