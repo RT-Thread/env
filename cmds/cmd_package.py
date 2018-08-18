@@ -682,10 +682,8 @@ def handle_download_error_packages(pkgs_fn, bsp_packages_path):
         if os.path.exists(removepath):
             continue
         else:
-            pkgs_update_log.war(
-                '[Line: %d][Message : Path add to error list : %s ]' % (sys._getframe().f_lineno, removepath))
             error_packages_list.append(pkg)
-
+            
     # Handle the failed download packages
     get_flag = error_packages_handle(
         error_packages_list, read_back_pkgs_json, pkgs_fn)
