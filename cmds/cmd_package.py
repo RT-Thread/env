@@ -939,14 +939,21 @@ def package_wizard():
 
 def upgrade_packages_index():
     """Update the package repository index."""
+    
     env_root = Import('env_root')
-
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
+        get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
+        if get_package_url != None:
+            git_repo = get_package_url
+        else:
+            print("Failed to get url from mirror server. Using default url.")
+            git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
     else:
         git_repo = 'https://github.com/RT-Thread/packages.git'
+        
+#     print(get_package_url,get_ver_sha)
 
     packages_root = os.path.join(env_root, 'packages')
     pkgs_path = os.path.join(packages_root, 'packages')
@@ -972,8 +979,7 @@ def upgrade_packages_index():
                 print("Begin to upgrade %s." % filename)
                 cmd = r'git pull'
                 execute_command(cmd, cwd=package_path)
-                print(
-                    "==============================>  Env %s update done \n" % filename)
+                print("==============================>  Env %s update done \n" % filename)
 
 
 def upgrade_env_script():
@@ -984,12 +990,18 @@ def upgrade_env_script():
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
+        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
+        if get_package_url != None:
+            env_scripts_repo = get_package_url
+        else:
+            print("Failed to get url from mirror server. Using default url.")
+            env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
     else:
         env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
+#     print(get_package_url,get_ver_sha)
+    
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
-
     cmd = r'git pull ' + env_scripts_repo
     execute_command(cmd, cwd=env_scripts_root)
     print("==============================>  Env scripts upgrade done \n")
