@@ -939,40 +939,65 @@ def package_wizard():
 
 def upgrade_packages_index():
     """Update the package repository index."""
+    env_root = Import('env_root')
 
-    packages_root = os.path.join(Import('env_root'), 'packages')
-    git_repo = 'https://github.com/RT-Thread/packages.git'
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
+    else:
+        git_repo = 'https://github.com/RT-Thread/packages.git'
+
+    packages_root = os.path.join(env_root, 'packages')
     pkgs_path = os.path.join(packages_root, 'packages')
 
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path
         os.system(cmd)
         print ("upgrade from :%s" % (git_repo))
+    else:
+        print("Begin to upgrade env packages.")
+        cmd = r'git pull ' + git_repo
+        execute_command(cmd, cwd=pkgs_path)
+        print("==============================>  Env packages upgrade done \n")
 
     for filename in os.listdir(packages_root):
         package_path = os.path.join(packages_root, filename)
         if os.path.isdir(package_path):
+
+            if package_path == pkgs_path:
+                continue
+
             if os.path.isdir(os.path.join(package_path, '.git')):
+                print("Begin to upgrade %s." % filename)
                 cmd = r'git pull'
                 execute_command(cmd, cwd=package_path)
-                print("==============================>  Env %s update done \n" % filename)
+                print(
+                    "==============================>  Env %s update done \n" % filename)
 
 
 def upgrade_env_script():
     """Update env function scripts."""
 
-    env_scripts_root = os.path.join(Import('env_root'), 'tools', 'scripts')
-    env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+    print("Begin to upgrade env scripts.")
+    env_root = Import('env_root')
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
+    else:
+        env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+
+    env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
 
     cmd = r'git pull ' + env_scripts_repo
     execute_command(cmd, cwd=env_scripts_root)
-
-    print("==============================>  Env scripts update done \n")
+    print("==============================>  Env scripts upgrade done \n")
 
 
 def package_upgrade():
     """Update the package repository directory and env function scripts."""
-
+    
     upgrade_packages_index()
     upgrade_env_script()
 
