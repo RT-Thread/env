@@ -47,7 +47,7 @@ Return('objs')
 
 Kconfig_file = '''
 # Kconfig file for package ${lowercase_name}
-config PKG_USING_${name}
+menuconfig PKG_USING_${name}
     bool "${description}"
     default n
 
@@ -59,8 +59,9 @@ if PKG_USING_${name}
 
     choice
         prompt "Version"
+        default PKG_USING_${name}_LATEST_VERSION
         help
-            Select the ${lowercase_name} version
+            Select the package version
 
         config PKG_USING_${name}_V${version_standard}
             bool "v${version}"
