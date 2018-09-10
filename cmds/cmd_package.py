@@ -29,11 +29,22 @@ import kconfig
 import pkgsdb
 import shutil
 import platform
-import requests
 import subprocess
 import time
 import logging
 import sys
+
+try:
+    import requests
+except ImportError:
+    print("****************************************\n"
+          "* Import requests module error.\n"
+          "* Please install requests module first.\n"
+          "* pip install step:\n"
+          "* $ pip install requests\n"
+          "* command install step:\n"
+          "* $ sudo apt-get install python-requests\n"
+          "****************************************\n")
 
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
