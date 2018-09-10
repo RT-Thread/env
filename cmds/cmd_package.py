@@ -252,32 +252,20 @@ def install_pkg(env_root, bsp_root, pkg):
     if get_ver_sha != None:
         ver_sha = get_ver_sha
 
-    beforepath = os.getcwd()
-
-    # print(package_url)
-
     if package_url[-4:] == '.git':
+        
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         repo_path = repo_path + '-' + pkg['ver']
+        
         cmd = 'git clone ' + package_url + ' ' + repo_path
-        os.system(cmd)
-        os.chdir(repo_path)
-
-#         #print("Checkout SHA : %s"%ver_sha)
-#         cmd = 'git reset --hard ' + ver_sha
-#         os.system(cmd)
-
-#         print("cwd : %s"%os.getcwd())
-#         print("repo_path : %s"%repo_path)
-
-        if os.getcwd() != repo_path:
-            print("Error : Can't find dir : repo_path.\n %s download fail.",
-                  pkgs_name_in_json)
-            return
-
-        cmd = 'git checkout ' + ver_sha
-        os.system(cmd)
-
+        execute_command(cmd, cwd=bsp_pkgs_path)
+        
+        cmd = 'git checkout -q ' + ver_sha
+        execute_command(cmd, cwd=repo_path)
+        
+        cmd = 'git remote set-url origin ' + url_from_json
+        execute_command(cmd, cwd=repo_path)
+        
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
@@ -288,8 +276,7 @@ def install_pkg(env_root, bsp_root, pkg):
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
-            if not os.system(cmd):
-                print("Submodule update successful")
+            execute_command(cmd, cwd=repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
@@ -299,15 +286,10 @@ def install_pkg(env_root, bsp_root, pkg):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        cmd = 'git remote set-url origin ' + url_from_json
-        os.system(cmd)
-
         if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
-                os.system(cmd)
-
-        os.chdir(beforepath)
+                execute_command(cmd, cwd=repo_path)
 
     else:
         # Download a package of compressed package type.
