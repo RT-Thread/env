@@ -206,6 +206,25 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             "The server could not be contacted. Please check your network connection.")
 
 
+def determine_url_valid(url_from_srv):
+
+    headers = {'Connection': 'keep-alive',
+               'Accept-Encoding': 'gzip, deflate',
+               'Accept': '*/*',
+               'User-Agent': 'curl/7.54.0'}
+
+    try:
+        r = requests.get(url_from_srv, stream=True, headers=headers)
+
+        if r.status_code == 200:
+            return True
+        else:
+            return False
+
+    except Exception, e:
+        print('e.message:%s\t' % e.message)
+
+
 def install_pkg(env_root, bsp_root, pkg):
     """Install the required packages."""
 
@@ -246,12 +265,17 @@ def install_pkg(env_root, bsp_root, pkg):
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
-    if get_package_url != None:
+    upstream_change_flag = False
+    
+    #  determine whether the package package url is valid
+    if get_package_url != None and determine_url_valid(get_package_url):
         package_url = get_package_url
 
-    if get_ver_sha != None:
-        ver_sha = get_ver_sha
-
+        if get_ver_sha != None:
+            ver_sha = get_ver_sha
+            
+        upstream_change_flag = True
+        
     if package_url[-4:] == '.git':
         
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
@@ -263,8 +287,9 @@ def install_pkg(env_root, bsp_root, pkg):
         cmd = 'git checkout -q ' + ver_sha
         execute_command(cmd, cwd=repo_path)
         
-        cmd = 'git remote set-url origin ' + url_from_json
-        execute_command(cmd, cwd=repo_path)
+        if upstream_change_flag:
+            cmd = 'git remote set-url origin ' + url_from_json
+            execute_command(cmd, cwd=repo_path)
         
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
