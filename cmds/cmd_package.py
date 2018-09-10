@@ -222,6 +222,7 @@ def determine_url_valid(url_from_srv):
                 time.sleep(1)
                 r = requests.get(url_from_srv, stream=True, headers=headers)
                 if r.status_code == requests.codes.not_found:
+                    print("Warning : %s is invalid."%package_url)
                     return False
 
         return True
@@ -256,7 +257,7 @@ def install_pkg(env_root, bsp_root, pkg):
     pkgs_name_in_json = package.get_name()
     
     if not determine_url_valid(package_url):
-        print("Warning : %s is invalid, please check the json file."%package_url)
+        print("Please check the json file.")
         return False
         
     if package_url[-4:] == '.git':
