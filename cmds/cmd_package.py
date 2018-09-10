@@ -272,20 +272,19 @@ def install_pkg(env_root, bsp_root, pkg):
 
     get_package_url = None
     get_ver_sha = None
+    upstream_change_flag = False
 
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
-
-    upstream_change_flag = False
+ 
+        #  determine whether the package package url is valid
+        if get_package_url != None and determine_url_valid(get_package_url):
+            package_url = get_package_url
     
-    #  determine whether the package package url is valid
-    if get_package_url != None and determine_url_valid(get_package_url):
-        package_url = get_package_url
-
-        if get_ver_sha != None:
-            ver_sha = get_ver_sha
-            
-        upstream_change_flag = True
+            if get_ver_sha != None:
+                ver_sha = get_ver_sha
+                
+            upstream_change_flag = True
         
     if package_url[-4:] == '.git':
         
