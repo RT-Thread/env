@@ -132,7 +132,7 @@ def modify_submod_file_to_mirror(submod_path):
                     get_package_url, get_ver_sha = get_url_from_mirror_server(
                         query_submodule_name, 'latest')
 
-                    if get_package_url != None:
+                    if get_package_url != None and determine_url_valid(get_package_url):
                         replace_list.append(
                             (submod_git_url, replace_url, submodule_name))
 
