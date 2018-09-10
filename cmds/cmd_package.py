@@ -215,14 +215,20 @@ def determine_url_valid(url_from_srv):
 
     try:
         r = requests.get(url_from_srv, stream=True, headers=headers)
+        if r.status_code == requests.codes.not_found:
+            time.sleep(1)
+            r = requests.get(url_from_srv, stream=True, headers=headers)
+            if r.status_code == requests.codes.not_found:
+                time.sleep(1)
+                r = requests.get(url_from_srv, stream=True, headers=headers)
+                if r.status_code == requests.codes.not_found:
+                    return False
 
-        if r.status_code == 200:
-            return True
-        else:
-            return False
+        return True
 
     except Exception, e:
-        print('e.message:%s\t' % e.message)
+#         print('e.message:%s\t' % e.message)
+        print('Running link address reliability check.')
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -248,7 +254,11 @@ def install_pkg(env_root, bsp_root, pkg):
     package_url = package.get_url(pkg['ver'])
     #package_name = pkg['name']
     pkgs_name_in_json = package.get_name()
-
+    
+    if not determine_url_valid(package_url):
+        print("Warning : %s is invalid, please check the json file."%package_url)
+        return False
+        
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
 
