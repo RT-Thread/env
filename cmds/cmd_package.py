@@ -229,7 +229,7 @@ def determine_url_valid(url_from_srv):
 
     except Exception, e:
 #         print('e.message:%s\t' % e.message)
-        print('Running link address reliability check.')
+        print('Network connection error or the url : %s is invalid.\n'%url_from_srv)
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -256,9 +256,9 @@ def install_pkg(env_root, bsp_root, pkg):
     #package_name = pkg['name']
     pkgs_name_in_json = package.get_name()
     
-    if not determine_url_valid(package_url):
-        print("Please check the json file.")
-        return False
+#     if not determine_url_valid(package_url):
+#         print("Please check the json file.")
+#         return False
         
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
