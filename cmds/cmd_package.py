@@ -202,8 +202,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
     except Exception, e:
         print('e.message:%s\t' % e.message)
-        print(
-            "The server could not be contacted. Please check your network connection.")
+        print("The server could not be contacted. Please check your network connection.")
 
 
 def determine_url_valid(url_from_srv):
@@ -214,22 +213,21 @@ def determine_url_valid(url_from_srv):
                'User-Agent': 'curl/7.54.0'}
 
     try:
-        r = requests.get(url_from_srv, stream=True, headers=headers)
-        if r.status_code == requests.codes.not_found:
-            time.sleep(1)
+        for i in range(0, 3):
             r = requests.get(url_from_srv, stream=True, headers=headers)
             if r.status_code == requests.codes.not_found:
-                time.sleep(1)
-                r = requests.get(url_from_srv, stream=True, headers=headers)
-                if r.status_code == requests.codes.not_found:
-                    print("Warning : %s is invalid."%package_url)
+                if i == 2:
+                    print("Warning : %s is invalid." % package_url)
                     return False
+                time.sleep(1)
+            else:
+                break
 
         return True
 
     except Exception, e:
-#         print('e.message:%s\t' % e.message)
-        print('Network connection error or the url : %s is invalid.\n'%url_from_srv)
+        #         print('e.message:%s\t' % e.message)
+        print('Network connection error or the url : %s is invalid.\n' % url_from_srv)
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -255,11 +253,7 @@ def install_pkg(env_root, bsp_root, pkg):
     package_url = package.get_url(pkg['ver'])
     #package_name = pkg['name']
     pkgs_name_in_json = package.get_name()
-    
-#     if not determine_url_valid(package_url):
-#         print("Please check the json file.")
-#         return False
-        
+
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
 
@@ -276,31 +270,31 @@ def install_pkg(env_root, bsp_root, pkg):
 
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
- 
+
         #  determine whether the package package url is valid
         if get_package_url != None and determine_url_valid(get_package_url):
             package_url = get_package_url
-    
+
             if get_ver_sha != None:
                 ver_sha = get_ver_sha
-                
+
             upstream_change_flag = True
-        
+
     if package_url[-4:] == '.git':
-        
+
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         repo_path = repo_path + '-' + pkg['ver']
-        
+
         cmd = 'git clone ' + package_url + ' ' + repo_path
         execute_command(cmd, cwd=bsp_pkgs_path)
-        
+
         cmd = 'git checkout -q ' + ver_sha
         execute_command(cmd, cwd=repo_path)
-        
+
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
             execute_command(cmd, cwd=repo_path)
-        
+
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
