@@ -217,7 +217,7 @@ def determine_url_valid(url_from_srv):
             r = requests.get(url_from_srv, stream=True, headers=headers)
             if r.status_code == requests.codes.not_found:
                 if i == 2:
-                    print("Warning : %s is invalid." % package_url)
+                    print("Warning : %s is invalid." % url_from_srv)
                     return False
                 time.sleep(1)
             else:
