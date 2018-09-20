@@ -29,11 +29,22 @@ import kconfig
 import pkgsdb
 import shutil
 import platform
-import requests
 import subprocess
 import time
 import logging
 import sys
+
+try:
+    import requests
+except ImportError:
+    print("****************************************\n"
+          "* Import requests module error.\n"
+          "* Please install requests module first.\n"
+          "* pip install step:\n"
+          "* $ pip install requests\n"
+          "* command install step:\n"
+          "* $ sudo apt-get install python-requests\n"
+          "****************************************\n")
 
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
@@ -132,7 +143,7 @@ def modify_submod_file_to_mirror(submod_path):
                     get_package_url, get_ver_sha = get_url_from_mirror_server(
                         query_submodule_name, 'latest')
 
-                    if get_package_url != None:
+                    if get_package_url != None and determine_url_valid(get_package_url):
                         replace_list.append(
                             (submod_git_url, replace_url, submodule_name))
 
@@ -202,8 +213,32 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
     except Exception, e:
         print('e.message:%s\t' % e.message)
-        print(
-            "The server could not be contacted. Please check your network connection.")
+        print("The server could not be contacted. Please check your network connection.")
+
+
+def determine_url_valid(url_from_srv):
+
+    headers = {'Connection': 'keep-alive',
+               'Accept-Encoding': 'gzip, deflate',
+               'Accept': '*/*',
+               'User-Agent': 'curl/7.54.0'}
+
+    try:
+        for i in range(0, 3):
+            r = requests.get(url_from_srv, stream=True, headers=headers)
+            if r.status_code == requests.codes.not_found:
+                if i == 2:
+                    print("Warning : %s is invalid." % url_from_srv)
+                    return False
+                time.sleep(1)
+            else:
+                break
+
+        return True
+
+    except Exception, e:
+        #         print('e.message:%s\t' % e.message)
+        print('Network connection error or the url : %s is invalid.\n' % url_from_srv)
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -242,41 +277,34 @@ def install_pkg(env_root, bsp_root, pkg):
 
     get_package_url = None
     get_ver_sha = None
+    upstream_change_flag = False
 
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
-    if get_package_url != None:
-        package_url = get_package_url
+        #  determine whether the package package url is valid
+        if get_package_url != None and determine_url_valid(get_package_url):
+            package_url = get_package_url
 
-    if get_ver_sha != None:
-        ver_sha = get_ver_sha
+            if get_ver_sha != None:
+                ver_sha = get_ver_sha
 
-    beforepath = os.getcwd()
-
-    # print(package_url)
+            upstream_change_flag = True
 
     if package_url[-4:] == '.git':
+
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         repo_path = repo_path + '-' + pkg['ver']
+
         cmd = 'git clone ' + package_url + ' ' + repo_path
-        os.system(cmd)
-        os.chdir(repo_path)
+        execute_command(cmd, cwd=bsp_pkgs_path)
 
-#         #print("Checkout SHA : %s"%ver_sha)
-#         cmd = 'git reset --hard ' + ver_sha
-#         os.system(cmd)
+        cmd = 'git checkout -q ' + ver_sha
+        execute_command(cmd, cwd=repo_path)
 
-#         print("cwd : %s"%os.getcwd())
-#         print("repo_path : %s"%repo_path)
-
-        if os.getcwd() != repo_path:
-            print("Error : Can't find dir : repo_path.\n %s download fail.",
-                  pkgs_name_in_json)
-            return
-
-        cmd = 'git checkout ' + ver_sha
-        os.system(cmd)
+        if upstream_change_flag:
+            cmd = 'git remote set-url origin ' + url_from_json
+            execute_command(cmd, cwd=repo_path)
 
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
@@ -288,8 +316,7 @@ def install_pkg(env_root, bsp_root, pkg):
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
-            if not os.system(cmd):
-                print("Submodule update successful")
+            execute_command(cmd, cwd=repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
@@ -299,15 +326,10 @@ def install_pkg(env_root, bsp_root, pkg):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        cmd = 'git remote set-url origin ' + url_from_json
-        os.system(cmd)
-
         if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
-                os.system(cmd)
-
-        os.chdir(beforepath)
+                execute_command(cmd, cwd=repo_path)
 
     else:
         # Download a package of compressed package type.
