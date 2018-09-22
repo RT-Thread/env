@@ -950,12 +950,6 @@ def package_wizard():
     f.write(package)
     f.close()
 
-    s = Template(Sconscript_file)
-    sconscript = s.substitute(name=name)
-    f = file(os.path.join(pkg_path, 'SConscript'), 'wb')
-    f.write(sconscript)
-    f.close()
-
     print ('\nThe package index was created successfully.')
 
 
