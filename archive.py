@@ -33,8 +33,6 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
 
     flag = True
     
-    #print(pkg)
-    
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
         for tarinfo in arch:
@@ -42,8 +40,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
                 right_path = a.replace('/', '\\')
-                a = os.path.join(os.path.split(right_path)[
-                                 0], os.path.split(right_path)[1])
+                a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
                 pkgsdb.savetodb(a, archive_fn)
         arch.close()
 
@@ -54,8 +51,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
                 right_path = a.replace('/', '\\')
-                a = os.path.join(os.path.split(right_path)[
-                                 0], os.path.split(right_path)[1])
+                a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
                 pkgsdb.savetodb(a, archive_fn)
         arch.close()
 
@@ -71,19 +67,14 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
                     change_dirname = pkgs_name_in_json + '-' + pkg['ver']
                     flag = False
     
-                right_name_to_db = right_path.replace(
-                    dir_name, change_dirname, 1)
-                #print(right_name_to_db)
+                right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
                 pkgsdb.savetodb(right_name_to_db, archive_fn, right_path)
         arch.close()
         
-    #Change the folder name
+    # Change the folder name
     
     change_dirname = pkgs_name_in_json + '-' + pkg['ver']
-    #print(os.path.join(path, dir_name))
-    #print(os.path.join(path, change_dirname))
-    #print(pkgs_name_in_json)
-    
+
     if os.path.isdir(os.path.join(path, change_dirname)):
         cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
         os.system(cmd)
@@ -96,7 +87,7 @@ def packtest(path):
     if ".zip" in path:
         try:
             if zipfile.is_zipfile(path):
-            # test zip again to make sure it's a right zip file.
+                # Test zip again to make sure it's a right zip file.
                 arch = zipfile.ZipFile(path, "r")
                 if arch.testzip():
                     ret = False
@@ -105,7 +96,7 @@ def packtest(path):
                 ret = False
                 print('package check error. \n')
         except Exception, e:
-            print('packtest e.message:%s\t'%e.message)
+            print('packtest e.message:%s\t' % e.message)
 #             arch.close()
             print("The archive package is broken. \n")
             ret = False
@@ -113,15 +104,15 @@ def packtest(path):
     if ".tar.bz2" in path:
         try:
             if not tarfile.is_tarfile(path):
-                ret = False                    
+                ret = False
         except Exception, e:
             ret = False
 
     if ".tar.gz" in path:
         try:
             if not tarfile.is_tarfile(path):
-                ret = False                    
+                ret = False
         except Exception, e:
             ret = False
-                    
+
     return ret
