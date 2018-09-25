@@ -32,6 +32,7 @@ import platform
 import subprocess
 import time
 import logging
+import archive
 import sys
 
 try:
@@ -343,7 +344,12 @@ def install_pkg(env_root, bsp_root, pkg):
         pkg_fullpath = os.path.join(
             local_pkgs_path, package.get_filename(pkg['ver']))
         #print("pkg_fullpath: %s"%pkg_fullpath)
-
+        
+        if not archive.packtest(pkg_fullpath):
+            print("The archive package is broken.")
+            ret = False
+            return ret
+            
         # unpack package
         if not os.path.exists(pkg_dir):
             package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json)

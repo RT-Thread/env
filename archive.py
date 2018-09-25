@@ -103,7 +103,7 @@ def packtest(path):
                 arch.close()                    
         except Exception, e:
             print('e.message:%s\t'%e.message)
-            arch.close()
+#             arch.close()
             ret = False
                 
     if ".tar.bz2" in path:
