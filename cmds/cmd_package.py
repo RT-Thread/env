@@ -349,11 +349,16 @@ def install_pkg(env_root, bsp_root, pkg):
             print("The archive package is broken.")
             ret = False
             return ret
-            
+             
         # unpack package
         if not os.path.exists(pkg_dir):
-            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json)
-            ret = True
+            try:
+                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                    ret = False
+            except Exception, e:
+                os.remove(pkg_fullpath)
+                ret = False
+                print('e.message: %s\t' % e.message)
 
     return ret
 
@@ -641,7 +646,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
             print ("Packages:%s,%s redownloed error,you need to use <pkgs --update> command again to redownload them." %
-                   pkg['name'], pkg['ver'])
+                   (pkg['name'], pkg['ver']))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
