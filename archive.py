@@ -100,12 +100,16 @@ def packtest(path):
                 arch = zipfile.ZipFile(path, "r")
                 if arch.testzip():
                     ret = False
-                arch.close()                    
+                arch.close()
+            else:
+                ret = False
+                print('package check error. \n')
         except Exception, e:
-            print('e.message:%s\t'%e.message)
+            print('packtest e.message:%s\t'%e.message)
 #             arch.close()
+            print("The archive package is broken. \n")
             ret = False
-                
+
     if ".tar.bz2" in path:
         try:
             if not tarfile.is_tarfile(path):

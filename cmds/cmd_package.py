@@ -335,21 +335,15 @@ def install_pkg(env_root, bsp_root, pkg):
     else:
         # Download a package of compressed package type.
         if not package.download(pkg['ver'], local_pkgs_path, package_url):
-            ret = False
-            return ret
+            return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
+        pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        pkg_fullpath = os.path.join(
-            local_pkgs_path, package.get_filename(pkg['ver']))
-        #print("pkg_fullpath: %s"%pkg_fullpath)
-        
         if not archive.packtest(pkg_fullpath):
-            print("The archive package is broken.")
-            ret = False
-            return ret
-             
+            return False
+     
         # unpack package
         if not os.path.exists(pkg_dir):
             try:
@@ -636,7 +630,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
-                print("==============================>  %s %s is redownloaded successfully. \n" % (
+                print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'], pkg['ver']))
             else:
                 error_packages_redownload_error_list.append(pkg)
@@ -645,7 +639,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use <pkgs --update> command again to redownload them." %
+            print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
                    (pkg['name'], pkg['ver']))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)

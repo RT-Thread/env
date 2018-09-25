@@ -227,7 +227,7 @@ class Package:
             archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
             return True
         except Exception, e:
-            print('e.message:%s\t' % e.message)
+            print('unpack e.message:%s\t' % e.message)
             print('unpack %s failed' % os.path.basename(fullpkg_path))
             os.remove(fullpkg_path)
             return False
