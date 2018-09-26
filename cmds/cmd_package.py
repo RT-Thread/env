@@ -32,6 +32,7 @@ import platform
 import subprocess
 import time
 import logging
+import archive
 import sys
 
 try:
@@ -334,20 +335,24 @@ def install_pkg(env_root, bsp_root, pkg):
     else:
         # Download a package of compressed package type.
         if not package.download(pkg['ver'], local_pkgs_path, package_url):
-            ret = False
-            return ret
+            return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
+        pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        pkg_fullpath = os.path.join(
-            local_pkgs_path, package.get_filename(pkg['ver']))
-        #print("pkg_fullpath: %s"%pkg_fullpath)
-
+        if not archive.packtest(pkg_fullpath):
+            return False
+     
         # unpack package
         if not os.path.exists(pkg_dir):
-            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json)
-            ret = True
+            try:
+                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                    ret = False
+            except Exception, e:
+                os.remove(pkg_fullpath)
+                ret = False
+                print('e.message: %s\t' % e.message)
 
     return ret
 
@@ -625,7 +630,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
-                print("==============================>  %s %s is redownloaded successfully. \n" % (
+                print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'], pkg['ver']))
             else:
                 error_packages_redownload_error_list.append(pkg)
@@ -634,8 +639,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use <pkgs --update> command again to redownload them." %
-                   pkg['name'], pkg['ver'])
+            print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
+                   (pkg['name'], pkg['ver']))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
@@ -948,12 +953,6 @@ def package_wizard():
         name=name, description=description, version=ver, keyword=keyword)
     f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
-    f.close()
-
-    s = Template(Sconscript_file)
-    sconscript = s.substitute(name=name)
-    f = file(os.path.join(pkg_path, 'SConscript'), 'wb')
-    f.write(sconscript)
     f.close()
 
     print ('\nThe package index was created successfully.')
