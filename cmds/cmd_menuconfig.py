@@ -194,6 +194,7 @@ def cmd(args):
     elif args.menuconfig_silent:
         if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig -n')
+            mk_rtconfig(fn)
         else:
             if os.path.isfile(kconfig_win7_path):
                 os.system('kconfig-mconf_win7 Kconfig -n')
