@@ -524,7 +524,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                       (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json))
+                  (pkgs_name_in_json.encode("utf-8")))
 
 
 def pre_package_update():
@@ -555,13 +555,15 @@ def pre_package_update():
     # prepare target packages file
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
-
+    dbsqlite_pathname = dbsqlite_pathname.decode('gbk')
+ 
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
+        print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
@@ -672,7 +674,7 @@ def rm_package(dir):
             print ("Folder path: %s" % dir)
             return False
     else:
-        print ("Path: %s \nSuccess: Folder has been removed. " % dir)
+        print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
         return True
 
 
@@ -788,7 +790,7 @@ def package_update(isDeleteOld=False):
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s, please wait...\n" % gitdir)
+            print ("\nStart to remove %s, please wait...\n" % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir)

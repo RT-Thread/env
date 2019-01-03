@@ -235,6 +235,8 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
+    os.system('chcp 65001')
+    
     if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
         fn = os.path.join(env_kconfig_path, '.config')
