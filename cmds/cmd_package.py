@@ -270,10 +270,10 @@ def install_pkg(env_root, bsp_root, pkg):
         ver_sha = package.get_versha(pkg['ver'])
 
     # print("==================================================>")
-    # print "packages name:",pkgs_name_in_json
+    # print "packages name:",pkgs_name_in_json.encode("utf-8")
     # print "ver:",pkg['ver']
-    # print "url:",package_url
-    # print "url_from_json: ",url_from_json
+    # print "url:",package_url.encode("utf-8")
+    # print "url_from_json: ",url_from_json.encode("utf-8")
     # print("==================================================>")
 
     get_package_url = None
@@ -334,26 +334,29 @@ def install_pkg(env_root, bsp_root, pkg):
 
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path, package_url):
+        if not package.download(pkg['ver'], local_pkgs_path.decode("gbk"), package_url):
             return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
         pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(pkg_fullpath):
+        if not archive.packtest(pkg_fullpath.encode("gbk")):
+            print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
             return False
      
         # unpack package
-        if not os.path.exists(pkg_dir):
+        if not os.path.exists(pkg_dir.encode("gbk")):
+
             try:
-                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
                     ret = False
             except Exception, e:
                 os.remove(pkg_fullpath)
                 ret = False
                 print('e.message: %s\t' % e.message)
-
+        else:
+            print("The file does not exist.")
     return ret
 
 
@@ -810,7 +813,7 @@ def package_update(isDeleteOld=False):
                               ("Delete folder failed: ", gitdir, e.message))
         else:
             if os.path.isdir(removepath_ver):
-                print("Start to remove %s, please wait...\n" % removepath_ver)
+                print("Start to remove %s, please wait...\n" % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
                 except Exception, e:
