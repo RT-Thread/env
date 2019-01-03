@@ -629,14 +629,14 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print pkg['name'], pkg['ver']
+            print pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
-                    pkg['name'], pkg['ver']))
+                    pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
                 print pkg, 'download failed.'
@@ -793,7 +793,7 @@ def package_update(isDeleteOld=False):
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s, please wait...\n" % gitdir.encode("utf-8"))
+            print ("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir)
@@ -813,7 +813,7 @@ def package_update(isDeleteOld=False):
                               ("Delete folder failed: ", gitdir, e.message))
         else:
             if os.path.isdir(removepath_ver):
-                print("Start to remove %s, please wait...\n" % removepath_ver.encode("utf-8"))
+                print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
                 except Exception, e:
