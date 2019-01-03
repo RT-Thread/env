@@ -962,16 +962,6 @@ def package_wizard():
     while license_class == '' :
         print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
         license_class = raw_input()  
-        
-#    while license_class == '' or license_class.isdigit()== False or int(license_class) < 1 or int(license_class) >4:
-#        if license_class == '' :
-#            print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-#        elif license_class.isdigit()== False :
-#            print ('\033[1;31;40mError:You must input a integer number from 1 to 4.\033[0m')
-#        else :    
-#            print ('\033[1;31;40mError: input out of the bound. You must input a integer number from 1 to 4.\033[0m')
-#
-#        license_class = raw_input()   
 
     if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
         license = license_index[int(license_class) - 1]
