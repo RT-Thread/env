@@ -185,6 +185,8 @@ def cmd(args):
     else:
         mtime = -1
 
+    os.system('chcp 437')
+
     if args.menuconfig_fn:
         print 'use', args.menuconfig_fn
         import shutil
