@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
+# 2018-12-28     Ernest Chen     Add package information and enjoy package maker
 #
 
 import os
@@ -893,52 +894,94 @@ def package_update(isDeleteOld=False):
         print ("Operation completed successfully.")
     else:
         print ("Operation failed.")
-
-
+        
 def package_wizard():
     """Packages creation wizard.
 
     The user enters the package name, version number, category, and automatically generates the package index file.
     """
-
-    print ('Welcome to using package wizard, please enter the package information.')
-    print ('The messages in [] is default setting. Press enter to use the default settings.')
-    print ('Please enter package name:')
+    # Welcome
+    print ('\033[4;32;40mWelcome to using package wizard, please follow below steps.\033[0m\n')
+    
+    #Simple introduction about the wizard
+    print ('note :')
+    print ('      \033[5;35;40m[   ]\033[0m means default setting or optional information.')
+    print ('      \033[5;35;40mEnter\033[0m means using default option or ending and proceeding to the next step.') 
+    
+    #first step
+    print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
     name = raw_input()
-    if name == '':
-        print ('Error: you must enter the package name. Try again.\n')
-        return
+    while name == '' or name.isspace() == True :
+        print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
+        name = raw_input()
 
     default_description = 'a ' + name + ' package for rt-thread'
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
-    ver = user_input('Version of this package, default:\n', '1.0.0')
+    
+    #second step
+    ver = user_input('\033[5;33;40m\n2.Please input this package version, default :\033[0m', '1.0.0')
     ver_standard = ver.replace('.', '')
     #keyword = user_input('keyword,default:\n', name)
     keyword = name
 
+    #third step
     packageclass = ('iot', 'language', 'misc', 'multimedia',
                     'peripherals', 'security', 'system', 'tools')
-    print ('Please choose a class for your package. Such as 1 is an iot pacakge, 2 is a language package.')
-    print ("[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]")
-
+    print ('\033[5;33;40m\n3.Please choose a package category from 1 to 8 : \033[0m')
+    print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]\033[0m")
     classnu = raw_input()
-    if classnu == '':
-        print ('Error: you must choose a class for your package. Try again.\n')
-        return
+    while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >8:
+        if classnu == '' :
+            print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
+        else :    
+            print ('\033[1;31;40mError: You must input an integer number from 1 to 8. Try again.\033[0m')
+        classnu = raw_input()
+     
+    pkgsclass = packageclass[int(classnu) - 1]  
+ 
+    
+    #fourth step
+    print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
+    authorname = raw_input()
+    while authorname == '':
+        print ('\033[1;31;40mError: you must input author name of this package. Try again.\033[0m')
+        authorname = raw_input()
+    
+    #fifth step    
+    authoremail = raw_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
+    while authoremail == '':
+        print ('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
+        authoremail = raw_input()    
+    
+    #sixth step
+    print ('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
+    print ("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")       
+    license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
+    license_class = raw_input()
+    while license_class == '' :
+        print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
+        license_class = raw_input()  
 
-    if classnu >= '1' and classnu <= '8':
-        pkgsclass = packageclass[int(classnu) - 1]
-        # print pkgsclass
-    else:
-        print ('Error: input out of bound. You must enter the number from 1 to 8.')
-        return
+    if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
+        license = license_index[int(license_class) - 1]
+    else :
+        license = license_class   
+        
+    #seventh step       
+    print ('\033[5;33;40m\n7.Please input the repository of this package :\033[0m') 
+    print ("\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
+    
+    repository = raw_input()
+    while repository == '':
+        print ('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
+        repository = raw_input()         
 
     pkg_path = name
     if not os.path.exists(pkg_path):
         os.mkdir(pkg_path)
     else:
-        print ("Error: the package directory is exits!")
+        print ("\033[1;31;40mError: the package directory is exits!\033[0m")
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
@@ -949,14 +992,13 @@ def package_wizard():
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(
-        name=name, description=description, version=ver, keyword=keyword)
+    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description, version=ver, keyword=keyword,license=license, repository=repository)
     f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()
 
-    print ('\nThe package index was created successfully.')
-
+    print ('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
+    print ('Please \033[5;34;40mupdate\033[0m other information of this package based on Kconfig and package.json in directory '+name+'.')
 
 def upgrade_packages_index():
     """Update the package repository index."""
