@@ -295,17 +295,18 @@ def install_pkg(env_root, bsp_root, pkg):
     if package_url[-4:] == '.git':
 
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
-        repo_path = repo_path + '-' + pkg['ver']
+        repo_path__ = repo_path + '-' + pkg['ver']
 
+        repo_path = '"' + repo_path + '-' + pkg['ver'] + '"'
         cmd = 'git clone ' + package_url + ' ' + repo_path
         execute_command(cmd, cwd=bsp_pkgs_path)
 
         cmd = 'git checkout -q ' + ver_sha
-        execute_command(cmd, cwd=repo_path)
+        execute_command(cmd, cwd=repo_path__)
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
-            execute_command(cmd, cwd=repo_path)
+            execute_command(cmd, cwd=repo_path__)
 
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
@@ -317,7 +318,7 @@ def install_pkg(env_root, bsp_root, pkg):
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
-            execute_command(cmd, cwd=repo_path)
+            execute_command(cmd, cwd=repo_path__)
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
@@ -330,7 +331,7 @@ def install_pkg(env_root, bsp_root, pkg):
         if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
-                execute_command(cmd, cwd=repo_path)
+                execute_command(cmd, cwd=repo_path__)
 
     else:
         # Download a package of compressed package type.
@@ -663,6 +664,7 @@ def rm_package(dir):
     if platform.system() != "Windows":
         shutil.rmtree(dir)
     else:
+        dir = '"' +  dir + '"'
         cmd = 'rd /s /q ' + dir
         os.system(cmd)
 
@@ -670,6 +672,7 @@ def rm_package(dir):
         if platform.system() != "Windows":
             shutil.rmtree(dir)
         else:
+            dir = '"' +  dir + '"'
             cmd = 'rmdir /s /q ' + dir
             os.system(cmd)
 
