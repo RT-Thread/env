@@ -442,8 +442,8 @@ def update_submodule(repo_path):
         cmd = 'git submodule init -q'
         execute_command(cmd, cwd=repo_path)
         cmd = 'git submodule update'
-        if not os.system(cmd):
-            print("Submodule update successful")
+        execute_command(cmd, cwd=repo_path)
+        print("Submodule update successful")
 
 
 def get_pkg_folder_by_orign_path(orign_path, version):
