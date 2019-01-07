@@ -623,7 +623,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")
+            print("Packages name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
