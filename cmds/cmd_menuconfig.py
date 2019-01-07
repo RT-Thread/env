@@ -218,6 +218,10 @@ def cmd(args):
                 os.system('kconfig-mconf Kconfig')
 
         os.chdir(beforepath)
+
+        if platform.system() == "Windows":
+            os.system('chcp 65001 > nul')
+
         return
     else:
         if float(os_version) >= 6.2:
@@ -245,7 +249,6 @@ def cmd(args):
 
         if not os.path.isfile(fn):
             return
-
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
