@@ -29,11 +29,23 @@ import kconfig
 import pkgsdb
 import shutil
 import platform
-import requests
 import subprocess
 import time
 import logging
+import archive
 import sys
+
+try:
+    import requests
+except ImportError:
+    print("****************************************\n"
+          "* Import requests module error.\n"
+          "* Please install requests module first.\n"
+          "* pip install step:\n"
+          "* $ pip install requests\n"
+          "* command install step:\n"
+          "* $ sudo apt-get install python-requests\n"
+          "****************************************\n")
 
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
@@ -132,7 +144,7 @@ def modify_submod_file_to_mirror(submod_path):
                     get_package_url, get_ver_sha = get_url_from_mirror_server(
                         query_submodule_name, 'latest')
 
-                    if get_package_url != None:
+                    if get_package_url != None and determine_url_valid(get_package_url):
                         replace_list.append(
                             (submod_git_url, replace_url, submodule_name))
 
@@ -202,8 +214,32 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
     except Exception, e:
         print('e.message:%s\t' % e.message)
-        print(
-            "The server could not be contacted. Please check your network connection.")
+        print("The server could not be contacted. Please check your network connection.")
+
+
+def determine_url_valid(url_from_srv):
+
+    headers = {'Connection': 'keep-alive',
+               'Accept-Encoding': 'gzip, deflate',
+               'Accept': '*/*',
+               'User-Agent': 'curl/7.54.0'}
+
+    try:
+        for i in range(0, 3):
+            r = requests.get(url_from_srv, stream=True, headers=headers)
+            if r.status_code == requests.codes.not_found:
+                if i == 2:
+                    print("Warning : %s is invalid." % url_from_srv)
+                    return False
+                time.sleep(1)
+            else:
+                break
+
+        return True
+
+    except Exception, e:
+        #         print('e.message:%s\t' % e.message)
+        print('Network connection error or the url : %s is invalid.\n' % url_from_srv)
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -234,49 +270,43 @@ def install_pkg(env_root, bsp_root, pkg):
         ver_sha = package.get_versha(pkg['ver'])
 
     # print("==================================================>")
-    # print "packages name:",pkgs_name_in_json
+    # print "packages name:",pkgs_name_in_json.encode("utf-8")
     # print "ver:",pkg['ver']
-    # print "url:",package_url
-    # print "url_from_json: ",url_from_json
+    # print "url:",package_url.encode("utf-8")
+    # print "url_from_json: ",url_from_json.encode("utf-8")
     # print("==================================================>")
 
     get_package_url = None
     get_ver_sha = None
+    upstream_change_flag = False
 
     if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
-    if get_package_url != None:
-        package_url = get_package_url
+        #  determine whether the package package url is valid
+        if get_package_url != None and determine_url_valid(get_package_url):
+            package_url = get_package_url
 
-    if get_ver_sha != None:
-        ver_sha = get_ver_sha
+            if get_ver_sha != None:
+                ver_sha = get_ver_sha
 
-    beforepath = os.getcwd()
-
-    # print(package_url)
+            upstream_change_flag = True
 
     if package_url[-4:] == '.git':
+
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
-        repo_path = repo_path + '-' + pkg['ver']
+        repo_path__ = repo_path + '-' + pkg['ver']
+
+        repo_path = '"' + repo_path + '-' + pkg['ver'] + '"'
         cmd = 'git clone ' + package_url + ' ' + repo_path
-        os.system(cmd)
-        os.chdir(repo_path)
+        execute_command(cmd, cwd=bsp_pkgs_path)
 
-#         #print("Checkout SHA : %s"%ver_sha)
-#         cmd = 'git reset --hard ' + ver_sha
-#         os.system(cmd)
+        cmd = 'git checkout -q ' + ver_sha
+        execute_command(cmd, cwd=repo_path__)
 
-#         print("cwd : %s"%os.getcwd())
-#         print("repo_path : %s"%repo_path)
-
-        if os.getcwd() != repo_path:
-            print("Error : Can't find dir : repo_path.\n %s download fail.",
-                  pkgs_name_in_json)
-            return
-
-        cmd = 'git checkout ' + ver_sha
-        os.system(cmd)
+        if upstream_change_flag:
+            cmd = 'git remote set-url origin ' + url_from_json
+            execute_command(cmd, cwd=repo_path__)
 
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
@@ -288,8 +318,7 @@ def install_pkg(env_root, bsp_root, pkg):
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
-            if not os.system(cmd):
-                print("Submodule update successful")
+            execute_command(cmd, cwd=repo_path__)
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
@@ -299,34 +328,36 @@ def install_pkg(env_root, bsp_root, pkg):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        cmd = 'git remote set-url origin ' + url_from_json
-        os.system(cmd)
-
         if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
-                os.system(cmd)
-
-        os.chdir(beforepath)
+                execute_command(cmd, cwd=repo_path__)
 
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path, package_url):
-            ret = False
-            return ret
+        if not package.download(pkg['ver'], local_pkgs_path.decode("gbk"), package_url):
+            return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
+        pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        pkg_fullpath = os.path.join(
-            local_pkgs_path, package.get_filename(pkg['ver']))
-        #print("pkg_fullpath: %s"%pkg_fullpath)
-
+        if not archive.packtest(pkg_fullpath.encode("gbk")):
+            print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
+            return False
+     
         # unpack package
-        if not os.path.exists(pkg_dir):
-            package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json)
-            ret = True
+        if not os.path.exists(pkg_dir.encode("gbk")):
 
+            try:
+                if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
+                    ret = False
+            except Exception, e:
+                os.remove(pkg_fullpath)
+                ret = False
+                print('e.message: %s\t' % e.message)
+        else:
+            print("The file does not exist.")
     return ret
 
 
@@ -473,9 +504,6 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 mirror_url = get_url_from_mirror_server(
                     payload_pkgs_name_in_json, pkg['ver'])
 
-                # print(os.getcwd())
-                # print(repo_path)
-
                 if mirror_url[0] != None:
                     cmd = 'git remote set-url origin ' + mirror_url[0]
                     git_cmd_exec(cmd, repo_path)
@@ -497,7 +525,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                       (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json))
+                  (pkgs_name_in_json.encode("utf-8")))
 
 
 def pre_package_update():
@@ -509,7 +537,7 @@ def pre_package_update():
             "Can't find file .config.Maybe your working directory isn't in bsp root now.")
         print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
         print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
-        return
+        return False
 
     bsp_packages_path = os.path.join(bsp_root, 'packages')
     if not os.path.exists(bsp_packages_path):
@@ -528,13 +556,15 @@ def pre_package_update():
     # prepare target packages file
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
-
+    dbsqlite_pathname = dbsqlite_pathname.decode('gbk')
+ 
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
+        print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
@@ -545,22 +575,19 @@ def pre_package_update():
 
     pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
 
+    # regenerate file : packages/pkgs.json 
     if not os.path.exists(pkgs_fn):
-        print ("Maybe you delete the file pkgs.json by mistake.")
-        print ("Do you want to create a new pkgs.json ?")
-        rc = raw_input('Press the Y Key to create a new pkgs.json.')
-        if rc == 'y' or rc == 'Y':
-            os.chdir(bsp_packages_path)
-            fp = open("pkgs.json", 'w')
-            fp.write("[]")
-            fp.close()
-            os.chdir(bsp_root)
-            print ("Create a new file pkgs.json done.")
+        os.chdir(bsp_packages_path)
+        fp = open("pkgs.json", 'w')
+        fp.write("[]")
+        fp.close()
+        os.chdir(bsp_root)
 
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
+    # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
         bsp_packages_path, 'pkgs_error.json')
 
@@ -570,7 +597,6 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-#         print ("Create a new error file : pkgs_error.json.")
 
     # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
@@ -597,14 +623,14 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print pkg['name'], pkg['ver']
+            print("Packages name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
-                print("==============================>  %s %s is redownloaded successfully. \n" % (
-                    pkg['name'], pkg['ver']))
+                print("==============================> %s %s is redownloaded successfully. \n" % (
+                    pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
                 print pkg, 'download failed.'
@@ -612,8 +638,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error,you need to use <pkgs --update> command again to redownload them." %
-                   pkg['name'], pkg['ver'])
+            print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
+                   (pkg['name'], pkg['ver']))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
@@ -631,6 +657,7 @@ def rm_package(dir):
     if platform.system() != "Windows":
         shutil.rmtree(dir)
     else:
+        dir = '"' +  dir + '"'
         cmd = 'rd /s /q ' + dir
         os.system(cmd)
 
@@ -638,6 +665,7 @@ def rm_package(dir):
         if platform.system() != "Windows":
             shutil.rmtree(dir)
         else:
+            dir = '"' +  dir + '"'
             cmd = 'rmdir /s /q ' + dir
             os.system(cmd)
 
@@ -645,7 +673,7 @@ def rm_package(dir):
             print ("Folder path: %s" % dir)
             return False
     else:
-        print ("Path: %s \nSuccess: Folder has been removed. " % dir)
+        print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
         return True
 
 
@@ -715,7 +743,12 @@ def package_update(isDeleteOld=False):
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
+
     sys_value = pre_package_update()
+
+    if not sys_value:
+        return
+
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
     pkgs_delete_error_list = sys_value[2]
@@ -761,7 +794,7 @@ def package_update(isDeleteOld=False):
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s, please wait...\n" % gitdir)
+            print ("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir)
@@ -781,7 +814,7 @@ def package_update(isDeleteOld=False):
                               ("Delete folder failed: ", gitdir, e.message))
         else:
             if os.path.isdir(removepath_ver):
-                print("Start to remove %s, please wait...\n" % removepath_ver)
+                print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
                 except Exception, e:
@@ -928,17 +961,12 @@ def package_wizard():
     f.write(package)
     f.close()
 
-    s = Template(Sconscript_file)
-    sconscript = s.substitute(name=name)
-    f = file(os.path.join(pkg_path, 'SConscript'), 'wb')
-    f.write(sconscript)
-    f.close()
-
     print ('\nThe package index was created successfully.')
 
 
 def upgrade_packages_index():
     """Update the package repository index."""
+    
     env_root = Import('env_root')
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')

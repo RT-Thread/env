@@ -55,6 +55,8 @@ def main():
     if env_root == None:
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
+        else:
+            env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
 
     sys.path = sys.path + [os.path.join(script_root)]
 

@@ -185,6 +185,8 @@ def cmd(args):
     else:
         mtime = -1
 
+    os.system('chcp 437  > nul')
+
     if args.menuconfig_fn:
         print 'use', args.menuconfig_fn
         import shutil
@@ -194,6 +196,7 @@ def cmd(args):
     elif args.menuconfig_silent:
         if float(os_version) >= 6.2:
             os.system('kconfig-mconf Kconfig -n')
+            mk_rtconfig(fn)
         else:
             if os.path.isfile(kconfig_win7_path):
                 os.system('kconfig-mconf_win7 Kconfig -n')
@@ -232,6 +235,8 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
+    os.system('chcp 65001 > nul')
+    
     if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
         fn = os.path.join(env_kconfig_path, '.config')
