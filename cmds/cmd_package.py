@@ -578,22 +578,19 @@ def pre_package_update():
 
     pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
 
+    # regenerate file : packages/pkgs.json 
     if not os.path.exists(pkgs_fn):
-        print ("Maybe you delete the file pkgs.json by mistake.")
-        print ("Do you want to create a new pkgs.json ?")
-        rc = raw_input('Press the Y Key to create a new pkgs.json.')
-        if rc == 'y' or rc == 'Y':
-            os.chdir(bsp_packages_path)
-            fp = open("pkgs.json", 'w')
-            fp.write("[]")
-            fp.close()
-            os.chdir(bsp_root)
-            print ("Create a new file pkgs.json done.")
+        os.chdir(bsp_packages_path)
+        fp = open("pkgs.json", 'w')
+        fp.write("[]")
+        fp.close()
+        os.chdir(bsp_root)
 
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
+    # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
         bsp_packages_path, 'pkgs_error.json')
 
@@ -603,7 +600,6 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-#         print ("Create a new error file : pkgs_error.json.")
 
     # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
