@@ -295,30 +295,33 @@ def install_pkg(env_root, bsp_root, pkg):
     if package_url[-4:] == '.git':
 
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
-        repo_path__ = repo_path + '-' + pkg['ver']
+        repo_path = repo_path + '-' + pkg['ver']
+        repo_path_full = '"' + repo_path + '"'
 
-        repo_path = '"' + repo_path + '-' + pkg['ver'] + '"'
-        cmd = 'git clone ' + package_url + ' ' + repo_path
+        cmd = 'git clone ' + package_url + ' ' + repo_path_full
         execute_command(cmd, cwd=bsp_pkgs_path)
 
         cmd = 'git checkout -q ' + ver_sha
-        execute_command(cmd, cwd=repo_path__)
+        execute_command(cmd, cwd=repo_path)
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
-            execute_command(cmd, cwd=repo_path__)
+            execute_command(cmd, cwd=repo_path)
 
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
+            # print("开始更新软件包子模块")
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                # print("开启了镜像加速，开始修改 .gitmodules 文件")
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
+            # print("开始执行更新动作")
             cmd = 'git submodule update --init --recursive'
-            execute_command(cmd, cwd=repo_path__)
+            execute_command(cmd, cwd=repo_path)
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
                 if len(replace_list):
@@ -331,7 +334,7 @@ def install_pkg(env_root, bsp_root, pkg):
         if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
-                execute_command(cmd, cwd=repo_path__)
+                execute_command(cmd, cwd=repo_path)
 
     else:
         # Download a package of compressed package type.
@@ -623,7 +626,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print("Packages name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+            print("Package name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
