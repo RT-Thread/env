@@ -504,9 +504,6 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 mirror_url = get_url_from_mirror_server(
                     payload_pkgs_name_in_json, pkg['ver'])
 
-                # print(os.getcwd())
-                # print(repo_path)
-
                 if mirror_url[0] != None:
                     cmd = 'git remote set-url origin ' + mirror_url[0]
                     git_cmd_exec(cmd, repo_path)
@@ -540,7 +537,7 @@ def pre_package_update():
             "Can't find file .config.Maybe your working directory isn't in bsp root now.")
         print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
         print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
-        return
+        return False
 
     bsp_packages_path = os.path.join(bsp_root, 'packages')
     if not os.path.exists(bsp_packages_path):
@@ -746,7 +743,12 @@ def package_update(isDeleteOld=False):
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
+
     sys_value = pre_package_update()
+
+    if not sys_value:
+        return
+
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
     pkgs_delete_error_list = sys_value[2]
