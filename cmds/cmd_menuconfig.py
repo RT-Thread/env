@@ -20,7 +20,8 @@
 #
 # Change Logs:
 # Date           Author          Notes
-# 2018-5-28      SummerGift      Add copyright information
+# 2018-05-28     SummerGift      Add copyright information
+# 2019-01-07     SummerGift      The prompt supports utf-8 encoding
 #
 
 import os
