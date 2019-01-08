@@ -486,6 +486,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
 
 
 def pre_package_update():
+    """ Make preparations before updating the software package. """
 
     bsp_root = Import('bsp_root')
 
@@ -693,6 +694,10 @@ def package_update(isDeleteOld=False):
     Check if the files in the deleted packages have been changed, and if so, 
     remind the user saved the modified file.
     """
+
+    # change code page to 65001
+    if platform.system() == "Windows":
+        os.system('chcp 65001 > nul')
 
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
