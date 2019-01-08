@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
+# 2018-12-28     Ernest Chen     Add package information and enjoy package maker
 #
 
 import os
@@ -79,17 +80,36 @@ endif
 
 '''
 
-Package_json_file = '''
-{
-    "name": "${name}",
-    "description": "${description}",
-    "keywords": [
-        "${keyword}"
-    ],
-    "site" : [
-    {"version" : "v${version}", "URL" : "https://${name}-${version}.zip", "filename" : "${name}-${version}.zip","VER_SHA" : "fill in the git version SHA value"},
-    {"version" : "latest", "URL" : "https://xxxxx.git", "filename" : "Null for git package","VER_SHA" : "fill in latest version branch name, such as master"}
-    ]
+Package_json_file = '''{
+  "name": "${name}",
+  "description": "${description}",
+  "keywords": [
+    "${keyword}"
+  ],
+  "category": "${pkgsclass}",
+  "author": {
+    "name": "${authorname}",
+    "email": "${authoremail}"
+  },
+  "license": "${license}",
+  "repository": "${repository}",
+  "icon": "unknown",
+  "homepage": "unknown",
+  "doc": "unknown",
+  "site": [
+    {
+      "version": "v${version}",
+      "URL": "https://${name}-${version}.zip",
+      "filename": "${name}-${version}.zip",
+      "VER_SHA": "fill in the git version SHA value"
+    },
+    {
+      "version": "latest",
+      "URL": "https://xxxxx.git",
+      "filename": "Null for git package",
+      "VER_SHA": "fill in latest version branch name, such as master"
+    }
+  ]
 }
 '''
 
