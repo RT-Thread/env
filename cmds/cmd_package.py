@@ -345,7 +345,10 @@ def package_list():
     env_root = Import('env_root')
 
     if not os.path.isfile(fn):
-        print ('\n没有找到 .config 文件, 需要先使用 < menuconfig > 命令来配置 BSP。')
+        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ('No system configuration file : .config.')
+        print ('You should use < menuconfig > command to config bsp first.')
         return
 
     pkgs = kconfig.parse(fn)
@@ -491,7 +494,9 @@ def pre_package_update():
 
     if not os.path.exists('.config'):
         print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
-        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ('No system configuration file : .config.')
+        print ('You should use < menuconfig > command to config bsp first.')
         return False
 
     bsp_packages_path = os.path.join(bsp_root, 'packages')
