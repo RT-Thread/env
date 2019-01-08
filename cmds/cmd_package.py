@@ -491,7 +491,7 @@ def pre_package_update():
     bsp_root = Import('bsp_root')
 
     if not os.path.exists('.config'):
-        print ("当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
         print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。")
         return False
 
@@ -639,7 +639,6 @@ def get_package_remove_path(pkg, bsp_packages_path):
     if dirpath[0] == '/' or dirpath[0] == '\\':
         dirpath = dirpath[1:]
     dirpath = os.path.basename(dirpath.replace('/', '\\'))
-    # print "basename:",os.path.basename(dirpath)
     removepath = os.path.join(bsp_packages_path, dirpath)
 
     # Handles the deletion of git repository folders with version Numbers

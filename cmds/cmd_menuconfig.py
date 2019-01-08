@@ -163,21 +163,19 @@ def cmd(args):
 
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':
-            print ("menuconfig command should be used in a bsp root path with a Kconfig file, you should check if there is a Kconfig file in your bsp root first.")
-            print (
-                'And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
+            print("\nmenuconfig 命令应当在一个 BSP 的根目录下被执行，请确保当前目录为 BSP 根目录，并且根目录中有 Kconfig 文件。")
+            print("接下来你可以按照如下方式修改 Kconfig 文件：\n")
 
             print ('config $RTT_DIR')
             print ('string')
             print ('option env="RTT_ROOT"')
             print ('default "../.."\n')
-            print ('example:  default "F:/git_repositories/rt-thread"  \n')
+            print ('修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
 
-            print (
-                "using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
-            print ("you can ignore debug messages below.")
-            # if not args.menuconfig_easy:
-            #    return
+            print ('如果 scons 编译找不到 RTT_ROOT ，你可以使 <set RTT_ROOT=your_rtthread_root_path> 来设置 RTT_ROOT。')
+
+            if not args.menuconfig_easy:
+               return
 
     fn = '.config'
 
