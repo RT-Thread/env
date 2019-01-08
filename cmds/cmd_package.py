@@ -345,8 +345,7 @@ def package_list():
     env_root = Import('env_root')
 
     if not os.path.isfile(fn):
-        print ('No system configuration file : .config.')
-        print ('You should use < menuconfig > command to config bsp first.')
+        print ('\n没有找到 .config 文件, 需要先使用 < menuconfig > 命令来配置 BSP。')
         return
 
     pkgs = kconfig.parse(fn)
@@ -737,9 +736,7 @@ def package_update(isDeleteOld=False):
         removepath_ver = get_package_remove_path(pkg, bsp_packages_path)
         removepath_git = os.path.join(removepath_ver, '.git')
 
-        # print "removepath_git to delete",removepath_git
         # Delete. Git directory.
-
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
@@ -772,17 +769,12 @@ def package_update(isDeleteOld=False):
                         "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
 
     if len(pkgs_delete_fail_list):
-#         print("Packages deletion failed list: %s \n" %
-#               pkgs_delete_fail_list)
-
         # write error messages
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
         pkgs_file.close()
-
         return
     else:
-
         # write error messages
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
@@ -881,8 +873,7 @@ def package_wizard():
         classnu = raw_input()
      
     pkgsclass = packageclass[int(classnu) - 1]  
- 
-    
+
     #fourth step
     print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
     authorname = raw_input()

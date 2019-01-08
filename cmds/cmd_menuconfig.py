@@ -165,7 +165,6 @@ def cmd(args):
         if get_rtt_name != 'rt-thread':
             print("\nmenuconfig 命令应当在一个 BSP 的根目录下被执行，请确保当前目录为 BSP 根目录，并且根目录中有 Kconfig 文件。")
             print("接下来你可以按照如下方式修改 Kconfig 文件：\n")
-
             print ('config $RTT_DIR')
             print ('string')
             print ('option env="RTT_ROOT"')
