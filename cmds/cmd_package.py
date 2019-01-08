@@ -54,36 +54,6 @@ from vars import Import, Export
 from string import Template
 from cmd_menuconfig import find_macro_in_config
 
-
-class Logger:
-    def __init__(self, log_name, clevel=logging.DEBUG):
-        self.logger = logging.getLogger(log_name)
-        self.logger.setLevel(logging.DEBUG)
-        fmt = logging.Formatter(
-            '[%(levelname)s] %(message)s')
-
-        # set cmd log
-        sh = logging.StreamHandler()
-        sh.setFormatter(fmt)
-        sh.setLevel(clevel)
-        self.logger.addHandler(sh)
-
-    def debug(self, message):
-        self.logger.debug(message)
-
-    def info(self, message):
-        self.logger.info(message)
-
-    def war(self, message):
-        self.logger.warn(message)
-
-    def error(self, message):
-        self.logger.error(message)
-
-    def cri(self, message):
-        self.logger.critical(message)
-
-
 """package command"""
 
 def execute_command(cmdstring, cwd=None, shell=True):
@@ -251,8 +221,8 @@ def install_pkg(env_root, bsp_root, pkg):
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_pkgs_path = os.path.join(bsp_root, 'packages')
 
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     # get the .config file from env
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     package = Package()
@@ -264,17 +234,16 @@ def install_pkg(env_root, bsp_root, pkg):
 
     url_from_json = package.get_url(pkg['ver'])
     package_url = package.get_url(pkg['ver'])
-    #package_name = pkg['name']
     pkgs_name_in_json = package.get_name()
 
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
 
     # print("==================================================>")
-    # print "packages name:",pkgs_name_in_json.encode("utf-8")
-    # print "ver:",pkg['ver']
-    # print "url:",package_url.encode("utf-8")
-    # print "url_from_json: ",url_from_json.encode("utf-8")
+    # print("packages name :"%pkgs_name_in_json.encode("utf-8"))
+    # print("ver :"%pkg['ver']) 
+    # print("url :"%package_url.encode("utf-8")) 
+    # print("url_from_json : "%url_from_json.encode("utf-8"))
     # print("==================================================>")
 
     get_package_url = None
@@ -743,7 +712,6 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    pkgs_update_log = Logger('pkgs_update', logging.WARNING)
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
@@ -760,15 +728,6 @@ def package_update(isDeleteOld=False):
     pkgs_error_list_fn = sys_value[4]
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to remove packages]' % sys._getframe().f_lineno)
-    pkgs_update_log.info(
-        '[Line: %d][Message : oldpkgs: %s ]' % (sys._getframe().f_lineno, oldpkgs))
-    pkgs_update_log.info(
-        '[Line: %d][Message : newpkgs: %s ]' % (sys._getframe().f_lineno, newpkgs))
-    pkgs_update_log.info(
-        '[Line: %d][Message : pkgs_delete_error_list: %s ]' % (sys._getframe().f_lineno, pkgs_delete_error_list))
 
     if len(pkgs_delete_error_list):
         for error_package in pkgs_delete_error_list:
@@ -847,9 +806,6 @@ def package_update(isDeleteOld=False):
     # If the package download fails, record it, and then download again when
     # the update command is executed.
 
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to download packages]' % sys._getframe().f_lineno)
-
     casedownload = sub_list(newpkgs, oldpkgs)
     # print 'in new not in old:', casedownload
     pkgs_download_fail_list = []
@@ -865,16 +821,10 @@ def package_update(isDeleteOld=False):
             print pkg, 'download failed.'
             flag = False
 
-    pkgs_update_log.info(
-        '[Line: %d][Message : Get the list of packages that have been updated]' % sys._getframe().f_lineno)
-
     # Get the currently updated configuration.
     newpkgs = sub_list(newpkgs, pkgs_download_fail_list)
 
-    pkgs_update_log.info(
-        '[Line: %d][Message : Print the list of software packages that failed to download]' % sys._getframe().f_lineno)
     # Give hints based on the success of the download.
-
     if len(pkgs_download_fail_list):
         print("Package download failed pkgs_download_fail_list: %s \n" %
               pkgs_download_fail_list)
@@ -889,9 +839,6 @@ def package_update(isDeleteOld=False):
 
     if get_flag != None:
         flag = get_flag
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to update latest version packages]' % sys._getframe().f_lineno)
 
     # Update the software packages, which the version is 'latest'
     try:
