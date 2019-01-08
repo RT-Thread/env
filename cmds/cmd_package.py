@@ -490,10 +490,8 @@ def pre_package_update():
     bsp_root = Import('bsp_root')
 
     if not os.path.exists('.config'):
-        print (
-            "Can't find file .config.Maybe your working directory isn't in bsp root now.")
-        print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
-        print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
+        print ("当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。")
         return False
 
     bsp_packages_path = os.path.join(bsp_root, 'packages')
