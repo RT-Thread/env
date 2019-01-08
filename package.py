@@ -194,9 +194,7 @@ class Package:
                    'Accept': '*/*',
                    'User-Agent': 'curl/7.54.0'}
 
-        #print("download from server:" + url_from_srv)
-
-        print('Start to download package : %s ' % filename)
+        print('Start to download package : %s ' % filename.encode("utf-8"))
 
         while True:
             #print("retryCount : %d"%retryCount)
@@ -205,7 +203,7 @@ class Package:
 
                 flush_count = 0
 
-                with open(path, 'wb') as f:
+                with open(path.encode("gbk"), 'wb') as f:
                     for chunk in r.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
@@ -215,19 +213,19 @@ class Package:
                         sys.stdout.flush()
 
                 retryCount = retryCount + 1
-                if archive.packtest(path):  # make sure the file is right
+                if archive.packtest(path.encode("gbk")):  # make sure the file is right
                     ret = True
                     print("\rDownloded %d KB  " % flush_count)
                     print('Start to unpack. Please wait...')
                     break
                 else:
-                    if os.path.isfile(path):
-                        os.remove(path)
+                    if os.path.isfile(path.encode("gbk")):
+                        os.remove(path.encode("gbk"))
                     if retryCount > 5:
                         print(
                             "error: Have tried downloading 5 times.\nstop Downloading file :%s" % path)
-                        if os.path.isfile(path):
-                            os.remove(path)
+                        if os.path.isfile(path.encode("gbk")):
+                            os.remove(path.encode("gbk"))
                         ret = False
                         break
             except Exception, e:

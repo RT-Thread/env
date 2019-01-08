@@ -118,7 +118,7 @@ def savetodb(pathname, pkgspathname, before_change_name):
     bsp_root = Import('bsp_root')
     bsppkgs = os.path.join(bsp_root, 'packages')
 
-    conn = get_conn(dbpathname)
+    conn = get_conn(dbpathname.decode("gbk"))
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
     md5pathname = os.path.join(bsppkgs, before_change_name)

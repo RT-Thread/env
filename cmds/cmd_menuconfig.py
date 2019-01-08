@@ -20,7 +20,8 @@
 #
 # Change Logs:
 # Date           Author          Notes
-# 2018-5-28      SummerGift      Add copyright information
+# 2018-05-28     SummerGift      Add copyright information
+# 2019-01-07     SummerGift      The prompt supports utf-8 encoding
 #
 
 import os
@@ -156,27 +157,26 @@ def cmd(args):
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
     get_rtt_name = os.path.basename(dirname)
     os_version = platform.platform(True)[10:13]
-    # print os.path.split(currentdir)[1]
     kconfig_win7_path = os.path.join(
         env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':
-            print ("menuconfig command should be used in a bsp root path with a Kconfig file, you should check if there is a Kconfig file in your bsp root first.")
-            print (
-                'And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
+            print("\n<menuconfig> 命令应当在一个 BSP 的根目录下被执行，请确保当前目录为 BSP 根目录，并且根目录中有 Kconfig 文件。")
+            print("接下来你可以按照如下方式修改 Kconfig 文件：\n")
+
+            print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
+            print ("You should check if there is a Kconfig file in your bsp root first.")
+            print ('And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
 
             print ('config $RTT_DIR')
             print ('string')
             print ('option env="RTT_ROOT"')
             print ('default "../.."\n')
-            print ('example:  default "F:/git_repositories/rt-thread"  \n')
+            print ('例如修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
 
-            print (
-                "using command 'set RTT_ROOT=your_rtthread_root_path' to set RTT_ROOT is ok too.\n")
-            print ("you can ignore debug messages below.")
-            # if not args.menuconfig_easy:
-            #    return
+            if not args.menuconfig_easy:
+               return
 
     fn = '.config'
 
@@ -184,6 +184,9 @@ def cmd(args):
         mtime = os.path.getmtime(fn)
     else:
         mtime = -1
+
+    if platform.system() == "Windows":
+        os.system('chcp 437  > nul')
 
     if args.menuconfig_fn:
         print 'use', args.menuconfig_fn
@@ -215,6 +218,10 @@ def cmd(args):
                 os.system('kconfig-mconf Kconfig')
 
         os.chdir(beforepath)
+
+        if platform.system() == "Windows":
+            os.system('chcp 65001 > nul')
+
         return
     else:
         if float(os_version) >= 6.2:
@@ -234,12 +241,14 @@ def cmd(args):
         mk_rtconfig(fn)
 
     if platform.system() == "Windows":
+        os.system('chcp 65001 > nul')
+    
+    if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
         fn = os.path.join(env_kconfig_path, '.config')
 
         if not os.path.isfile(fn):
             return
-
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
