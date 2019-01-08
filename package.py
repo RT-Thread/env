@@ -194,9 +194,6 @@ class Package:
                    'Accept': '*/*',
                    'User-Agent': 'curl/7.54.0'}
 
-        #print("download from server:" + url_from_srv)
-
-
         print('Start to download package : %s ' % filename.encode("utf-8"))
 
         while True:

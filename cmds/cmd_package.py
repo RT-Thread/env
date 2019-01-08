@@ -340,30 +340,16 @@ def package_list():
     Read the.config file in the BSP directory, 
     and list the version number of the selected package.
     """
+
     fn = '.config'
     env_root = Import('env_root')
-#     bsp_root = Import('bsp_root')
-#     target_pkgs_path = os.path.join(bsp_root, 'packages')
-#     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.isfile(fn):
         print ('No system configuration file : .config.')
         print ('You should use < menuconfig > command to config bsp first.')
         return
 
-    # if not os.path.exists(target_pkgs_path):
-    #    try:
-    #        os.mkdir(target_pkgs_path)
-    #    except:
-    #        print 'mkdir packages directory failed'
-    #        return
-
     pkgs = kconfig.parse(fn)
-
-    # if not os.path.isfile(pkgs_fn):
-    #    pkgs_file = file(pkgs_fn, 'w')
-    #    pkgs_file.write(json.dumps(pkgs, indent=1))
-    #    pkgs_file.close()
 
     for pkg in pkgs:
         package = Package()
@@ -371,13 +357,11 @@ def package_list():
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
 
-        #pkg_path = pkg_path.replace('/', '\\')
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
 
         pkgs_name_in_json = package.get_name()
-        print pkgs_name_in_json, pkg['ver']
-        # print "package path:", pkg['path']
+        print ("package name : %s, ver : %s "%(pkgs_name_in_json.encode("utf-8"), pkg['ver'].encode("utf-8")))
 
     if not pkgs:
         print ("Packages list is empty.")
