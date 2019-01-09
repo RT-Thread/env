@@ -163,18 +163,19 @@ def cmd(args):
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':
             print("\n<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
-            print("请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。")
-            print("接下来你可以按照如下方式修改 Kconfig 文件：\n")
+            print("请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\n")
 
             print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
+            print ("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
             print ("You should check if there is a Kconfig file in your bsp root first.")
-            print ('And then you can check Kconfig file and modify the default option below to your rtthread root path.\n')
 
-            print ('config $RTT_DIR')
+            print ('\nconfig $RTT_DIR')
             print ('string')
             print ('option env="RTT_ROOT"')
             print ('default "../.."\n')
             print ('例如修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
+
+            print ('\n下面的警告信息提示与找不到正确的 Kconfig 文件有关：')
 
             # if not args.menuconfig_easy:
             #    return
@@ -237,7 +238,7 @@ def cmd(args):
         mtime2 = os.path.getmtime(fn)
     else:
         mtime2 = -1
-
+ 
     if mtime != mtime2:
         mk_rtconfig(fn)
 
