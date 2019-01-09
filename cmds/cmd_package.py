@@ -524,7 +524,7 @@ def pre_package_update():
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
-        print("Create dbsqlite done")
+        # print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
