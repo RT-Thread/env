@@ -230,10 +230,10 @@ class Package:
                         break
             except Exception, e:
                 #print url_from_srv
-                print('e.message:%s\t' % e.message)
+                # print('e.message:%s\t' % e.message)
                 retryCount = retryCount + 1
                 if retryCount > 5:
-                    print('%s download fail!' % path)
+                    print('%s download fail!\n' % path.decode("gbk").encode("utf-8"))
                     if os.path.isfile(path):
                         os.remove(path)
                     return False
