@@ -20,8 +20,9 @@
 #
 # Change Logs:
 # Date           Author          Notes
-# 2018-5-28      SummerGift      Add copyright information
+# 2018-05-28     SummerGift      Add copyright information
 # 2018-12-28     Ernest Chen     Add package information and enjoy package maker
+# 2019-01-07     SummerGift      The prompt supports utf-8 encoding
 #
 
 import os
@@ -53,38 +54,7 @@ from vars import Import, Export
 from string import Template
 from cmd_menuconfig import find_macro_in_config
 
-
-class Logger:
-    def __init__(self, log_name, clevel=logging.DEBUG):
-        self.logger = logging.getLogger(log_name)
-        self.logger.setLevel(logging.DEBUG)
-        fmt = logging.Formatter(
-            '[%(levelname)s] %(message)s')
-
-        # set cmd log
-        sh = logging.StreamHandler()
-        sh.setFormatter(fmt)
-        sh.setLevel(clevel)
-        self.logger.addHandler(sh)
-
-    def debug(self, message):
-        self.logger.debug(message)
-
-    def info(self, message):
-        self.logger.info(message)
-
-    def war(self, message):
-        self.logger.warn(message)
-
-    def error(self, message):
-        self.logger.error(message)
-
-    def cri(self, message):
-        self.logger.critical(message)
-
-
 """package command"""
-
 
 def execute_command(cmdstring, cwd=None, shell=True):
     """Execute the system command at the specified address."""
@@ -251,8 +221,8 @@ def install_pkg(env_root, bsp_root, pkg):
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_pkgs_path = os.path.join(bsp_root, 'packages')
 
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     # get the .config file from env
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     package = Package()
@@ -264,17 +234,16 @@ def install_pkg(env_root, bsp_root, pkg):
 
     url_from_json = package.get_url(pkg['ver'])
     package_url = package.get_url(pkg['ver'])
-    #package_name = pkg['name']
     pkgs_name_in_json = package.get_name()
 
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
 
     # print("==================================================>")
-    # print "packages name:",pkgs_name_in_json
-    # print "ver:",pkg['ver']
-    # print "url:",package_url
-    # print "url_from_json: ",url_from_json
+    # print("packages name :"%pkgs_name_in_json.encode("utf-8"))
+    # print("ver :"%pkg['ver']) 
+    # print("url :"%package_url.encode("utf-8")) 
+    # print("url_from_json : "%url_from_json.encode("utf-8"))
     # print("==================================================>")
 
     get_package_url = None
@@ -296,14 +265,15 @@ def install_pkg(env_root, bsp_root, pkg):
 
     except Exception, e:
         # print('e.message:%s\t' % e.message)
-        print("Failed to obtain mirror url, package will be downloaded from non-mirror server.")
+        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.")
 
     if package_url[-4:] == '.git':
 
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         repo_path = repo_path + '-' + pkg['ver']
+        repo_path_full = '"' + repo_path + '"'
 
-        cmd = 'git clone ' + package_url + ' ' + repo_path
+        cmd = 'git clone ' + package_url + ' ' + repo_path_full
         execute_command(cmd, cwd=bsp_pkgs_path)
 
         cmd = 'git checkout -q ' + ver_sha
@@ -318,10 +288,13 @@ def install_pkg(env_root, bsp_root, pkg):
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
+            # print("开始更新软件包子模块")
 
             if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                # print("开启了镜像加速，开始修改 .gitmodules 文件")
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
+            # print("开始执行更新动作")
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
@@ -340,26 +313,29 @@ def install_pkg(env_root, bsp_root, pkg):
 
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path, package_url):
+        if not package.download(pkg['ver'], local_pkgs_path.decode("gbk"), package_url):
             return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
         pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(pkg_fullpath):
+        if not archive.packtest(pkg_fullpath.encode("gbk")):
+            print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
             return False
      
         # unpack package
-        if not os.path.exists(pkg_dir):
+        if not os.path.exists(pkg_dir.encode("gbk")):
+
             try:
-                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
                     ret = False
             except Exception, e:
                 os.remove(pkg_fullpath)
                 ret = False
                 print('e.message: %s\t' % e.message)
-
+        else:
+            print("The file does not exist.")
     return ret
 
 
@@ -369,30 +345,18 @@ def package_list():
     Read the.config file in the BSP directory, 
     and list the version number of the selected package.
     """
+
     fn = '.config'
     env_root = Import('env_root')
-#     bsp_root = Import('bsp_root')
-#     target_pkgs_path = os.path.join(bsp_root, 'packages')
-#     pkgs_fn = os.path.join(target_pkgs_path, 'pkgs.json')
 
     if not os.path.isfile(fn):
+        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
         print ('No system configuration file : .config.')
         print ('You should use < menuconfig > command to config bsp first.')
         return
 
-    # if not os.path.exists(target_pkgs_path):
-    #    try:
-    #        os.mkdir(target_pkgs_path)
-    #    except:
-    #        print 'mkdir packages directory failed'
-    #        return
-
     pkgs = kconfig.parse(fn)
-
-    # if not os.path.isfile(pkgs_fn):
-    #    pkgs_file = file(pkgs_fn, 'w')
-    #    pkgs_file.write(json.dumps(pkgs, indent=1))
-    #    pkgs_file.close()
 
     for pkg in pkgs:
         package = Package()
@@ -400,13 +364,11 @@ def package_list():
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
 
-        #pkg_path = pkg_path.replace('/', '\\')
         pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
         package.parse(pkg_path)
 
         pkgs_name_in_json = package.get_name()
-        print pkgs_name_in_json, pkg['ver']
-        # print "package path:", pkg['path']
+        print ("package name : %s, ver : %s "%(pkgs_name_in_json.encode("utf-8"), pkg['ver'].encode("utf-8")))
 
     if not pkgs:
         print ("Packages list is empty.")
@@ -444,8 +406,8 @@ def update_submodule(repo_path):
         cmd = 'git submodule init -q'
         execute_command(cmd, cwd=repo_path)
         cmd = 'git submodule update'
-        if not os.system(cmd):
-            print("Submodule update successful")
+        execute_command(cmd, cwd=repo_path)
+        print("Submodule update successful")
 
 
 def get_pkg_folder_by_orign_path(orign_path, version):
@@ -497,21 +459,22 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
-            # If mirror acceleration is enabled, get the update address from
-            # the mirror server.
-            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-                payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+            try:
+                # If mirror acceleration is enabled, get the update address from
+                # the mirror server.
+                if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
-                # Change repo's upstream address.
-                mirror_url = get_url_from_mirror_server(
-                    payload_pkgs_name_in_json, pkg['ver'])
+                    # Change repo's upstream address.
+                    mirror_url = get_url_from_mirror_server(
+                        payload_pkgs_name_in_json, pkg['ver'])
 
-                # print(os.getcwd())
-                # print(repo_path)
+                    if mirror_url[0] != None:
+                        cmd = 'git remote set-url origin ' + mirror_url[0]
+                        git_cmd_exec(cmd, repo_path)
 
-                if mirror_url[0] != None:
-                    cmd = 'git remote set-url origin ' + mirror_url[0]
-                    git_cmd_exec(cmd, repo_path)
+            except Exception, e:
+                print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
             cmd = 'git pull'
@@ -530,19 +493,20 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                       (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json))
+                  (pkgs_name_in_json.encode("utf-8")))
 
 
 def pre_package_update():
+    """ Make preparations before updating the software package. """
 
     bsp_root = Import('bsp_root')
 
     if not os.path.exists('.config'):
-        print (
-            "Can't find file .config.Maybe your working directory isn't in bsp root now.")
-        print ("if your working directory isn't in bsp root now,please change your working directory to bsp root.")
-        print ("if your working directory is in bsp root now, please use menuconfig command to create .config file first.")
-        return
+        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ('No system configuration file : .config.')
+        print ('You should use < menuconfig > command to config bsp first.')
+        return False
 
     bsp_packages_path = os.path.join(bsp_root, 'packages')
     if not os.path.exists(bsp_packages_path):
@@ -561,13 +525,15 @@ def pre_package_update():
     # prepare target packages file
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
-
+    dbsqlite_pathname = dbsqlite_pathname.decode('gbk')
+ 
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
+        # print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
@@ -578,22 +544,19 @@ def pre_package_update():
 
     pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
 
+    # regenerate file : packages/pkgs.json 
     if not os.path.exists(pkgs_fn):
-        print ("Maybe you delete the file pkgs.json by mistake.")
-        print ("Do you want to create a new pkgs.json ?")
-        rc = raw_input('Press the Y Key to create a new pkgs.json.')
-        if rc == 'y' or rc == 'Y':
-            os.chdir(bsp_packages_path)
-            fp = open("pkgs.json", 'w')
-            fp.write("[]")
-            fp.close()
-            os.chdir(bsp_root)
-            print ("Create a new file pkgs.json done.")
+        os.chdir(bsp_packages_path)
+        fp = open("pkgs.json", 'w')
+        fp.write("[]")
+        fp.close()
+        os.chdir(bsp_root)
 
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
+    # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
         bsp_packages_path, 'pkgs_error.json')
 
@@ -603,7 +566,6 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-#         print ("Create a new error file : pkgs_error.json.")
 
     # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
@@ -630,14 +592,14 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print pkg['name'], pkg['ver']
+            print("Package name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, bsp_root, pkg):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
-                    pkg['name'], pkg['ver']))
+                    pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
                 print pkg, 'download failed.'
@@ -664,6 +626,7 @@ def rm_package(dir):
     if platform.system() != "Windows":
         shutil.rmtree(dir)
     else:
+        dir = '"' +  dir + '"'
         cmd = 'rd /s /q ' + dir
         os.system(cmd)
 
@@ -671,6 +634,7 @@ def rm_package(dir):
         if platform.system() != "Windows":
             shutil.rmtree(dir)
         else:
+            dir = '"' +  dir + '"'
             cmd = 'rmdir /s /q ' + dir
             os.system(cmd)
 
@@ -678,7 +642,7 @@ def rm_package(dir):
             print ("Folder path: %s" % dir)
             return False
     else:
-        print ("Path: %s \nSuccess: Folder has been removed. " % dir)
+        print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
         return True
 
 
@@ -688,7 +652,6 @@ def get_package_remove_path(pkg, bsp_packages_path):
     if dirpath[0] == '/' or dirpath[0] == '\\':
         dirpath = dirpath[1:]
     dirpath = os.path.basename(dirpath.replace('/', '\\'))
-    # print "basename:",os.path.basename(dirpath)
     removepath = os.path.join(bsp_packages_path, dirpath)
 
     # Handles the deletion of git repository folders with version Numbers
@@ -744,11 +707,19 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    pkgs_update_log = Logger('pkgs_update', logging.WARNING)
+    # change code page to 65001
+    if platform.system() == "Windows":
+        os.system('chcp 65001 > nul')
+
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
+
     sys_value = pre_package_update()
+
+    if not sys_value:
+        return
+
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
     pkgs_delete_error_list = sys_value[2]
@@ -756,15 +727,6 @@ def package_update(isDeleteOld=False):
     pkgs_error_list_fn = sys_value[4]
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to remove packages]' % sys._getframe().f_lineno)
-    pkgs_update_log.info(
-        '[Line: %d][Message : oldpkgs: %s ]' % (sys._getframe().f_lineno, oldpkgs))
-    pkgs_update_log.info(
-        '[Line: %d][Message : newpkgs: %s ]' % (sys._getframe().f_lineno, newpkgs))
-    pkgs_update_log.info(
-        '[Line: %d][Message : pkgs_delete_error_list: %s ]' % (sys._getframe().f_lineno, pkgs_delete_error_list))
 
     if len(pkgs_delete_error_list):
         for error_package in pkgs_delete_error_list:
@@ -788,13 +750,11 @@ def package_update(isDeleteOld=False):
         removepath_ver = get_package_remove_path(pkg, bsp_packages_path)
         removepath_git = os.path.join(removepath_ver, '.git')
 
-        # print "removepath_git to delete",removepath_git
         # Delete. Git directory.
-
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s, please wait...\n" % gitdir)
+            print ("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir)
@@ -814,7 +774,7 @@ def package_update(isDeleteOld=False):
                               ("Delete folder failed: ", gitdir, e.message))
         else:
             if os.path.isdir(removepath_ver):
-                print("Start to remove %s, please wait...\n" % removepath_ver)
+                print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
                 except Exception, e:
@@ -823,17 +783,12 @@ def package_update(isDeleteOld=False):
                         "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
 
     if len(pkgs_delete_fail_list):
-#         print("Packages deletion failed list: %s \n" %
-#               pkgs_delete_fail_list)
-
         # write error messages
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
         pkgs_file.close()
-
         return
     else:
-
         # write error messages
         pkgs_file = file(pkgs_error_list_fn, 'w')
         pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
@@ -842,9 +797,6 @@ def package_update(isDeleteOld=False):
     # 2.in new not in old : Software packages to be installed.
     # If the package download fails, record it, and then download again when
     # the update command is executed.
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to download packages]' % sys._getframe().f_lineno)
 
     casedownload = sub_list(newpkgs, oldpkgs)
     # print 'in new not in old:', casedownload
@@ -861,16 +813,10 @@ def package_update(isDeleteOld=False):
             print pkg, 'download failed.'
             flag = False
 
-    pkgs_update_log.info(
-        '[Line: %d][Message : Get the list of packages that have been updated]' % sys._getframe().f_lineno)
-
     # Get the currently updated configuration.
     newpkgs = sub_list(newpkgs, pkgs_download_fail_list)
 
-    pkgs_update_log.info(
-        '[Line: %d][Message : Print the list of software packages that failed to download]' % sys._getframe().f_lineno)
     # Give hints based on the success of the download.
-
     if len(pkgs_download_fail_list):
         print("Package download failed pkgs_download_fail_list: %s \n" %
               pkgs_download_fail_list)
@@ -885,9 +831,6 @@ def package_update(isDeleteOld=False):
 
     if get_flag != None:
         flag = get_flag
-
-    pkgs_update_log.info(
-        '[Line: %d][Message : Begin to update latest version packages]' % sys._getframe().f_lineno)
 
     # Update the software packages, which the version is 'latest'
     try:
@@ -944,8 +887,7 @@ def package_wizard():
         classnu = raw_input()
      
     pkgsclass = packageclass[int(classnu) - 1]  
- 
-    
+
     #fourth step
     print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
     authorname = raw_input()
