@@ -238,7 +238,7 @@ def cmd(args):
         mtime2 = os.path.getmtime(fn)
     else:
         mtime2 = -1
- 
+
     if mtime != mtime2:
         mk_rtconfig(fn)
 
