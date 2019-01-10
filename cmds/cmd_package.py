@@ -250,17 +250,21 @@ def install_pkg(env_root, bsp_root, pkg):
     get_ver_sha = None
     upstream_change_flag = False
 
-    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
+    try:
+        if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
-        #  determine whether the package package url is valid
-        if get_package_url != None and determine_url_valid(get_package_url):
-            package_url = get_package_url
+            #  determine whether the package package url is valid
+            if get_package_url != None and determine_url_valid(get_package_url):
+                package_url = get_package_url
 
-            if get_ver_sha != None:
-                ver_sha = get_ver_sha
+                if get_ver_sha != None:
+                    ver_sha = get_ver_sha
 
-            upstream_change_flag = True
+                upstream_change_flag = True
+    except Exception, e:
+        # print('e.message:%s\t' % e.message)
+        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.")
 
     if package_url[-4:] == '.git':
 
@@ -454,18 +458,22 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
-            # If mirror acceleration is enabled, get the update address from
-            # the mirror server.
-            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-                payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+            try:
+                # If mirror acceleration is enabled, get the update address from
+                # the mirror server.
+                if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
-                # Change repo's upstream address.
-                mirror_url = get_url_from_mirror_server(
-                    payload_pkgs_name_in_json, pkg['ver'])
+                    # Change repo's upstream address.
+                    mirror_url = get_url_from_mirror_server(
+                        payload_pkgs_name_in_json, pkg['ver'])
 
-                if mirror_url[0] != None:
-                    cmd = 'git remote set-url origin ' + mirror_url[0]
-                    git_cmd_exec(cmd, repo_path)
+                    if mirror_url[0] != None:
+                        cmd = 'git remote set-url origin ' + mirror_url[0]
+                        git_cmd_exec(cmd, repo_path)
+
+            except Exception, e:
+                print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
             cmd = 'git pull'
@@ -524,7 +532,7 @@ def pre_package_update():
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
-        print("Create dbsqlite done")
+        # print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
