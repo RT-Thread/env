@@ -506,9 +506,6 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 mirror_url = get_url_from_mirror_server(
                     payload_pkgs_name_in_json, pkg['ver'])
 
-                # print(os.getcwd())
-                # print(repo_path)
-
                 if mirror_url[0] != None:
                     cmd = 'git remote set-url origin ' + mirror_url[0]
                     git_cmd_exec(cmd, repo_path)
@@ -530,7 +527,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                       (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json))
+                  (pkgs_name_in_json.encode("utf-8")))
 
 
 def pre_package_update():
@@ -675,10 +672,10 @@ def rm_package(dir):
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Folder path: %s" % dir)
+            print ("Folder path: %s" % dir.encode("utf-8"))
             return False
     else:
-        print ("Path: %s \nSuccess: Folder has been removed. " % dir)
+        print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
         return True
 
 
@@ -794,7 +791,7 @@ def package_update(isDeleteOld=False):
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s, please wait...\n" % gitdir)
+            print ("\nStart to remove %s, please wait...\n" % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir)
@@ -811,16 +808,16 @@ def package_update(isDeleteOld=False):
                             print("Error: Please delete the folder manually.")
                     except Exception, e:
                         print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", gitdir, e.message))
+                              ("Delete folder failed: ", gitdir.encode("utf-8"), e.message))
         else:
             if os.path.isdir(removepath_ver):
-                print("Start to remove %s, please wait...\n" % removepath_ver)
+                print("Start to remove %s, please wait...\n" % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
                 except Exception, e:
                     pkgs_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
+                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e.message))
 
     if len(pkgs_delete_fail_list):
 #         print("Packages deletion failed list: %s \n" %
