@@ -296,22 +296,27 @@ def install_pkg(env_root, bsp_root, pkg):
 
     except Exception, e:
         # print('e.message:%s\t' % e.message)
-        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.")
+        print("Failed to connect to the mirror server, please check the network connection.")
+        print("Package will be downloaded from non-mirror server.\n")
 
     if package_url[-4:] == '.git':
 
         repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
         repo_path = repo_path + '-' + pkg['ver']
 
-        cmd = 'git clone ' + package_url + ' ' + repo_path
-        execute_command(cmd, cwd=bsp_pkgs_path)
+        try:
+            cmd = 'git clone ' + package_url + ' ' + repo_path
+            execute_command(cmd, cwd=bsp_pkgs_path)
 
-        cmd = 'git checkout -q ' + ver_sha
-        execute_command(cmd, cwd=repo_path)
-
-        if upstream_change_flag:
-            cmd = 'git remote set-url origin ' + url_from_json
+            cmd = 'git checkout -q ' + ver_sha
             execute_command(cmd, cwd=repo_path)
+
+            if upstream_change_flag:
+                cmd = 'git remote set-url origin ' + url_from_json
+                execute_command(cmd, cwd=repo_path)
+        except Exception, e:
+            print("\nFailed to download software package with git. Please check the network connection.")
+            sys.exit(0)
 
         # If there is a .gitmodules file in the package, prepare to update the
         # submodule.
@@ -600,7 +605,7 @@ def pre_package_update():
         fp.write("[]")
         fp.close()
         os.chdir(bsp_root)
-#         print ("Create a new error file : pkgs_error.json.")
+        #print ("Create a new error file : pkgs_error.json.")
 
     # Reading data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
@@ -627,7 +632,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print pkg['name'], pkg['ver']
+            print("name : %s, ver : %s "%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
