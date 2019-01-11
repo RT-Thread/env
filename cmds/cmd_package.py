@@ -280,6 +280,7 @@ def install_pkg(env_root, bsp_root, pkg):
         except Exception, e:
             print("\nFailed to download software package with git. Please check the network connection.")
             # sys.exit(0)
+            return False
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
@@ -610,7 +611,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
             print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
-                   (pkg['name'], pkg['ver']))
+                   (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
@@ -618,8 +619,6 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
             pkgs_file = file(pkgs_fn, 'w')
             pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
             pkgs_file.close()
-    else:
-        print("\nAll the selected packages have been downloaded successfully.\n")
 
     return flag
 
@@ -822,7 +821,7 @@ def package_update(isDeleteOld=False):
     if len(pkgs_download_fail_list):
         print("Package download failed pkgs_download_fail_list: %s \n" %
               pkgs_download_fail_list)
-        print("You need to reuse the <pkgs -update> command to download again.\n")
+        print("You need to reuse the <pkgs -update> command to download again.")
 
     # update pkgs.json and SConscript
     write_storage_file(pkgs_fn, newpkgs)
