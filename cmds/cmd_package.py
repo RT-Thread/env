@@ -184,8 +184,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             return None, None
 
     except Exception, e:
-        print('e.message:%s\t' % e.message)
-        print("The server could not be contacted. Please check your network connection.")
+        # print('e.message:%s\t' % e.message)
+        print("\nThe mirror server could not be contacted. Please check your network connection.")
 
 
 def determine_url_valid(url_from_srv):
@@ -264,19 +264,22 @@ def install_pkg(env_root, bsp_root, pkg):
                 upstream_change_flag = True
     except Exception, e:
         # print('e.message:%s\t' % e.message)
-        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.")
+        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if package_url[-4:] == '.git':
+        try:
+            repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
+            repo_path = repo_path + '-' + pkg['ver']
+            repo_path_full = '"' + repo_path + '"'
 
-        repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
-        repo_path = repo_path + '-' + pkg['ver']
-        repo_path_full = '"' + repo_path + '"'
+            cmd = 'git clone ' + package_url + ' ' + repo_path_full
+            execute_command(cmd, cwd=bsp_pkgs_path)
 
-        cmd = 'git clone ' + package_url + ' ' + repo_path_full
-        execute_command(cmd, cwd=bsp_pkgs_path)
-
-        cmd = 'git checkout -q ' + ver_sha
-        execute_command(cmd, cwd=repo_path)
+            cmd = 'git checkout -q ' + ver_sha
+            execute_command(cmd, cwd=repo_path)
+        except Exception, e:
+            print("\nFailed to download software package with git. Please check the network connection.")
+            # sys.exit(0)
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
@@ -422,7 +425,7 @@ def git_cmd_exec(cmd, cwd):
         execute_command(cmd, cwd=cwd)
     except Exception, e:
         print('error message:%s%s. %s \nYou can solve this problem by manually removing old packages and re-downloading them using env.\t' %
-              (cwd, " path doesn't exist", e.message))
+              (cwd.encode("utf-8"), " path doesn't exist", e.message))
 
 
 def update_latest_packages(pkgs_fn, bsp_packages_path):
@@ -961,9 +964,7 @@ def upgrade_packages_index():
             git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
     else:
         git_repo = 'https://github.com/RT-Thread/packages.git'
-        
-#     print(get_package_url,get_ver_sha)
-
+ 
     packages_root = os.path.join(env_root, 'packages')
     pkgs_path = os.path.join(packages_root, 'packages')
 
@@ -1008,8 +1009,6 @@ def upgrade_env_script():
     else:
         env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
-#     print(get_package_url,get_ver_sha)
-    
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
     cmd = r'git pull ' + env_scripts_repo
     execute_command(cmd, cwd=env_scripts_root)
