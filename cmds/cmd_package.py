@@ -696,6 +696,13 @@ def write_storage_file(pkgs_fn, newpkgs):
     pkgs_file.close()
 
 
+def determine_support_chinese(env_root):
+    get_flag_file_path = os.path.join(env_root, 'tools', 'bin', 'env_above_ver_1_1')
+    if os.path.isfile(get_flag_file_path):
+        # change code page to 65001
+        if platform.system() == "Windows":
+            os.system('chcp 65001 > nul')
+
 def package_update(isDeleteOld=False):
     """Update env's packages.
 
@@ -705,13 +712,12 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    # change code page to 65001
-    if platform.system() == "Windows":
-        os.system('chcp 65001 > nul')
-
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
+
+    # According to the env version, whether Chinese output is supported or not
+    determine_support_chinese(env_root)
 
     sys_value = pre_package_update()
 
