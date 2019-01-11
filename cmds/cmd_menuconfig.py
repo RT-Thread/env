@@ -242,8 +242,8 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
-    if platform.system() == "Windows":
-        os.system('chcp 65001 > nul')
+    from cmd_package import determine_support_chinese
+    determine_support_chinese(env_root)
     
     if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
