@@ -164,8 +164,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             # Can't find package,change git package SHA if it's a git
             # package
             if len(package_info['packages']) == 0:
-                print(
-                    "Package was NOT found on mirror server. Using a non-mirrored address to download.")
+                print("Package was NOT found on mirror server. Using a non-mirrored address to download.")
                 return None, None
             else:
                 for item in package_info['packages'][0]['packages_info']['site']:
@@ -184,8 +183,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             return None, None
 
     except Exception, e:
-        print('e.message:%s\t' % e.message)
-        print("The server could not be contacted. Please check your network connection.")
+        # print('e.message:%s\t' % e.message)
+        print("\nThe mirror server could not be contacted. Please check your network connection.")
 
 
 def determine_url_valid(url_from_srv):
@@ -209,8 +208,8 @@ def determine_url_valid(url_from_srv):
         return True
 
     except Exception, e:
-        #         print('e.message:%s\t' % e.message)
-        print('Network connection error or the url : %s is invalid.\n' % url_from_srv)
+        # print('e.message:%s\t' % e.message)
+        print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
 def install_pkg(env_root, bsp_root, pkg):
@@ -264,26 +263,28 @@ def install_pkg(env_root, bsp_root, pkg):
                 upstream_change_flag = True
     except Exception, e:
         # print('e.message:%s\t' % e.message)
-        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.")
+        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if package_url[-4:] == '.git':
+        try:
+            repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
+            repo_path = repo_path + '-' + pkg['ver']
+            repo_path_full = '"' + repo_path + '"'
 
-        repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
-        repo_path = repo_path + '-' + pkg['ver']
-        repo_path_full = '"' + repo_path + '"'
+            cmd = 'git clone ' + package_url + ' ' + repo_path_full
+            execute_command(cmd, cwd=bsp_pkgs_path)
 
-        cmd = 'git clone ' + package_url + ' ' + repo_path_full
-        execute_command(cmd, cwd=bsp_pkgs_path)
-
-        cmd = 'git checkout -q ' + ver_sha
-        execute_command(cmd, cwd=repo_path)
+            cmd = 'git checkout -q ' + ver_sha
+            execute_command(cmd, cwd=repo_path)
+        except Exception, e:
+            print("\nFailed to download software package with git. Please check the network connection.")
+            return False
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
             execute_command(cmd, cwd=repo_path)
 
-        # If there is a .gitmodules file in the package, prepare to update the
-        # submodule.
+        # If there is a .gitmodules file in the package, prepare to update submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
@@ -421,8 +422,8 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception, e:
-        print('error message:%s%s. %s \nYou can solve this problem by manually removing old packages and re-downloading them using env.\t' %
-              (cwd, " path doesn't exist", e.message))
+        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e.message))
+        print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
 def update_latest_packages(pkgs_fn, bsp_packages_path):
@@ -489,7 +490,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 git_cmd_exec(cmd, repo_path)
             else:
                 print("Can't find the package : %s's url in file : %s" %
-                      (payload_pkgs_name_in_json, pkg_path))
+                      (payload_pkgs_name_in_json.encode("utf-8"), pkg_path.encode("utf-8")))
 
             print("==============================>  %s update done \n" %
                   (pkgs_name_in_json.encode("utf-8")))
@@ -607,7 +608,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
             print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
-                   (pkg['name'], pkg['ver']))
+                   (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
@@ -615,8 +616,6 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
             pkgs_file = file(pkgs_fn, 'w')
             pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
             pkgs_file.close()
-    else:
-        print("\nAll the selected packages have been downloaded successfully.\n")
 
     return flag
 
@@ -638,7 +637,7 @@ def rm_package(dir):
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Folder path: %s" % dir)
+            print ("Folder path: %s" % dir.encode("utf-8"))
             return False
     else:
         print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
@@ -734,10 +733,10 @@ def package_update(isDeleteOld=False):
 
             if os.path.isdir(removepath_ver):
                 print("\nError: %s package delete failed, begin to remove it."%
-                      error_package['name'])
+                      error_package['name'].encode("utf-8"))
 
                 if rm_package(removepath_ver) == False:
-                    print("Error: Delete package %s failed! Please delete the folder manually.\n"%error_package['name'])
+                    print("Error: Delete package %s failed! Please delete the folder manually.\n"%error_package['name'].encode("utf-8"))
                     return
 
     # 1.in old ,not in new : Software packages that need to be removed.
@@ -756,7 +755,7 @@ def package_update(isDeleteOld=False):
             print ("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
-                    print("Floder delete fail: %s" % gitdir)
+                    print("Floder delete fail: %s" % gitdir.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
                 print (
@@ -770,7 +769,7 @@ def package_update(isDeleteOld=False):
                             print("Error: Please delete the folder manually.")
                     except Exception, e:
                         print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", gitdir, e.message))
+                              ("Delete folder failed: ", gitdir.encode("utf-8"), e.message))
         else:
             if os.path.isdir(removepath_ver):
                 print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
@@ -779,7 +778,7 @@ def package_update(isDeleteOld=False):
                 except Exception, e:
                     pkgs_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually", removepath_ver, e.message))
+                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e.message))
 
     if len(pkgs_delete_fail_list):
         # write error messages
@@ -817,9 +816,11 @@ def package_update(isDeleteOld=False):
 
     # Give hints based on the success of the download.
     if len(pkgs_download_fail_list):
-        print("Package download failed pkgs_download_fail_list: %s \n" %
-              pkgs_download_fail_list)
-        print("You need to reuse the <pkgs -update> command to download again.\n")
+        print("\nPackage download failed list:" )
+        for item in pkgs_download_fail_list:
+            print(item)
+
+        print("You need to reuse the <pkgs -update> command to download again.")
 
     # update pkgs.json and SConscript
     write_storage_file(pkgs_fn, newpkgs)
@@ -961,16 +962,14 @@ def upgrade_packages_index():
             git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
     else:
         git_repo = 'https://github.com/RT-Thread/packages.git'
-        
-#     print(get_package_url,get_ver_sha)
-
+ 
     packages_root = os.path.join(env_root, 'packages')
     pkgs_path = os.path.join(packages_root, 'packages')
 
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path
         os.system(cmd)
-        print ("upgrade from :%s" % (git_repo))
+        print ("upgrade from :%s" % (git_repo.encode("utf-8")))
     else:
         print("Begin to upgrade env packages.")
         cmd = r'git pull ' + git_repo
@@ -1008,8 +1007,6 @@ def upgrade_env_script():
     else:
         env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
-#     print(get_package_url,get_ver_sha)
-    
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
     cmd = r'git pull ' + env_scripts_repo
     execute_command(cmd, cwd=env_scripts_root)
