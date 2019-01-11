@@ -279,15 +279,13 @@ def install_pkg(env_root, bsp_root, pkg):
             execute_command(cmd, cwd=repo_path)
         except Exception, e:
             print("\nFailed to download software package with git. Please check the network connection.")
-            # sys.exit(0)
             return False
 
         if upstream_change_flag:
             cmd = 'git remote set-url origin ' + url_from_json
             execute_command(cmd, cwd=repo_path)
 
-        # If there is a .gitmodules file in the package, prepare to update the
-        # submodule.
+        # If there is a .gitmodules file in the package, prepare to update submodule.
         submod_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submod_path):
             print("Start to update submodule")
@@ -819,8 +817,10 @@ def package_update(isDeleteOld=False):
 
     # Give hints based on the success of the download.
     if len(pkgs_download_fail_list):
-        print("Package download failed pkgs_download_fail_list: %s \n" %
-              pkgs_download_fail_list)
+        print("\nPackage download failed list:" )
+        for item in pkgs_download_fail_list:
+            print(item)
+
         print("You need to reuse the <pkgs -update> command to download again.")
 
     # update pkgs.json and SConscript
