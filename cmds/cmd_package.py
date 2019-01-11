@@ -423,8 +423,8 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception, e:
-        print('error message:%s%s. %s \nYou can solve this problem by manually removing old packages and re-downloading them using env.\t' %
-              (cwd.encode("utf-8"), " path doesn't exist", e.message))
+        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e.message))
+        print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
 def update_latest_packages(pkgs_fn, bsp_packages_path):
