@@ -152,6 +152,8 @@ def find_macro_in_config(filename, macro_name):
 
 
 def cmd(args):
+
+    from cmd_package import determine_support_chinese
     env_root = Import('env_root')
     currentdir = os.getcwd()
     dirname = os.path.split(os.path.split(currentdir)[0])[0]
@@ -162,8 +164,9 @@ def cmd(args):
 
     if not os.getenv("RTT_ROOT"):
         if get_rtt_name != 'rt-thread':
-            print("\n<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
-            print("请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\n")
+            if determine_support_chinese(env_root):
+                print("\n<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
+                print("请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\n")
 
             print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
             print ("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
@@ -173,9 +176,10 @@ def cmd(args):
             print ('string')
             print ('option env="RTT_ROOT"')
             print ('default "../.."\n')
-            print ('例如修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
 
-            print ('\n下面的警告信息提示与找不到正确的 Kconfig 文件有关：')
+            if determine_support_chinese(env_root):
+                print ('例如修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
+                print ('\n下面的警告信息提示与找不到正确的 Kconfig 文件有关：')
 
             # if not args.menuconfig_easy:
             #    return
@@ -221,8 +225,9 @@ def cmd(args):
 
         os.chdir(beforepath)
         
-        from cmd_package import determine_support_chinese
-        determine_support_chinese(env_root)
+        if determine_support_chinese(env_root):
+            if platform.system() == "Windows":
+                os.system('chcp 65001 > nul') 
         return
 
     else:
@@ -242,8 +247,9 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
-    from cmd_package import determine_support_chinese
-    determine_support_chinese(env_root)
+    if determine_support_chinese(env_root):
+        if platform.system() == "Windows":
+            os.system('chcp 65001 > nul') 
     
     if platform.system() == "Windows":
         env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
