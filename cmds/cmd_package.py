@@ -509,6 +509,7 @@ def pre_package_update():
     """ Make preparations before updating the software package. """
 
     bsp_root = Import('bsp_root')
+    env_root = Import('env_root')
     from cmd_package import determine_support_chinese
 
     if not os.path.exists('.config'):
@@ -545,7 +546,6 @@ def pre_package_update():
         sql = '''CREATE TABLE packagefile
                     (pathname   TEXT  ,package  TEXT  ,md5  TEXT );'''
         pkgsdb.create_table(conn, sql)
-        # print("Create dbsqlite done")
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
@@ -717,14 +717,12 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
+    if not pre_package_update()
+        return
+
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     flag = True
-
-    sys_value = pre_package_update()
-
-    if not sys_value:
-        return
 
     # According to the env version, whether Chinese output is supported or not
     if determine_support_chinese(env_root):
