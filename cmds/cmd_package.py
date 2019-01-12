@@ -717,7 +717,9 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    if not pre_package_update():
+    sys_value = pre_package_update()
+
+    if not sys_value:
         return
 
     bsp_root = Import('bsp_root')
