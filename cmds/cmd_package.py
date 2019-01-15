@@ -356,13 +356,18 @@ def package_list():
     env_root = Import('env_root')
 
     if not os.path.isfile(fn):
+        if platform.system() == "Windows":
+            os.system('chcp 65001  > nul')
 
-        if determine_support_chinese(env_root):
-            print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
-            print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
+        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
 
         print ('\nNo system configuration file : .config.')
         print ('You should use < menuconfig > command to config bsp first.')
+
+        if platform.system() == "Windows":
+            os.system('chcp 437  > nul')
+
         return
 
     pkgs = kconfig.parse(fn)
