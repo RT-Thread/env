@@ -361,7 +361,7 @@ def package_list():
             print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
             print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
 
-        print ('No system configuration file : .config.')
+        print ('\nNo system configuration file : .config.')
         print ('You should use < menuconfig > command to config bsp first.')
         return
 
