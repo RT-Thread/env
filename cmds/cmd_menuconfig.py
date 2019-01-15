@@ -168,14 +168,9 @@ def cmd(args):
                 print("\n<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
                 print("请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\n")
 
-            print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
+            print ("\n<menuconfig> command should be used in a bsp root path with a Kconfig file.")
             print ("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
             print ("You should check if there is a Kconfig file in your bsp root first.")
-
-            print ('\nconfig $RTT_DIR')
-            print ('string')
-            print ('option env="RTT_ROOT"')
-            print ('default "../.."\n')
 
             if determine_support_chinese(env_root):
                 print ('例如修改 default 这一项为 rt-thread 所在路径:  default "F:/git_repositories/rt-thread"')
