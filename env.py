@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
+# 2019-1-16      SummerGift      Add chinese detection
 #
 
 import os
@@ -31,7 +32,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'rt-thread packages v1.0.0'
+__version__ = 'rt-thread packages v1.1.0'
 
 
 def init_argparse():
@@ -62,6 +63,20 @@ def main():
 
     Export('env_root')
     Export('bsp_root')
+
+    try:
+        bsp_root.decode("ascii")
+    except Exception, e:
+        if platform.system() == "Windows":
+            os.system('chcp 65001  > nul')
+
+        print ("rt-thread 必须被放置在纯英文目录下，请移动 rt-thread 到纯英文目录中。")
+        print ("rt-thread must be placed in a pure English directory, please move rt-thread to a pure English directory.")
+
+        if platform.system() == "Windows":
+            os.system('chcp 437  > nul')
+
+        return False
 
     parser = init_argparse()
     args = parser.parse_args()
