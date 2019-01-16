@@ -71,8 +71,9 @@ def main():
             os.system('chcp 65001  > nul')
         
         print ("\n\033[1;31;40m警告：\033[0m")
-        print ("\033[1;31;40m当前目录不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
-        print ("\033[1;31;40mrt-thread must be placed in a pure English directory, please move rt-thread to a pure English directory.\033[0m")
+        print ("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
+        print ("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
+        print ("\033[1;31;40mPlease modify the current path to a pure English path.\033[0m")
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
