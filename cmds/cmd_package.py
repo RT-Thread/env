@@ -359,11 +359,11 @@ def package_list():
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
-        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
+        print ("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
 
-        print ('\nNo system configuration file : .config.')
-        print ('You should use < menuconfig > command to config bsp first.')
+        print ('\033[1;31;40mNo system configuration file : .config.\033[0m')
+        print ('\033[1;31;40mYou should use < menuconfig > command to config bsp first.\033[0m')
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
@@ -520,8 +520,8 @@ def pre_package_update():
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print ("\n当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。")
-        print ("如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\n")
+        print ("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
+        print ("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
 
         print ('No system configuration file : .config.')
         print ('You should use < menuconfig > command to config bsp first.')

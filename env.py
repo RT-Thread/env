@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
+# 2019-1-16      SummerGift      Add chinese detection
 #
 
 import os
@@ -31,7 +32,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'rt-thread packages v1.0.0'
+__version__ = 'rt-thread packages v1.1.0'
 
 
 def init_argparse():
@@ -62,6 +63,22 @@ def main():
 
     Export('env_root')
     Export('bsp_root')
+
+    try:
+        bsp_root.decode("ascii")
+    except Exception, e:
+        if platform.system() == "Windows":
+            os.system('chcp 65001  > nul')
+        
+        print ("\n\033[1;31;40m警告：\033[0m")
+        print ("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
+        print ("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
+        print ("\033[1;31;40mPlease modify the current path to a pure English path.\033[0m")
+
+        if platform.system() == "Windows":
+            os.system('chcp 437  > nul')
+
+        return False
 
     parser = init_argparse()
     args = parser.parse_args()
