@@ -69,9 +69,10 @@ def main():
     except Exception, e:
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
-
-        print ("rt-thread 必须被放置在纯英文目录下，请移动 rt-thread 到纯英文目录中。")
-        print ("rt-thread must be placed in a pure English directory, please move rt-thread to a pure English directory.")
+        
+        print ("\n\033[1;31;40m警告：\033[0m")
+        print ("\033[1;31;40m当前目录不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
+        print ("\033[1;31;40mrt-thread must be placed in a pure English directory, please move rt-thread to a pure English directory.\033[0m")
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
