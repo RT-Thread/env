@@ -886,7 +886,7 @@ def package_wizard():
         print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
         name = raw_input()
 
-    default_description = 'a ' + name + ' package for rt-thread'
+    default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
     
