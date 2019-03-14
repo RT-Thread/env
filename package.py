@@ -83,6 +83,7 @@ endif
 Package_json_file = '''{
   "name": "${name}",
   "description": "${description}",
+  "description_zh": "${description_zh}",  
   "keywords": [
     "${keyword}"
   ],
