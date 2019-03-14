@@ -889,6 +889,7 @@ def package_wizard():
     default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
+    description_zh = "请添加软件包 " + name +" 的中文描述。"
     
     #second step
     ver = user_input('\033[5;33;40m\n2.Please input this package version, default :\033[0m', '1.0.0')
@@ -962,7 +963,7 @@ def package_wizard():
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description, version=ver, keyword=keyword,license=license, repository=repository)
+    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description,  description_zh=description_zh,version=ver, keyword=keyword,license=license, repository=repository)
     f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()

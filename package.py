@@ -83,7 +83,7 @@ endif
 Package_json_file = '''{
   "name": "${name}",
   "description": "${description}",
-  "description_zh": "请添加软件包 ${name} 的中文描述",  
+  "description_zh": "${description_zh}",  
   "keywords": [
     "${keyword}"
   ],
