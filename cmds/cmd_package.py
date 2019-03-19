@@ -671,7 +671,12 @@ def get_package_remove_path(pkg, bsp_packages_path):
     ver = pkg['ver']
     if dirpath[0] == '/' or dirpath[0] == '\\':
         dirpath = dirpath[1:]
-    dirpath = os.path.basename(dirpath.replace('/', '\\'))
+
+    if platform.system() == "Windows":
+        dirpath = os.path.basename(dirpath.replace('/', '\\'))
+    else:
+        dirpath = os.path.basename(dirpath)
+
     removepath = os.path.join(bsp_packages_path, dirpath)
 
     # Handles the deletion of git repository folders with version Numbers
