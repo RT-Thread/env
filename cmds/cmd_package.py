@@ -671,7 +671,12 @@ def get_package_remove_path(pkg, bsp_packages_path):
     ver = pkg['ver']
     if dirpath[0] == '/' or dirpath[0] == '\\':
         dirpath = dirpath[1:]
-    dirpath = os.path.basename(dirpath.replace('/', '\\'))
+
+    if platform.system() == "Windows":
+        dirpath = os.path.basename(dirpath.replace('/', '\\'))
+    else:
+        dirpath = os.path.basename(dirpath)
+
     removepath = os.path.join(bsp_packages_path, dirpath)
 
     # Handles the deletion of git repository folders with version Numbers
@@ -898,15 +903,15 @@ def package_wizard():
 
     #third step
     packageclass = ('iot', 'language', 'misc', 'multimedia',
-                    'peripherals', 'security', 'system', 'tools')
-    print ('\033[5;33;40m\n3.Please choose a package category from 1 to 8 : \033[0m')
-    print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]\033[0m")
+                    'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
+    print ('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
+    print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
     classnu = raw_input()
-    while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >8:
+    while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >9:
         if classnu == '' :
             print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else :    
-            print ('\033[1;31;40mError: You must input an integer number from 1 to 8. Try again.\033[0m')
+            print ('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
         classnu = raw_input()
      
     pkgsclass = packageclass[int(classnu) - 1]  

@@ -27,11 +27,18 @@ import tarfile
 import zipfile
 import os
 import pkgsdb
+import platform
+import shutil
 
 
 def unpack(archive_fn, path, pkg, pkgs_name_in_json):
     pkg_ver = pkg['ver']
     flag = True
+
+    iswindows = False
+
+    if platform.system() == "Windows":
+        iswindows = True
 
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
@@ -39,7 +46,10 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                right_path = a.replace('/', '\\')
+                if iswindows:
+                    right_path = a.replace('/', '\\')
+                else:
+                    right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
                 pkgsdb.savetodb(a, archive_fn)
         arch.close()
@@ -50,7 +60,10 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                right_path = a.replace('/', '\\')
+                if iswindows:
+                    right_path = a.replace('/', '\\')
+                else:
+                    right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
                 pkgsdb.savetodb(a, archive_fn)
         arch.close()
@@ -60,7 +73,11 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path, item)):
-                right_path = item.replace('/', '\\')
+                if iswindows:
+                    right_path = item.replace('/', '\\')
+                else:
+                    right_path = item
+
                 # Gets the folder name and change_dirname only once
                 if flag:
                     dir_name = os.path.split(right_path)[0]
@@ -72,12 +89,14 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
         arch.close()
         
     # Change the folder name
-    
     change_dirname = pkgs_name_in_json + '-' + pkg_ver
 
     if os.path.isdir(os.path.join(path, change_dirname)):
-        cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
-        os.system(cmd)
+        if iswindows:
+            cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
+            os.system(cmd)
+        else:
+            shutil.rmtree(os.path.join(path, change_dirname))
     
     os.rename(os.path.join(path, dir_name),os.path.join(path, change_dirname)) 
 
