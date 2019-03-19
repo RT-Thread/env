@@ -35,10 +35,10 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
     pkg_ver = pkg['ver']
     flag = True
 
-    os_type = False
+    iswindows = False
 
     if platform.system() == "Windows":
-        os_type = True
+        iswindows = True
 
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
@@ -46,7 +46,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if os_type:
+                if iswindows:
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
@@ -60,7 +60,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if os_type:
+                if iswindows:
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
@@ -73,7 +73,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path, item)):
-                if os_type:
+                if iswindows:
                     right_path = item.replace('/', '\\')
                 else:
                     right_path = item
@@ -92,7 +92,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
     change_dirname = pkgs_name_in_json + '-' + pkg_ver
 
     if os.path.isdir(os.path.join(path, change_dirname)):
-        if os_type:
+        if iswindows:
             cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
             os.system(cmd)
         else:
