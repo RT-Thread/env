@@ -191,7 +191,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     except Exception, e:
         # print('e.message:%s\t' % e.message)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
-
+        return None, None
 
 def determine_url_valid(url_from_srv):
 
