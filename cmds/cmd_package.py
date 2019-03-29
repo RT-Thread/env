@@ -256,7 +256,7 @@ def install_pkg(env_root, bsp_root, pkg):
     upstream_change_flag = False
 
     try:
-        if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
             #  determine whether the package package url is valid
@@ -296,7 +296,7 @@ def install_pkg(env_root, bsp_root, pkg):
             print("Start to update submodule")
             # print("开始更新软件包子模块")
 
-            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                 # print("开启了镜像加速，开始修改 .gitmodules 文件")
                 replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
 
@@ -304,7 +304,7 @@ def install_pkg(env_root, bsp_root, pkg):
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
-            if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                 if len(replace_list):
                     for item in replace_list:
                         submod_dir_path = os.path.join(repo_path, item[2])
@@ -312,7 +312,7 @@ def install_pkg(env_root, bsp_root, pkg):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             if os.path.isfile(submod_path):
                 cmd = 'git checkout .gitmodules'
                 execute_command(cmd, cwd=repo_path)
@@ -476,7 +476,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             try:
                 # If mirror acceleration is enabled, get the update address from
                 # the mirror server.
-                if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+                if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
                     # Change repo's upstream address.
@@ -982,7 +982,7 @@ def upgrade_packages_index():
     env_root = Import('env_root')
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+    if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
         get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
         if get_package_url != None:
             git_repo = get_package_url
@@ -1026,7 +1026,7 @@ def upgrade_env_script():
     env_root = Import('env_root')
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+    if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
         get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
         if get_package_url != None:
             env_scripts_repo = get_package_url
