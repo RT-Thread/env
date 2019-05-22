@@ -218,7 +218,7 @@ def determine_url_valid(url_from_srv):
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
-def install_pkg(env_root, bsp_root, pkg):
+def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     """Install the required packages."""
 
     # default true
@@ -234,7 +234,7 @@ def install_pkg(env_root, bsp_root, pkg):
     pkg_path = pkg['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\':
         pkg_path = pkg_path[1:]
-    pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+    pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
     package.parse(pkg_path)
 
     url_from_json = package.get_url(pkg['ver'])
@@ -354,6 +354,7 @@ def package_list():
 
     fn = '.config'
     env_root = Import('env_root')
+    pkgs_root = Import('pkgs_root')
 
     if not os.path.isfile(fn):
         if platform.system() == "Windows":
@@ -378,7 +379,7 @@ def package_list():
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
 
-        pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+        pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
         package.parse(pkg_path)
 
         pkgs_name_in_json = package.get_name()
@@ -451,6 +452,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
     """
 
     env_root = Import('env_root')
+    pkgs_root = Import('pkgs_root')
 
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
@@ -464,7 +466,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
 
-        pkg_path = os.path.join(env_root, 'packages', pkg_path, 'package.json')
+        pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
         package.parse(pkg_path)
         pkgs_name_in_json = package.get_name()
 
@@ -606,6 +608,7 @@ def pre_package_update():
 def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
+    pkgs_root = Import('pkgs_root')
 
     flag = None
 
@@ -619,7 +622,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
         for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
-            if install_pkg(env_root, bsp_root, pkg):
+            if install_pkg(env_root, pkgs_root, bsp_root, pkg):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
@@ -739,6 +742,7 @@ def package_update(isDeleteOld=False):
 
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
+    pkgs_root = Import('pkgs_root')
     flag = True
 
     # According to the env version, whether Chinese output is supported or not
@@ -829,7 +833,7 @@ def package_update(isDeleteOld=False):
     pkgs_download_fail_list = []
 
     for pkg in casedownload:
-        if install_pkg(env_root, bsp_root, pkg):
+        if install_pkg(env_root, pkgs_root, bsp_root, pkg):
             print("==============================>  %s %s is downloaded successfully. \n" % (
                 pkg['name'], pkg['ver']))
         else:
@@ -980,6 +984,7 @@ def upgrade_packages_index():
     """Update the package repository index."""
     
     env_root = Import('env_root')
+    pkgs_root = Import('pkgs_root')
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
     if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
@@ -992,7 +997,7 @@ def upgrade_packages_index():
     else:
         git_repo = 'https://github.com/RT-Thread/packages.git'
  
-    packages_root = os.path.join(env_root, 'packages')
+    packages_root = pkgs_root
     pkgs_path = os.path.join(packages_root, 'packages')
 
     if not os.path.isdir(pkgs_path):
