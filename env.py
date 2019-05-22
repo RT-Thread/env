@@ -60,9 +60,11 @@ def main():
             env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
 
     sys.path = sys.path + [os.path.join(script_root)]
+    pkgs_root = os.getenv("PKGS_ROOT")
 
     Export('env_root')
     Export('bsp_root')
+    Export('pkgs_root')
 
     try:
         bsp_root.decode("ascii")
