@@ -60,7 +60,10 @@ def main():
             env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
 
     sys.path = sys.path + [os.path.join(script_root)]
+    
     pkgs_root = os.getenv("PKGS_ROOT")
+    if pkgs_root == None:
+        pkgs_root = os.path.join(env_root, 'packages')
 
     Export('env_root')
     Export('bsp_root')
