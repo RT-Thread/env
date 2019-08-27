@@ -25,17 +25,22 @@
 
 from multiprocessing import Process
 import os
-import time
+import sys
 
-def run_proc(name):
-    exec_file = os.path.join(os.getcwd(), "tools\scripts\env.py")
+def run_proc(name, env_root):
+    exec_file = os.path.join(env_root, "tools\scripts\env.py")
+
     try:
         os.system("python %s package --upgrade 1>std_null 2>err_null"%exec_file)
     except Exception, e:
         print("Auto upgrade failed, please check your network.")
         pass
 
-if __name__=='__main__':
-    p = Process(target=run_proc, args=('upgrade',) )
+def main():
+    env_root = env_root = os.getenv("ENV_ROOT")
+    p = Process(target=run_proc, args=('upgrade', env_root))
     p.start()
     p.join()
+
+if __name__=='__main__':
+    main()
