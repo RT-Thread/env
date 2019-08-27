@@ -37,8 +37,8 @@ def run_proc(name, env_root):
         pass
 
 def main():
-    env_root = sys.argv[1]
-    p = Process(target=run_proc, args=('upgrade', env_root) )
+    env_root = env_root = os.getenv("ENV_ROOT")
+    p = Process(target=run_proc, args=('upgrade', env_root))
     p.start()
     p.join()
 
