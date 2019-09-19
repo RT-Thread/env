@@ -29,9 +29,11 @@ import sys
 
 def run_proc(name, env_root):
     exec_file = os.path.join(env_root, "tools\scripts\env.py")
+    log_std = os.path.join(env_root, "env_log_std")
+    log_err = os.path.join(env_root, "env_log_err")
 
     try:
-        os.system("python %s package --upgrade 1>std_null 2>err_null"%exec_file)
+        os.system("python %s package --upgrade 1>%s 2>%s"%(exec_file, log_std, log_err))
     except Exception, e:
         print("Auto upgrade failed, please check your network.")
         pass
