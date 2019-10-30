@@ -22,18 +22,24 @@
 # Date           Author          Notes
 # 2018-05-28     SummerGift      Add copyright information
 # 2019-01-07     SummerGift      The prompt supports utf-8 encoding
+# 2019-10-30     SummerGift      fix bug when generate some config item
 #
 
 import os
 import platform
 from vars import Import, Export
 
-'''menuconfig for system configuration'''
-
-# make rtconfig.h from .config
+# judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
+def is_pkg_special_config(config_str):
+    if type(config_str) == type('a'):
+        if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
+            return True
+    return False
 
 
 def mk_rtconfig(filename):
+    """make rtconfig.h from .config."""
+
     try:
         config = file(filename)
     except:
@@ -76,8 +82,7 @@ def mk_rtconfig(filename):
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
 
-                # remove CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
-                if type(setting[0]) == type('a') and (setting[0].endswith('_PATH') or setting[0].endswith('_VER')):
+                if is_pkg_special_config(setting[0]):
                     continue
 
                 if setting[1] == 'y':
@@ -92,8 +97,7 @@ def mk_rtconfig(filename):
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
 
-                # remove CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
-                if type(setting[0]) == type('a') and (setting[0].endswith('_PATH') or setting[0].endswith('_VER')):
+                if is_pkg_special_config(setting[0]):
                     continue
 
                 rtconfig.write('#define %s %s\n' % (setting[0], alt_data))
