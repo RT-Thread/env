@@ -27,10 +27,13 @@
 
 import os
 import platform
+import re
 from vars import Import, Export
 
-# judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
+
 def is_pkg_special_config(config_str):
+    ''' judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER'''
+
     if type(config_str) == type('a'):
         if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
             return True
@@ -38,15 +41,13 @@ def is_pkg_special_config(config_str):
 
 
 def mk_rtconfig(filename):
-    """make rtconfig.h from .config."""
-
     try:
-        config = file(filename)
+        config = open(filename, 'r')
     except:
-        print 'open .config failed'
+        print('open config:%s failed' % filename)
         return
 
-    rtconfig = file('rtconfig.h', 'w')
+    rtconfig = open('rtconfig.h', 'w')
     rtconfig.write('#ifndef RT_CONFIG_H__\n')
     rtconfig.write('#define RT_CONFIG_H__\n\n')
 
@@ -67,7 +68,6 @@ def mk_rtconfig(filename):
                 empty_line = 1
                 continue
 
-            #comment_line = line[1:]
             if line.startswith('# CONFIG_'):
                 line = ' ' + line[9:]
             else:
@@ -78,29 +78,18 @@ def mk_rtconfig(filename):
         else:
             empty_line = 0
             setting = line.split('=')
-            if len(setting) == 2:
+            if len(setting) >= 2:
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
 
+                # remove CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
                 if is_pkg_special_config(setting[0]):
                     continue
 
                 if setting[1] == 'y':
                     rtconfig.write('#define %s\n' % setting[0])
                 else:
-                    rtconfig.write('#define %s %s\n' %
-                                   (setting[0], setting[1]))
-
-            elif len(setting) > 2:
-                alt_data = line[len(setting[0]) + 1:]
-
-                if setting[0].startswith('CONFIG_'):
-                    setting[0] = setting[0][7:]
-
-                if is_pkg_special_config(setting[0]):
-                    continue
-
-                rtconfig.write('#define %s %s\n' % (setting[0], alt_data))
+                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$",line)[0]))
 
     if os.path.isfile('rtconfig_project.h'):
         rtconfig.write('#include "rtconfig_project.h"\n')
