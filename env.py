@@ -71,7 +71,7 @@ def main():
 
     try:
         bsp_root.decode("ascii")
-    except Exception, e:
+    except Exception as e:
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
         

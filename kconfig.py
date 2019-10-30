@@ -53,7 +53,7 @@ def parse(filename):
     try:
         config = file(filename)
     except:
-        print 'open .config failed'
+        print('open .config failed') 
         return ret
 
     for line in config:

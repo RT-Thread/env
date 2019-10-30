@@ -36,6 +36,10 @@ import time
 import logging
 import archive
 import sys
+from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
+from vars import Import, Export
+from string import Template
+from .cmd_menuconfig import find_macro_in_config
 
 try:
     import requests
@@ -48,11 +52,6 @@ except ImportError:
           "* command install step:\n"
           "* $ sudo apt-get install python-requests\n"
           "****************************************\n")
-
-from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
-from vars import Import, Export
-from string import Template
-from cmd_menuconfig import find_macro_in_config
 
 """package command"""
 
@@ -138,7 +137,7 @@ def modify_submod_file_to_mirror(submod_path):
 
         return replace_list
 
-    except Exception, e:
+    except Exception as e:
         print('e.message:%s\t' % e.message)
 
 
@@ -188,7 +187,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
                    
             return None, None
 
-    except Exception, e:
+    except Exception as e:
         # print('e.message:%s\t' % e.message)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
@@ -213,7 +212,7 @@ def determine_url_valid(url_from_srv):
 
         return True
 
-    except Exception, e:
+    except Exception as e:
         # print('e.message:%s\t' % e.message)
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
@@ -267,7 +266,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
                     ver_sha = get_ver_sha
 
                 upstream_change_flag = True
-    except Exception, e:
+    except Exception as e:
         # print('e.message:%s\t' % e.message)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
@@ -282,7 +281,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
             cmd = 'git checkout -q ' + ver_sha
             execute_command(cmd, cwd=repo_path)
-        except Exception, e:
+        except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
             return False
 
@@ -336,7 +335,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             try:
                 if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
                     ret = False
-            except Exception, e:
+            except Exception as e:
                 os.remove(pkg_fullpath)
                 ret = False
                 print('e.message: %s\t' % e.message)
@@ -436,7 +435,7 @@ def get_pkg_folder_by_orign_path(orign_path, version):
 def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
-    except Exception, e:
+    except Exception as e:
         print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e.message))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
@@ -489,7 +488,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                         cmd = 'git remote set-url origin ' + mirror_url[0]
                         git_cmd_exec(cmd, repo_path)
 
-            except Exception, e:
+            except Exception as e:
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
@@ -627,7 +626,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
-                print pkg, 'download failed.'
+                print(pkg, 'download failed.')
                 flag = False
 
         if len(error_packages_redownload_error_list):
@@ -799,7 +798,7 @@ def package_update(isDeleteOld=False):
                         if rm_package(gitdir) == False:
                             pkgs_delete_fail_list.append(pkg)
                             print("Error: Please delete the folder manually.")
-                    except Exception, e:
+                    except Exception as e:
                         print('Error message:%s%s. error.message: %s\n\t' %
                               ("Delete folder failed: ", gitdir.encode("utf-8"), e.message))
         else:
@@ -807,7 +806,7 @@ def package_update(isDeleteOld=False):
                 print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
-                except Exception, e:
+                except Exception as e:
                     pkgs_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
                         "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e.message))
@@ -840,7 +839,7 @@ def package_update(isDeleteOld=False):
             # If the PKG download fails, record it in the
             # pkgs_download_fail_list.
             pkgs_download_fail_list.append(pkg)
-            print pkg, 'download failed.'
+            print(pkg, 'download failed.') 
             flag = False
 
     # Get the currently updated configuration.

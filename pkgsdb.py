@@ -139,9 +139,9 @@ def dbdump(dbpathname):
     c = get_cursor(conn)
     cursor = c.execute("SELECT pathname, package, md5 from packagefile")
     for row in cursor:
-        print "pathname = ", row[0]
-        print "package = ", row[1]
-        print "md5 = ", row[2], "\n"
+        print("pathname = ", row[0]) 
+        print("package = ", row[1]) 
+        print("md5 = ", row[2], "\n") 
     conn.close()
 
 #delete the unchanged file

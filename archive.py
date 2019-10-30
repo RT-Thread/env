@@ -114,7 +114,7 @@ def packtest(path):
             else:
                 ret = False
                 print('package check error. \n')
-        except Exception, e:
+        except Exception as e:
             print('packtest e.message:%s\t' % e.message)
 #             arch.close()
             print("The archive package is broken. \n")
@@ -124,14 +124,14 @@ def packtest(path):
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
-        except Exception, e:
+        except Exception as e:
             ret = False
 
     if ".tar.gz" in path:
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
-        except Exception, e:
+        except Exception as e:
             ret = False
 
     return ret

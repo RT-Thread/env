@@ -103,7 +103,7 @@ def find_macro_in_config(filename, macro_name):
     try:
         config = file(filename)
     except:
-        print 'open .config failed'
+        print('open .config failed')
         return
 
     empty_line = 1
@@ -178,7 +178,7 @@ def cmd(args):
         os.system('chcp 437  > nul')
 
     if args.menuconfig_fn:
-        print 'use', args.menuconfig_fn
+        print('use', args.menuconfig_fn)
         import shutil
         shutil.copy(args.menuconfig_fn, fn)
     elif args.menuconfig_g:
@@ -236,18 +236,18 @@ def cmd(args):
 
         if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
-            print "==============================>The packages have been updated completely."
+            print("==============================>The packages have been updated completely.")
 
         if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
-                print "Create mdk4 project done"
+                print("Create mdk4 project done") 
             elif find_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
-                print "Create mdk5 project done"
+                print("Create mdk5 project done") 
             elif find_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
-                print "Create iar project done"
+                print("Create iar project done") 
 
 
 def add_parser(sub):

@@ -229,7 +229,7 @@ class Package:
                             os.remove(path.encode("gbk"))
                         ret = False
                         break
-            except Exception, e:
+            except Exception as e:
                 #print url_from_srv
                 # print('e.message:%s\t' % e.message)
                 retryCount = retryCount + 1
@@ -245,7 +245,7 @@ class Package:
             # ignore the return value
             archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
             return True
-        except Exception, e:
+        except Exception as e:
             print('unpack e.message:%s\t' % e.message)
             print('unpack %s failed' % os.path.basename(fullpkg_path))
             os.remove(fullpkg_path)
