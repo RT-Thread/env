@@ -549,7 +549,7 @@ def pre_package_update():
     # prepare target packages file
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
-    dbsqlite_pathname = dbsqlite_pathname.decode('gbk')
+    dbsqlite_pathname = dbsqlite_pathname.encode('utf-8').decode('gbk')
  
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
@@ -596,10 +596,8 @@ def pre_package_update():
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
-        bridge_script = file(os.path.join(
-            bsp_packages_path, 'SConscript'), 'w')
-        bridge_script.write(Bridge_SConscript)
-        bridge_script.close()
+        with open(os.path.join(bsp_packages_path, 'SConscript'),'w') as f:
+            f.write(str(Bridge_SConscript))
 
     return [oldpkgs, newpkgs, pkgs_error, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
@@ -720,9 +718,8 @@ def write_storage_file(pkgs_fn, newpkgs):
     next update.
     """
 
-    pkgs_file = file(pkgs_fn, 'w')
-    pkgs_file.write(json.dumps(newpkgs, indent=1))
-    pkgs_file.close()
+    with open(pkgs_fn,'w') as f:
+        f.write(str(json.dumps(newpkgs, indent=1)))
 
 
 def package_update(isDeleteOld=False):
@@ -819,9 +816,8 @@ def package_update(isDeleteOld=False):
         return
     else:
         # write error messages
-        pkgs_file = file(pkgs_error_list_fn, 'w')
-        pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
-        pkgs_file.close()
+        with open(pkgs_error_list_fn,'w') as f:
+            f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
 
     # 2.in new not in old : Software packages to be installed.
     # If the package download fails, record it, and then download again when

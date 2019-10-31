@@ -51,7 +51,8 @@ def pkgs_ver(pkgs, name, ver):
 def parse(filename):
     ret = []
     try:
-        config = file(filename)
+        with open(filename, "r", encoding="utf-8") as f:
+            config = f.read()
     except:
         print('open .config failed') 
         return ret
