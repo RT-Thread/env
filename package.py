@@ -214,7 +214,6 @@ class Package:
                         sys.stdout.flush()
 
                 retryCount = retryCount + 1
-                # exit(0)
 
                 if archive.packtest(path):  # make sure the file is right
                     ret = True
@@ -222,7 +221,6 @@ class Package:
                     print('Start to unpack. Please wait...')
                     break
                 else:
-                    print("文件校验失败了")
                     if os.path.isfile(path):
                         os.remove(path)
                     if retryCount > 5:
@@ -234,7 +232,7 @@ class Package:
                         break
             except Exception as e:
                 print(url_from_srv) 
-                print('e.message:%s\t' %e)
+                print('error message:%s\t' %e)
                 retryCount = retryCount + 1
                 if retryCount > 5:
                     print('%s download fail!\n' % path.encode("utf-8"))
@@ -249,7 +247,7 @@ class Package:
             archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
             return True
         except Exception as e:
-            print('unpack e.message:%s\t' % e)
+            print('unpack error message :%s' % e)
             print('unpack %s failed' % os.path.basename(fullpkg_path))
             os.remove(fullpkg_path)
             return False

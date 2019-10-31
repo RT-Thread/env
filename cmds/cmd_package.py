@@ -138,7 +138,7 @@ def modify_submod_file_to_mirror(submod_path):
         return replace_list
 
     except Exception as e:
-        print('e.message:%s\t' % e.message)
+        print('error message:%s\t' % e)
 
 
 def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
@@ -168,8 +168,6 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
 
-            print(package_info)
-
             # Can't find package,change git package SHA if it's a git
             # package
             if len(package_info['packages']) == 0:
@@ -188,7 +186,6 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
             print("\nTips : \nThe system needs to be upgraded.")
             print("Please use the <pkgs --upgrade> command to upgrade packages index.\n")
-                   
             return None, None
 
     except Exception as e:
@@ -258,19 +255,9 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     get_ver_sha = None
     upstream_change_flag = False
 
-    print("准备下载软件包")
-    print(env_config_file)
-
-    if find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        print("找到了加速宏定义")
-
     try:
         if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
-
-            print("将使用镜像下载")
-
-            print("get_package_url", get_package_url)
 
             #  determine whether the package package url is valid
             if get_package_url != None and determine_url_valid(get_package_url):
@@ -284,28 +271,18 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
         print('error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
-    print(package_url)
-
     if package_url[-4:] == '.git':
         try:
             repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
             repo_path = repo_path + '-' + pkg['ver']
             repo_path_full = '"' + repo_path + '"'
-            before = os.getcwd()
 
-            cmd = 'git clone ' + package_url + ' ' + repo_path_full
-            # execute_command(cmd, cwd=bsp_pkgs_path)
-
-            os.chdir(bsp_pkgs_path)
-            os.system(cmd)
-
-            print("clone done")
+            clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
+            execute_command(clone_cmd, cwd=bsp_pkgs_path)
 
             git_check_cmd = 'git checkout -q ' + ver_sha
-            os.system(cmd)
+            execute_command(git_check_cmd, cwd=repo_path)
 
-            os.chdir(before)
-            # execute_command(cmd, cwd=repo_path)
         except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
             os.chdir(before)
@@ -364,7 +341,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             except Exception as e:
                 os.remove(pkg_fullpath)
                 ret = False
-                print('error message: %s\t' % e.message)
+                print('error message: %s\t' % e)
         else:
             print("The file does not exist.")
     return ret
@@ -462,7 +439,7 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception as e:
-        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e.message))
+        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
@@ -506,7 +483,6 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
-                    print(payload_pkgs_name_in_json)
                     # Change repo's upstream address.
                     mirror_url = get_url_from_mirror_server(
                         payload_pkgs_name_in_json, pkg['ver'])
@@ -516,6 +492,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                         git_cmd_exec(cmd, repo_path)
 
             except Exception as e:
+                print("error message : %s" % e)
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
@@ -569,7 +546,6 @@ def pre_package_update():
         fp = open("pkgs_error.json", 'w')
         fp.write("[]")
         fp.close()
-
         os.chdir(bsp_root)
 
     # prepare target packages file
@@ -587,7 +563,7 @@ def pre_package_update():
     fn = '.config'
     pkgs = kconfig.parse(fn)
 
-    print("newpkgs", pkgs)
+    # print("newpkgs", pkgs)
 
     newpkgs = pkgs
 
@@ -608,7 +584,7 @@ def pre_package_update():
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
-    print("oldpkgs", oldpkgs)
+    # print("oldpkgs", oldpkgs)
 
     # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
@@ -831,7 +807,7 @@ def package_update(isDeleteOld=False):
                             print("Error: Please delete the folder manually.")
                     except Exception as e:
                         print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", gitdir.encode("utf-8"), e.message))
+                              ("Delete folder failed: ", gitdir.encode("utf-8"), e))
         else:
             if os.path.isdir(removepath_ver):
                 print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
@@ -840,7 +816,7 @@ def package_update(isDeleteOld=False):
                 except Exception as e:
                     pkgs_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e.message))
+                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e))
 
     if len(pkgs_delete_fail_list):
         # write error messages

@@ -25,7 +25,6 @@
 
 
 def pkgs_path(pkgs, name, path):
-    print("begin to get pkgs path")
     for pkg in pkgs:
         if 'name' in pkg and pkg['name'] == name:
             pkg['path'] = path
@@ -35,9 +34,6 @@ def pkgs_path(pkgs, name, path):
     pkg['name'] = name
     pkg['path'] = path
     pkgs.append(pkg)
-
-    print("-------------------------------------------")
-    print("pkgs_path", pkgs)
 
 
 def pkgs_ver(pkgs, name, ver):
@@ -53,7 +49,6 @@ def pkgs_ver(pkgs, name, ver):
 
 
 def parse(filename):
-    print("filename", filename)
     ret = []
     try:
         config = open(filename, "r") 
@@ -76,7 +71,6 @@ def parse(filename):
                     pkg_prefix = setting[0][11:]
                     if pkg_prefix.startswith('USING_'):
                         pkg_name = pkg_prefix[6:]
-                        print('enable package:', pkg_name)
                     else:
                         if pkg_prefix.endswith('_PATH'):
                             pkg_name = pkg_prefix[:-5]
