@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-
+ # -*- coding:utf-8 -*-
 #
 # File      : kconfig.py
 # This file is part of RT-Thread RTOS
@@ -25,8 +25,9 @@
 
 
 def pkgs_path(pkgs, name, path):
+    print("begin to get pkgs path")
     for pkg in pkgs:
-        if pkg.has_key('name') and pkg['name'] == name:
+        if 'name' in pkg and pkg['name'] == name:
             pkg['path'] = path
             return
 
@@ -35,10 +36,13 @@ def pkgs_path(pkgs, name, path):
     pkg['path'] = path
     pkgs.append(pkg)
 
+    print("-------------------------------------------")
+    print("pkgs_path", pkgs)
+
 
 def pkgs_ver(pkgs, name, ver):
     for pkg in pkgs:
-        if pkg.has_key('name') and pkg['name'] == name:
+        if 'name' in pkg and pkg['name'] == name:
             pkg['ver'] = ver
             return
 
@@ -49,15 +53,16 @@ def pkgs_ver(pkgs, name, ver):
 
 
 def parse(filename):
+    print("filename", filename)
     ret = []
     try:
-        with open(filename, "r", encoding="utf-8") as f:
-            config = f.read()
+        config = open(filename, "r") 
     except:
         print('open .config failed') 
         return ret
 
     for line in config:
+        print(line)
         line = line.lstrip(' ').replace('\n', '').replace('\r', '')
 
         if len(line) == 0:
@@ -66,14 +71,17 @@ def parse(filename):
         if line[0] == '#':
             continue
         else:
+            # print(line)
             setting = line.split('=', 1)
+            # print(setting)
             if len(setting) >= 2:
                 if setting[0].startswith('CONFIG_PKG_'):
                     pkg_prefix = setting[0][11:]
+                    print("74")
 
                     if pkg_prefix.startswith('USING_'):
                         pkg_name = pkg_prefix[6:]
-                        # print 'enable package:', pkg_name
+                        print('enable package:', pkg_name)
                     else:
                         if pkg_prefix.endswith('_PATH'):
                             pkg_name = pkg_prefix[:-5]
@@ -93,6 +101,8 @@ def parse(filename):
                                 pkg_ver = pkg_ver[:-1]
                             pkgs_ver(ret, pkg_name, pkg_ver)
 
+    print("ret", ret)
+    config.close()
     return ret
 
 

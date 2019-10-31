@@ -35,7 +35,7 @@ def GetFileMd5(filename):
     if not os.path.isfile(filename):
         return
     myhash = hashlib.md5()
-    f = file(filename, 'rb')
+    f = open(filename, 'rb')
     while True:
         b = f.read(8096)
         if not b:
@@ -118,7 +118,7 @@ def savetodb(pathname, pkgspathname, before_change_name):
     bsp_root = Import('bsp_root')
     bsppkgs = os.path.join(bsp_root, 'packages')
 
-    conn = get_conn(dbpathname.decode("gbk"))
+    conn = get_conn(dbpathname)
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
     md5pathname = os.path.join(bsppkgs, before_change_name)

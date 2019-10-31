@@ -318,22 +318,22 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path.decode("gbk"), package_url):
+        if not package.download(pkg['ver'], local_pkgs_path, package_url):
             return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
         pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(pkg_fullpath.encode("gbk")):
+        if not archive.packtest(pkg_fullpath):
             print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
             return False
      
         # unpack package
-        if not os.path.exists(pkg_dir.encode("gbk")):
+        if not os.path.exists(pkg_dir):
 
             try:
-                if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
+                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
                     ret = False
             except Exception as e:
                 os.remove(pkg_fullpath)
@@ -560,6 +560,9 @@ def pre_package_update():
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
+
+    print("newpkgs", pkgs)
+
     newpkgs = pkgs
 
     if not os.path.exists(bsp_packages_path):
@@ -578,6 +581,8 @@ def pre_package_update():
     # Reading data back from pkgs.json
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
+
+    print("oldpkgs", oldpkgs)
 
     # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
@@ -731,7 +736,11 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
+    print(734)
+
     sys_value = pre_package_update()
+    print(737)
+    print(sys_value)
 
     if not sys_value:
         return
@@ -753,6 +762,9 @@ def package_update(isDeleteOld=False):
     pkgs_error_list_fn = sys_value[4]
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
+
+    print(oldpkgs)
+    print(newpkgs)
 
     if len(pkgs_delete_error_list):
         for error_package in pkgs_delete_error_list:

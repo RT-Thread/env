@@ -130,8 +130,8 @@ class Package:
     pkg = None
 
     def parse(self, filename):
-        f = file(filename)
-        json_str = f.read()
+        with open(filename, "r", encoding="utf-8") as f:
+            json_str = f.read()
 
         if json_str:
             self.pkg = json.loads(json_str)
@@ -171,7 +171,7 @@ class Package:
         ret = True
         url = self.get_url(ver)
         site = self.get_site(ver)
-        if site and site.has_key('filename'):
+        if site and 'filename' in site:
             filename = site['filename']
             path = os.path.join(path, filename)
         else:
@@ -204,7 +204,7 @@ class Package:
 
                 flush_count = 0
 
-                with open(path.encode("gbk"), 'wb') as f:
+                with open(path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
@@ -214,27 +214,30 @@ class Package:
                         sys.stdout.flush()
 
                 retryCount = retryCount + 1
-                if archive.packtest(path.encode("gbk")):  # make sure the file is right
+                # exit(0)
+
+                if archive.packtest(path):  # make sure the file is right
                     ret = True
                     print("\rDownloded %d KB  " % flush_count)
                     print('Start to unpack. Please wait...')
                     break
                 else:
-                    if os.path.isfile(path.encode("gbk")):
-                        os.remove(path.encode("gbk"))
+                    print("文件校验失败了")
+                    if os.path.isfile(path):
+                        os.remove(path)
                     if retryCount > 5:
                         print(
                             "error: Have tried downloading 5 times.\nstop Downloading file :%s" % path)
-                        if os.path.isfile(path.encode("gbk")):
-                            os.remove(path.encode("gbk"))
+                        if os.path.isfile(path):
+                            os.remove(path)
                         ret = False
                         break
             except Exception as e:
-                #print url_from_srv
-                # print('e.message:%s\t' % e.message)
+                print(url_from_srv) 
+                print('e.message:%s\t' %e)
                 retryCount = retryCount + 1
                 if retryCount > 5:
-                    print('%s download fail!\n' % path.decode("gbk").encode("utf-8"))
+                    print('%s download fail!\n' % path.encode("utf-8"))
                     if os.path.isfile(path):
                         os.remove(path)
                     return False
@@ -246,7 +249,7 @@ class Package:
             archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
             return True
         except Exception as e:
-            print('unpack e.message:%s\t' % e.message)
+            print('unpack e.message:%s\t' % e)
             print('unpack %s failed' % os.path.basename(fullpkg_path))
             os.remove(fullpkg_path)
             return False

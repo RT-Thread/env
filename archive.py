@@ -103,35 +103,56 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
 
 def packtest(path):
     ret = True
-    if ".zip" in path:
+    print("type(path)", path)
+    print("type(path)", type(path))
+
+    # print(path.find(".zip"))
+
+    # path = path.encode().decode()
+
+    if path.find(".zip") != -1:
+        print("准备判断是否是 zip")
         try:
             if zipfile.is_zipfile(path):
                 # Test zip again to make sure it's a right zip file.
+
+                print("这是一个 zip 包，准备判断其完整性")
                 arch = zipfile.ZipFile(path, "r")
+                print("117")
                 if arch.testzip():
+                    print("这个 zip 不完整")
                     ret = False
                 arch.close()
             else:
+                print("这不是一个 zip 压缩包")
+                # exit(0)
                 ret = False
                 print('package check error. \n')
         except Exception as e:
-            print('packtest e.message:%s\t' % e.message)
-#             arch.close()
+            print('packtest e.message:%s\t' % e)
+            print(129)
+            arch.close()
             print("The archive package is broken. \n")
             ret = False
 
-    if ".tar.bz2" in path:
+    print("ret1", ret)
+
+    # if ".tar.bz2" in path:.
+    if path.find(".tar.bz2") != -1:
+        print(138)
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
         except Exception as e:
             ret = False
 
-    if ".tar.gz" in path:
+    # if ".tar.gz" in path:
+    if path.find(".tar.gz") != -1:
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
         except Exception as e:
             ret = False
 
+    print("ret", ret)
     return ret
