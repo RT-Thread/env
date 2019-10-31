@@ -101,8 +101,7 @@ def mk_rtconfig(filename):
 
 def find_macro_in_config(filename, macro_name):
     try:
-        with open(filename, "r", encoding="utf-8") as f:
-            config = f.read()
+        config = open(filename, "r", encoding="utf-8")
     except:
         print('open .config failed')
         return
@@ -142,6 +141,7 @@ def find_macro_in_config(filename, macro_name):
                     if setting[0] == macro_name and setting[1] == 'y':
                         return True
 
+    config.close()
     return False
 
 

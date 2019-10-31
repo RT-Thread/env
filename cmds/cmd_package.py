@@ -66,7 +66,7 @@ def execute_command(cmdstring, cwd=None, shell=True):
 
     stdout_str = ''
     while sub.poll() is None:
-        stdout_str += sub.stdout.read()
+        stdout_str += str(sub.stdout.read())
         time.sleep(0.1)
 
     return stdout_str
@@ -144,7 +144,22 @@ def modify_submod_file_to_mirror(submod_path):
 def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     """Get the download address from the mirror server based on the package name."""
 
-    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+    print(pkgs_name_in_json, pkgs_ver)
+    print("准备对比过数据类型了")
+
+    try:
+        if type(pkgs_name_in_json) != type("str"):
+            pkgs_name_in_json = str(pkgs_name_in_json)
+    except Exception as e:
+        print('e.message:%s' % e)
+        print("\nThe mirror server could not be contacted. Please check your network connection.")
+        return None, None
+
+    print("已经对比过数据类型了")
+
+    print("type(pkgs_name_in_json)", type(pkgs_name_in_json))
+
+    payload_pkgs_name_in_json = pkgs_name_in_json
     payload = {
         "userName": "RT-Thread",
         "packages": [
@@ -155,16 +170,18 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     }
     payload["packages"][0]['name'] = payload_pkgs_name_in_json
 
+    print(payload)
     try:
-        r = requests.post(
-            "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+        print("准备连接查询服务器")
+        r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
 
-        # print(r.status_code)
+        print(r.status_code)
+        print("连接查询服务器失败")
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
 
-            # print(package_info)
+            print(package_info)
 
             # Can't find package,change git package SHA if it's a git
             # package
@@ -188,7 +205,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             return None, None
 
     except Exception as e:
-        # print('e.message:%s\t' % e.message)
+        print('e.message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
 
@@ -254,9 +271,19 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     get_ver_sha = None
     upstream_change_flag = False
 
+    print("准备下载软件包")
+    print(env_config_file)
+
+    if find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        print("找到了加速宏定义")
+
     try:
         if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
+
+            print("将使用镜像下载")
+
+            print("get_package_url", get_package_url)
 
             #  determine whether the package package url is valid
             if get_package_url != None and determine_url_valid(get_package_url):
@@ -267,22 +294,34 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
                 upstream_change_flag = True
     except Exception as e:
-        # print('e.message:%s\t' % e.message)
+        print('e.message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
+
+    print(package_url)
 
     if package_url[-4:] == '.git':
         try:
             repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
             repo_path = repo_path + '-' + pkg['ver']
             repo_path_full = '"' + repo_path + '"'
+            before = os.getcwd()
 
             cmd = 'git clone ' + package_url + ' ' + repo_path_full
-            execute_command(cmd, cwd=bsp_pkgs_path)
+            # execute_command(cmd, cwd=bsp_pkgs_path)
 
-            cmd = 'git checkout -q ' + ver_sha
-            execute_command(cmd, cwd=repo_path)
+            os.chdir(bsp_pkgs_path)
+            os.system(cmd)
+
+            print("clone done")
+
+            git_check_cmd = 'git checkout -q ' + ver_sha
+            os.system(cmd)
+
+            os.chdir(before)
+            # execute_command(cmd, cwd=repo_path)
         except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
+            os.chdir(before)
             return False
 
         if upstream_change_flag:
@@ -480,13 +519,19 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
+                    print("准备获取上游地址")
+                    print(payload_pkgs_name_in_json)
                     # Change repo's upstream address.
                     mirror_url = get_url_from_mirror_server(
                         payload_pkgs_name_in_json, pkg['ver'])
 
+                    print("准备更新版本为 latest 的仓库")
+
                     if mirror_url[0] != None:
                         cmd = 'git remote set-url origin ' + mirror_url[0]
                         git_cmd_exec(cmd, repo_path)
+
+                    print("更换远端地址完毕")
 
             except Exception as e:
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
@@ -505,10 +550,9 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 git_cmd_exec(cmd, repo_path)
             else:
                 print("Can't find the package : %s's url in file : %s" %
-                      (payload_pkgs_name_in_json.encode("utf-8"), pkg_path.encode("utf-8")))
+                      (payload_pkgs_name_in_json, pkg_path))
 
-            print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json.encode("utf-8")))
+            print("==============================>  %s update done\n" %(pkgs_name_in_json))
 
 
 def pre_package_update():
@@ -736,11 +780,7 @@ def package_update(isDeleteOld=False):
     remind the user saved the modified file.
     """
 
-    print(734)
-
     sys_value = pre_package_update()
-    print(737)
-    print(sys_value)
 
     if not sys_value:
         return
@@ -763,8 +803,8 @@ def package_update(isDeleteOld=False):
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
 
-    print(oldpkgs)
-    print(newpkgs)
+    # print(oldpkgs)
+    # print(newpkgs)
 
     if len(pkgs_delete_error_list):
         for error_package in pkgs_delete_error_list:
@@ -800,7 +840,7 @@ def package_update(isDeleteOld=False):
             else:
                 print (
                     "The folder is managed by git. Do you want to delete this folder?\n")
-                rc = raw_input(
+                rc = input(
                     'Press the Y Key to delete the folder or just press Enter to keep it : ')
                 if rc == 'y' or rc == 'Y':
                     try:

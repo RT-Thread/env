@@ -62,7 +62,6 @@ def parse(filename):
         return ret
 
     for line in config:
-        print(line)
         line = line.lstrip(' ').replace('\n', '').replace('\r', '')
 
         if len(line) == 0:
@@ -71,14 +70,10 @@ def parse(filename):
         if line[0] == '#':
             continue
         else:
-            # print(line)
             setting = line.split('=', 1)
-            # print(setting)
             if len(setting) >= 2:
                 if setting[0].startswith('CONFIG_PKG_'):
                     pkg_prefix = setting[0][11:]
-                    print("74")
-
                     if pkg_prefix.startswith('USING_'):
                         pkg_name = pkg_prefix[6:]
                         print('enable package:', pkg_name)
@@ -101,7 +96,6 @@ def parse(filename):
                                 pkg_ver = pkg_ver[:-1]
                             pkgs_ver(ret, pkg_name, pkg_ver)
 
-    print("ret", ret)
     config.close()
     return ret
 
