@@ -129,7 +129,7 @@ def packtest(path):
                 ret = False
                 print('package check error. \n')
         except Exception as e:
-            print('packtest e.message:%s\t' % e)
+            print('packtest error message:%s\t' % e)
             print(129)
             arch.close()
             print("The archive package is broken. \n")

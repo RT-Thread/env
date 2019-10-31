@@ -144,21 +144,13 @@ def modify_submod_file_to_mirror(submod_path):
 def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     """Get the download address from the mirror server based on the package name."""
 
-    print(pkgs_name_in_json, pkgs_ver)
-    print("准备对比过数据类型了")
-
     try:
         if type(pkgs_name_in_json) != type("str"):
             pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
     except Exception as e:
-        print('e.message:%s' % e)
+        print('error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
-
-    print("已经对比过数据类型了")
-
-    print("type(pkgs_name_in_json)", type(pkgs_name_in_json))
-    print(pkgs_name_in_json)
 
     payload = {
         "userName": "RT-Thread",
@@ -170,13 +162,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     }
     payload["packages"][0]['name'] = pkgs_name_in_json
 
-    # print(payload)
     try:
-        print("准备连接查询服务器")
         r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-
-        print(r.status_code)
-        print("连接查询服务器失败")
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
@@ -205,7 +192,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             return None, None
 
     except Exception as e:
-        print('e.message:%s' % e)
+        print('error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
 
@@ -230,7 +217,7 @@ def determine_url_valid(url_from_srv):
         return True
 
     except Exception as e:
-        # print('e.message:%s\t' % e.message)
+        print('error message:%s\t' % e)
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
@@ -294,7 +281,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
                 upstream_change_flag = True
     except Exception as e:
-        print('e.message:%s\t' % e)
+        print('error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     print(package_url)
@@ -377,7 +364,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             except Exception as e:
                 os.remove(pkg_fullpath)
                 ret = False
-                print('e.message: %s\t' % e.message)
+                print('error message: %s\t' % e.message)
         else:
             print("The file does not exist.")
     return ret
@@ -519,19 +506,14 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
-                    print("准备获取上游地址")
                     print(payload_pkgs_name_in_json)
                     # Change repo's upstream address.
                     mirror_url = get_url_from_mirror_server(
                         payload_pkgs_name_in_json, pkg['ver'])
 
-                    print("准备更新版本为 latest 的仓库")
-
                     if mirror_url[0] != None:
                         cmd = 'git remote set-url origin ' + mirror_url[0]
                         git_cmd_exec(cmd, repo_path)
-
-                    print("更换远端地址完毕")
 
             except Exception as e:
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
