@@ -95,6 +95,22 @@ def user_input(msg, default_value):
 
     return value
 
+def union_input(msg = None):
+    """Gets the union keyboard input."""
+
+    if sys.version_info < (3, 0):
+        if msg != None:
+            value = raw_input(msg)
+        else:
+            value = raw_input()
+    else:
+        if msg != None:
+            value = input(msg)
+        else:
+            value = input()
+
+    return value
+
 
 def get_mirror_giturl(submod_name):
     """Gets the submodule's url on mirror server.
@@ -901,10 +917,10 @@ def package_wizard():
     
     #first step
     print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
-    name = input()
+    name = union_input()
     while name == '' or name.isspace() == True :
         print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-        name = input()
+        name = union_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
@@ -922,37 +938,37 @@ def package_wizard():
                     'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
     print ('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
     print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
-    classnu = input()
+    classnu = union_input()
     while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >9:
         if classnu == '' :
             print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else :    
             print ('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
-        classnu = input()
+        classnu = union_input()
      
     pkgsclass = packageclass[int(classnu) - 1]  
 
     #fourth step
     print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
-    authorname = input()
+    authorname = union_input()
     while authorname == '':
         print ('\033[1;31;40mError: you must input author name of this package. Try again.\033[0m')
-        authorname = input()
+        authorname = union_input()
     
     #fifth step    
-    authoremail = input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
+    authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
     while authoremail == '':
         print ('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        authoremail = input()    
+        authoremail = union_input()    
     
     #sixth step
     print ('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
     print ("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")       
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
-    license_class = input()
+    license_class = union_input()
     while license_class == '' :
         print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = input()  
+        license_class = union_input()  
 
     if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
         license = license_index[int(license_class) - 1]
@@ -963,10 +979,10 @@ def package_wizard():
     print ('\033[5;33;40m\n7.Please input the repository of this package :\033[0m') 
     print ("\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
     
-    repository = input()
+    repository = union_input()
     while repository == '':
         print ('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = input()         
+        repository = union_input()         
 
     pkg_path = name
     if not os.path.exists(pkg_path):
