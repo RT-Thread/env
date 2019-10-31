@@ -28,6 +28,7 @@ import os
 import sys
 import argparse
 import platform
+from curses import ascii
 
 from cmds import *
 from vars import Export
@@ -48,6 +49,8 @@ def init_argparse():
 
     return parser
 
+def isascii(s):
+    return all(ascii.isascii(c) for c in s)
 
 def main():
     bsp_root = os.getcwd()
@@ -69,12 +72,10 @@ def main():
     Export('bsp_root')
     Export('pkgs_root')
 
-    try:
-        bsp_root.decode("ascii")
-    except Exception as e:
+    if not isascii(bsp_root):
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
-        
+
         print ("\n\033[1;31;40m警告：\033[0m")
         print ("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
         print ("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
