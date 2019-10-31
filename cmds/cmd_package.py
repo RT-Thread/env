@@ -85,7 +85,11 @@ def user_input(msg, default_value):
         msg = '%s[%s]' % (msg, default_value)
 
     print(msg)
-    value = input()
+    if sys.version_info < (3, 0):
+        value = raw_input()
+    else:
+        value = input()
+
     if value == '':
         value = default_value
 
@@ -796,10 +800,12 @@ def package_update(isDeleteOld=False):
                     print("Floder delete fail: %s" % gitdir.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
-                print (
-                    "The folder is managed by git. Do you want to delete this folder?\n")
-                rc = input(
-                    'Press the Y Key to delete the folder or just press Enter to keep it : ')
+                print ("The folder is managed by git. Do you want to delete this folder?\n")
+                if sys.version_info < (3, 0):
+                    rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
+                else:
+                    rc = input('Press the Y Key to delete the folder or just press Enter to keep it : ')
+
                 if rc == 'y' or rc == 'Y':
                     try:
                         if rm_package(gitdir) == False:
