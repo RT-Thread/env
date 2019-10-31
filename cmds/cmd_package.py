@@ -85,7 +85,7 @@ def user_input(msg, default_value):
         msg = '%s[%s]' % (msg, default_value)
 
     print(msg)
-    value = raw_input()
+    value = input()
     if value == '':
         value = default_value
 
@@ -149,7 +149,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
     try:
         if type(pkgs_name_in_json) != type("str"):
-            pkgs_name_in_json = str(pkgs_name_in_json)
+            pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
     except Exception as e:
         print('e.message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
@@ -158,8 +158,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     print("已经对比过数据类型了")
 
     print("type(pkgs_name_in_json)", type(pkgs_name_in_json))
+    print(pkgs_name_in_json)
 
-    payload_pkgs_name_in_json = pkgs_name_in_json
     payload = {
         "userName": "RT-Thread",
         "packages": [
@@ -168,9 +168,9 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             }
         ]
     }
-    payload["packages"][0]['name'] = payload_pkgs_name_in_json
+    payload["packages"][0]['name'] = pkgs_name_in_json
 
-    print(payload)
+    # print(payload)
     try:
         print("准备连接查询服务器")
         r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
@@ -937,10 +937,10 @@ def package_wizard():
     
     #first step
     print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
-    name = raw_input()
+    name = input()
     while name == '' or name.isspace() == True :
         print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-        name = raw_input()
+        name = input()
 
     default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
@@ -958,37 +958,37 @@ def package_wizard():
                     'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
     print ('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
     print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
-    classnu = raw_input()
+    classnu = input()
     while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >9:
         if classnu == '' :
             print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else :    
             print ('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
-        classnu = raw_input()
+        classnu = input()
      
     pkgsclass = packageclass[int(classnu) - 1]  
 
     #fourth step
     print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
-    authorname = raw_input()
+    authorname = input()
     while authorname == '':
         print ('\033[1;31;40mError: you must input author name of this package. Try again.\033[0m')
-        authorname = raw_input()
+        authorname = input()
     
     #fifth step    
-    authoremail = raw_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
+    authoremail = input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
     while authoremail == '':
         print ('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        authoremail = raw_input()    
+        authoremail = input()    
     
     #sixth step
     print ('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
     print ("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")       
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
-    license_class = raw_input()
+    license_class = input()
     while license_class == '' :
         print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = raw_input()  
+        license_class = input()  
 
     if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
         license = license_index[int(license_class) - 1]
@@ -999,10 +999,10 @@ def package_wizard():
     print ('\033[5;33;40m\n7.Please input the repository of this package :\033[0m') 
     print ("\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
     
-    repository = raw_input()
+    repository = input()
     while repository == '':
         print ('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = raw_input()         
+        repository = input()         
 
     pkg_path = name
     if not os.path.exists(pkg_path):

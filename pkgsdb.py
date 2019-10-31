@@ -178,7 +178,7 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
         print ('Are you sure you want to permanently delete the file: %s?' %
                os.path.basename(pathname))
         print ('If you choose to keep the changed file,you should copy the file to another folder. \nbecaues it may be covered by the next update.')
-        rc = raw_input(
+        rc = input(
             'Press the Y Key to delete the file or just press Enter to keep the file.')
         if rc == 'y' or rc == 'Y':
             sql = "DELETE from packagefile where pathname = '" + dbsqlname + "'"
