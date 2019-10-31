@@ -28,7 +28,6 @@ import os
 import sys
 import argparse
 import platform
-from curses import ascii
 
 from cmds import *
 from vars import Export
@@ -49,8 +48,6 @@ def init_argparse():
 
     return parser
 
-def isascii(s):
-    return all(ascii.isascii(c) for c in s)
 
 def main():
     bsp_root = os.getcwd()
@@ -72,7 +69,9 @@ def main():
     Export('bsp_root')
     Export('pkgs_root')
 
-    if not isascii(bsp_root):
+    try:
+        bsp_root.encode('utf-8').decode("ascii")
+    except Exception as e:
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
