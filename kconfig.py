@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-
+ # -*- coding:utf-8 -*-
 #
 # File      : kconfig.py
 # This file is part of RT-Thread RTOS
@@ -26,7 +26,7 @@
 
 def pkgs_path(pkgs, name, path):
     for pkg in pkgs:
-        if pkg.has_key('name') and pkg['name'] == name:
+        if 'name' in pkg and pkg['name'] == name:
             pkg['path'] = path
             return
 
@@ -38,7 +38,7 @@ def pkgs_path(pkgs, name, path):
 
 def pkgs_ver(pkgs, name, ver):
     for pkg in pkgs:
-        if pkg.has_key('name') and pkg['name'] == name:
+        if 'name' in pkg and pkg['name'] == name:
             pkg['ver'] = ver
             return
 
@@ -51,9 +51,9 @@ def pkgs_ver(pkgs, name, ver):
 def parse(filename):
     ret = []
     try:
-        config = file(filename)
+        config = open(filename, "r") 
     except:
-        print 'open .config failed'
+        print('open .config failed') 
         return ret
 
     for line in config:
@@ -69,10 +69,8 @@ def parse(filename):
             if len(setting) >= 2:
                 if setting[0].startswith('CONFIG_PKG_'):
                     pkg_prefix = setting[0][11:]
-
                     if pkg_prefix.startswith('USING_'):
                         pkg_name = pkg_prefix[6:]
-                        # print 'enable package:', pkg_name
                     else:
                         if pkg_prefix.endswith('_PATH'):
                             pkg_name = pkg_prefix[:-5]
@@ -92,6 +90,7 @@ def parse(filename):
                                 pkg_ver = pkg_ver[:-1]
                             pkgs_ver(ret, pkg_name, pkg_ver)
 
+    config.close()
     return ret
 
 
