@@ -101,3 +101,4 @@ ENV/
 .mypy_cache/
 .vscode/settings.json
 cmds/.config.old
+/cmds/.config
