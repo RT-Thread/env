@@ -166,7 +166,10 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
     try:
         if type(pkgs_name_in_json) != type("str"):
-            pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
+            if sys.version_info < (3, 0):
+                pkgs_name_in_json = str(pkgs_name_in_json)
+            else:
+                pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
     except Exception as e:
         print('error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
@@ -181,6 +184,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
         ]
     }
     payload["packages"][0]['name'] = pkgs_name_in_json
+
+    # print(payload)
 
     try:
         r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
