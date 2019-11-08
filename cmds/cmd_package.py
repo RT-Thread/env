@@ -922,10 +922,10 @@ def package_wizard():
     pkgsclass = packageclass[int(classnu) - 1]  
 
     #fourth step
-    print ('\033[5;33;40m\n4.Please input author name of this package :\033[0m')        
+    print ("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")        
     authorname = raw_input()
     while authorname == '':
-        print ('\033[1;31;40mError: you must input author name of this package. Try again.\033[0m')
+        print ("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
         authorname = raw_input()
     
     #fifth step    
@@ -972,7 +972,7 @@ def package_wizard():
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description,  description_zh=description_zh,version=ver, keyword=keyword,license=license, repository=repository)
+    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description,  description_zh=description_zh,version=ver, keyword=keyword,license=license, repository=repository, pkgs_using_name=uppername)
     f = file(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()
