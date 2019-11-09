@@ -84,13 +84,15 @@ Package_json_file = '''{
   "name": "${name}",
   "description": "${description}",
   "description_zh": "${description_zh}",  
+  "enable": "PKG_USING_${pkgs_using_name}", 
   "keywords": [
     "${keyword}"
   ],
   "category": "${pkgsclass}",
   "author": {
     "name": "${authorname}",
-    "email": "${authoremail}"
+    "email": "${authoremail}",
+    "github": "${authorname}"
   },
   "license": "${license}",
   "repository": "${repository}",
