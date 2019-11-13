@@ -36,6 +36,7 @@ import time
 import logging
 import archive
 import sys
+import re
 
 try:
     import requests
@@ -891,9 +892,14 @@ def package_wizard():
     #first step
     print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
     name = raw_input()
-    while name == '' or name.isspace() == True :
-        print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-        name = raw_input()
+    regular_obj = re.compile('\W')
+    while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
+        if name == '' or name.isspace():
+            print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
+            name = raw_input()
+        else:            
+            print ('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
+            name = raw_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
