@@ -36,11 +36,11 @@ import time
 import logging
 import archive
 import sys
+import re
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
 from string import Template
 from .cmd_menuconfig import find_macro_in_config
-import re
 
 try:
     import requests
@@ -923,6 +923,7 @@ def package_wizard():
     
     #first step
     print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
+
     name = union_input()
     regular_obj = re.compile('\W')
     while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
@@ -961,11 +962,12 @@ def package_wizard():
 
     #fourth step
     print ("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")        
+
     authorname = union_input()
     while authorname == '':
         print ("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
         authorname = union_input()
-    
+
     #fifth step    
     authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
     while authoremail == '':
