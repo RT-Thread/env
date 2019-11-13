@@ -34,7 +34,7 @@ def run_proc(name, env_root):
 
     try:
         os.system("python %s package --upgrade 1>%s 2>%s"%(exec_file, log_std, log_err))
-    except Exception, e:
+    except Exception as e:
         print("Auto upgrade failed, please check your network.")
         pass
 

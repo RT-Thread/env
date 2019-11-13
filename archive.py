@@ -103,7 +103,8 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
 
 def packtest(path):
     ret = True
-    if ".zip" in path:
+
+    if path.find(".zip") != -1:
         try:
             if zipfile.is_zipfile(path):
                 # Test zip again to make sure it's a right zip file.
@@ -114,24 +115,26 @@ def packtest(path):
             else:
                 ret = False
                 print('package check error. \n')
-        except Exception, e:
-            print('packtest e.message:%s\t' % e.message)
-#             arch.close()
+        except Exception as e:
+            print('packtest error message:%s\t' % e)
             print("The archive package is broken. \n")
+            arch.close()
             ret = False
 
-    if ".tar.bz2" in path:
+    # if ".tar.bz2" in path:.
+    if path.find(".tar.bz2") != -1:
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
-        except Exception, e:
+        except Exception as e:
             ret = False
 
-    if ".tar.gz" in path:
+    # if ".tar.gz" in path:
+    if path.find(".tar.gz") != -1:
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
-        except Exception, e:
+        except Exception as e:
             ret = False
 
     return ret

@@ -37,6 +37,10 @@ import logging
 import archive
 import sys
 import re
+from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
+from vars import Import, Export
+from string import Template
+from .cmd_menuconfig import find_macro_in_config
 
 try:
     import requests
@@ -49,11 +53,6 @@ except ImportError:
           "* command install step:\n"
           "* $ sudo apt-get install python-requests\n"
           "****************************************\n")
-
-from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
-from vars import Import, Export
-from string import Template
-from cmd_menuconfig import find_macro_in_config
 
 """package command"""
 
@@ -68,7 +67,7 @@ def execute_command(cmdstring, cwd=None, shell=True):
 
     stdout_str = ''
     while sub.poll() is None:
-        stdout_str += sub.stdout.read()
+        stdout_str += str(sub.stdout.read())
         time.sleep(0.1)
 
     return stdout_str
@@ -87,9 +86,29 @@ def user_input(msg, default_value):
         msg = '%s[%s]' % (msg, default_value)
 
     print(msg)
-    value = raw_input()
+    if sys.version_info < (3, 0):
+        value = raw_input()
+    else:
+        value = input()
+
     if value == '':
         value = default_value
+
+    return value
+
+def union_input(msg = None):
+    """Gets the union keyboard input."""
+
+    if sys.version_info < (3, 0):
+        if msg != None:
+            value = raw_input(msg)
+        else:
+            value = raw_input()
+    else:
+        if msg != None:
+            value = input(msg)
+        else:
+            value = input()
 
     return value
 
@@ -139,14 +158,24 @@ def modify_submod_file_to_mirror(submod_path):
 
         return replace_list
 
-    except Exception, e:
-        print('e.message:%s\t' % e.message)
+    except Exception as e:
+        print('error message:%s\t' % e)
 
 
 def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
     """Get the download address from the mirror server based on the package name."""
 
-    payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
+    try:
+        if type(pkgs_name_in_json) != type("str"):
+            if sys.version_info < (3, 0):
+                pkgs_name_in_json = str(pkgs_name_in_json)
+            else:
+                pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
+    except Exception as e:
+        print('error message:%s' % e)
+        print("\nThe mirror server could not be contacted. Please check your network connection.")
+        return None, None
+
     payload = {
         "userName": "RT-Thread",
         "packages": [
@@ -155,18 +184,15 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             }
         ]
     }
-    payload["packages"][0]['name'] = payload_pkgs_name_in_json
+    payload["packages"][0]['name'] = pkgs_name_in_json
+
+    # print(payload)
 
     try:
-        r = requests.post(
-            "http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-
-        # print(r.status_code)
+        r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
-
-            # print(package_info)
 
             # Can't find package,change git package SHA if it's a git
             # package
@@ -186,11 +212,10 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
 
             print("\nTips : \nThe system needs to be upgraded.")
             print("Please use the <pkgs --upgrade> command to upgrade packages index.\n")
-                   
             return None, None
 
-    except Exception, e:
-        # print('e.message:%s\t' % e.message)
+    except Exception as e:
+        print('error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
 
@@ -214,8 +239,8 @@ def determine_url_valid(url_from_srv):
 
         return True
 
-    except Exception, e:
-        # print('e.message:%s\t' % e.message)
+    except Exception as e:
+        print('error message:%s\t' % e)
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
@@ -268,8 +293,8 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
                     ver_sha = get_ver_sha
 
                 upstream_change_flag = True
-    except Exception, e:
-        # print('e.message:%s\t' % e.message)
+    except Exception as e:
+        print('error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if package_url[-4:] == '.git':
@@ -278,13 +303,15 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             repo_path = repo_path + '-' + pkg['ver']
             repo_path_full = '"' + repo_path + '"'
 
-            cmd = 'git clone ' + package_url + ' ' + repo_path_full
-            execute_command(cmd, cwd=bsp_pkgs_path)
+            clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
+            execute_command(clone_cmd, cwd=bsp_pkgs_path)
 
-            cmd = 'git checkout -q ' + ver_sha
-            execute_command(cmd, cwd=repo_path)
-        except Exception, e:
+            git_check_cmd = 'git checkout -q ' + ver_sha
+            execute_command(git_check_cmd, cwd=repo_path)
+
+        except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
+            os.chdir(before)
             return False
 
         if upstream_change_flag:
@@ -320,27 +347,27 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path.decode("gbk"), package_url):
+        if not package.download(pkg['ver'], local_pkgs_path, package_url):
             return False
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
         pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(pkg_fullpath.encode("gbk")):
+        if not archive.packtest(pkg_fullpath):
             print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
             return False
      
         # unpack package
-        if not os.path.exists(pkg_dir.encode("gbk")):
+        if not os.path.exists(pkg_dir):
 
             try:
-                if not package.unpack(pkg_fullpath.encode("gbk"), bsp_pkgs_path, pkg, pkgs_name_in_json.encode("gbk")):
+                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
                     ret = False
-            except Exception, e:
+            except Exception as e:
                 os.remove(pkg_fullpath)
                 ret = False
-                print('e.message: %s\t' % e.message)
+                print('error message: %s\t' % e)
         else:
             print("The file does not exist.")
     return ret
@@ -437,8 +464,8 @@ def get_pkg_folder_by_orign_path(orign_path, version):
 def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
-    except Exception, e:
-        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e.message))
+    except Exception as e:
+        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
@@ -490,7 +517,8 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                         cmd = 'git remote set-url origin ' + mirror_url[0]
                         git_cmd_exec(cmd, repo_path)
 
-            except Exception, e:
+            except Exception as e:
+                print("error message : %s" % e)
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
@@ -507,10 +535,9 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 git_cmd_exec(cmd, repo_path)
             else:
                 print("Can't find the package : %s's url in file : %s" %
-                      (payload_pkgs_name_in_json.encode("utf-8"), pkg_path.encode("utf-8")))
+                      (payload_pkgs_name_in_json, pkg_path))
 
-            print("==============================>  %s update done \n" %
-                  (pkgs_name_in_json.encode("utf-8")))
+            print("==============================>  %s update done\n" %(pkgs_name_in_json))
 
 
 def pre_package_update():
@@ -545,13 +572,12 @@ def pre_package_update():
         fp = open("pkgs_error.json", 'w')
         fp.write("[]")
         fp.close()
-
         os.chdir(bsp_root)
 
     # prepare target packages file
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
-    dbsqlite_pathname = dbsqlite_pathname.decode('gbk')
+    dbsqlite_pathname = dbsqlite_pathname.encode('utf-8').decode('gbk')
  
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
@@ -562,6 +588,9 @@ def pre_package_update():
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
+
+    # print("newpkgs", pkgs)
+
     newpkgs = pkgs
 
     if not os.path.exists(bsp_packages_path):
@@ -581,6 +610,8 @@ def pre_package_update():
     with open(pkgs_fn, 'r') as f:
         oldpkgs = json.load(f)
 
+    # print("oldpkgs", oldpkgs)
+
     # regenerate file : packages/pkgs_error.json 
     pkgs_error_list_fn = os.path.join(
         bsp_packages_path, 'pkgs_error.json')
@@ -598,10 +629,8 @@ def pre_package_update():
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
-        bridge_script = file(os.path.join(
-            bsp_packages_path, 'SConscript'), 'w')
-        bridge_script.write(Bridge_SConscript)
-        bridge_script.close()
+        with open(os.path.join(bsp_packages_path, 'SConscript'),'w') as f:
+            f.write(str(Bridge_SConscript))
 
     return [oldpkgs, newpkgs, pkgs_error, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
@@ -628,7 +657,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
-                print pkg, 'download failed.'
+                print(pkg, 'download failed.')
                 flag = False
 
         if len(error_packages_redownload_error_list):
@@ -722,9 +751,8 @@ def write_storage_file(pkgs_fn, newpkgs):
     next update.
     """
 
-    pkgs_file = file(pkgs_fn, 'w')
-    pkgs_file.write(json.dumps(newpkgs, indent=1))
-    pkgs_file.close()
+    with open(pkgs_fn,'w') as f:
+        f.write(str(json.dumps(newpkgs, indent=1)))
 
 
 def package_update(isDeleteOld=False):
@@ -759,6 +787,9 @@ def package_update(isDeleteOld=False):
     bsp_packages_path = sys_value[5]
     dbsqlite_pathname = sys_value[6]
 
+    # print(oldpkgs)
+    # print(newpkgs)
+
     if len(pkgs_delete_error_list):
         for error_package in pkgs_delete_error_list:
             removepath_ver = get_package_remove_path(
@@ -791,27 +822,29 @@ def package_update(isDeleteOld=False):
                     print("Floder delete fail: %s" % gitdir.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
-                print (
-                    "The folder is managed by git. Do you want to delete this folder?\n")
-                rc = raw_input(
-                    'Press the Y Key to delete the folder or just press Enter to keep it : ')
+                print ("The folder is managed by git. Do you want to delete this folder?\n")
+                if sys.version_info < (3, 0):
+                    rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
+                else:
+                    rc = input('Press the Y Key to delete the folder or just press Enter to keep it : ')
+
                 if rc == 'y' or rc == 'Y':
                     try:
                         if rm_package(gitdir) == False:
                             pkgs_delete_fail_list.append(pkg)
                             print("Error: Please delete the folder manually.")
-                    except Exception, e:
+                    except Exception as e:
                         print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", gitdir.encode("utf-8"), e.message))
+                              ("Delete folder failed: ", gitdir.encode("utf-8"), e))
         else:
             if os.path.isdir(removepath_ver):
                 print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
                     pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
-                except Exception, e:
+                except Exception as e:
                     pkgs_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e.message))
+                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e))
 
     if len(pkgs_delete_fail_list):
         # write error messages
@@ -821,9 +854,8 @@ def package_update(isDeleteOld=False):
         return
     else:
         # write error messages
-        pkgs_file = file(pkgs_error_list_fn, 'w')
-        pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
-        pkgs_file.close()
+        with open(pkgs_error_list_fn,'w') as f:
+            f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
 
     # 2.in new not in old : Software packages to be installed.
     # If the package download fails, record it, and then download again when
@@ -841,7 +873,7 @@ def package_update(isDeleteOld=False):
             # If the PKG download fails, record it in the
             # pkgs_download_fail_list.
             pkgs_download_fail_list.append(pkg)
-            print pkg, 'download failed.'
+            print(pkg, 'download failed.') 
             flag = False
 
     # Get the currently updated configuration.
@@ -891,15 +923,16 @@ def package_wizard():
     
     #first step
     print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
-    name = raw_input()
+
+    name = union_input()
     regular_obj = re.compile('\W')
     while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
         if name == '' or name.isspace():
             print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-            name = raw_input()
+            name = union_input()
         else:            
             print ('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
-            name = raw_input()
+            name = union_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
     #description = user_input('menuconfig option name,default:\n',default_description)
@@ -917,37 +950,38 @@ def package_wizard():
                     'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
     print ('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
     print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
-    classnu = raw_input()
+    classnu = union_input()
     while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >9:
         if classnu == '' :
             print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else :    
             print ('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
-        classnu = raw_input()
+        classnu = union_input()
      
     pkgsclass = packageclass[int(classnu) - 1]  
 
     #fourth step
     print ("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")        
-    authorname = raw_input()
+
+    authorname = union_input()
     while authorname == '':
         print ("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
-        authorname = raw_input()
-    
+        authorname = union_input()
+
     #fifth step    
-    authoremail = raw_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
+    authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
     while authoremail == '':
         print ('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        authoremail = raw_input()    
+        authoremail = union_input()    
     
     #sixth step
     print ('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
     print ("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")       
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
-    license_class = raw_input()
+    license_class = union_input()
     while license_class == '' :
         print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = raw_input()  
+        license_class = union_input()  
 
     if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
         license = license_index[int(license_class) - 1]
@@ -958,10 +992,10 @@ def package_wizard():
     print ('\033[5;33;40m\n7.Please input the repository of this package :\033[0m') 
     print ("\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
     
-    repository = raw_input()
+    repository = union_input()
     while repository == '':
         print ('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = raw_input()         
+        repository = union_input()         
 
     pkg_path = name
     if not os.path.exists(pkg_path):

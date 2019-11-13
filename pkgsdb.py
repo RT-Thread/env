@@ -26,6 +26,7 @@
 import sqlite3
 import os
 import hashlib
+import sys
 
 from vars import Import
 SHOW_SQL = False
@@ -35,7 +36,7 @@ def GetFileMd5(filename):
     if not os.path.isfile(filename):
         return
     myhash = hashlib.md5()
-    f = file(filename, 'rb')
+    f = open(filename, 'rb')
     while True:
         b = f.read(8096)
         if not b:
@@ -118,7 +119,7 @@ def savetodb(pathname, pkgspathname, before_change_name):
     bsp_root = Import('bsp_root')
     bsppkgs = os.path.join(bsp_root, 'packages')
 
-    conn = get_conn(dbpathname.decode("gbk"))
+    conn = get_conn(dbpathname)
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
     md5pathname = os.path.join(bsppkgs, before_change_name)
@@ -139,9 +140,9 @@ def dbdump(dbpathname):
     c = get_cursor(conn)
     cursor = c.execute("SELECT pathname, package, md5 from packagefile")
     for row in cursor:
-        print "pathname = ", row[0]
-        print "package = ", row[1]
-        print "md5 = ", row[2], "\n"
+        print("pathname = ", row[0]) 
+        print("package = ", row[1]) 
+        print("md5 = ", row[2], "\n") 
     conn.close()
 
 #delete the unchanged file
@@ -178,8 +179,11 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
         print ('Are you sure you want to permanently delete the file: %s?' %
                os.path.basename(pathname))
         print ('If you choose to keep the changed file,you should copy the file to another folder. \nbecaues it may be covered by the next update.')
-        rc = raw_input(
-            'Press the Y Key to delete the file or just press Enter to keep the file.')
+
+        if sys.version_info < (3, 0):
+            rc = raw_inuput('Press the Y Key to delete the file or just press Enter to keep the file.')
+        else:
+            rc = input('Press the Y Key to delete the file or just press Enter to keep the file.')
         if rc == 'y' or rc == 'Y':
             sql = "DELETE from packagefile where pathname = '" + dbsqlname + "'"
             cursor = c.execute(sql)

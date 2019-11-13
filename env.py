@@ -70,11 +70,11 @@ def main():
     Export('pkgs_root')
 
     try:
-        bsp_root.decode("ascii")
-    except Exception, e:
+        bsp_root.encode('utf-8').decode("ascii")
+    except Exception as e:
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
-        
+
         print ("\n\033[1;31;40m警告：\033[0m")
         print ("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
         print ("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
