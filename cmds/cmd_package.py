@@ -1007,13 +1007,13 @@ def package_wizard():
     uppername = str.upper(name)
     kconfig = s.substitute(name=uppername, description=description, version=ver,
                            pkgs_class=pkgsclass, lowercase_name=name, version_standard=ver_standard)
-    f = file(os.path.join(pkg_path, 'Kconfig'), 'wb')
+    f = open(os.path.join(pkg_path, 'Kconfig'), 'wb')
     f.write(kconfig)
     f.close()
 
     s = Template(Package_json_file)
     package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description,  description_zh=description_zh,version=ver, keyword=keyword,license=license, repository=repository, pkgs_using_name=uppername)
-    f = file(os.path.join(pkg_path, 'package.json'), 'wb')
+    f = open(os.path.join(pkg_path, 'package.json'), 'wb')
     f.write(package)
     f.close()
 
