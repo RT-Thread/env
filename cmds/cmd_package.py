@@ -311,7 +311,6 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
         except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
-            os.chdir(before)
             return False
 
         if upstream_change_flag:
