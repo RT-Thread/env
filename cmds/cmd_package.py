@@ -72,6 +72,13 @@ def execute_command(cmdstring, cwd=None, shell=True):
 
     return stdout_str
 
+def git_pull_repo(repo_path, repo_url=''):
+    if platform.system() == "Windows":
+        cmd = r'git config --local core.autocrlf true'
+        execute_command(cmd, cwd=repo_path)
+    cmd = r'git pull ' + repo_url
+    execute_command(cmd, cwd=repo_path)
+
 def determine_support_chinese(env_root):
     get_flag_file_path = os.path.join(env_root, 'tools', 'bin', 'env_above_ver_1_1')
     if os.path.isfile(get_flag_file_path):
@@ -521,8 +528,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
-            cmd = 'git pull'
-            git_cmd_exec(cmd, repo_path)
+            git_pull_repo(repo_path)
 
             # If the package has submodules, update the submodules.
             update_submodule(repo_path)
@@ -1045,8 +1051,7 @@ def upgrade_packages_index():
         print ("upgrade from :%s" % (git_repo.encode("utf-8")))
     else:
         print("Begin to upgrade env packages.")
-        cmd = r'git pull ' + git_repo
-        execute_command(cmd, cwd=pkgs_path)
+        git_pull_repo(pkgs_path, git_repo)
         print("==============================>  Env packages upgrade done \n")
 
     for filename in os.listdir(packages_root):
@@ -1058,8 +1063,7 @@ def upgrade_packages_index():
 
             if os.path.isdir(os.path.join(package_path, '.git')):
                 print("Begin to upgrade %s." % filename)
-                cmd = r'git pull'
-                execute_command(cmd, cwd=package_path)
+                git_pull_repo(package_path)
                 print("==============================>  Env %s update done \n" % filename)
 
 
@@ -1081,8 +1085,7 @@ def upgrade_env_script():
         env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
-    cmd = r'git pull ' + env_scripts_repo
-    execute_command(cmd, cwd=env_scripts_root)
+    git_pull_repo(env_scripts_root, env_scripts_repo)
     print("==============================>  Env scripts upgrade done \n")
 
 
