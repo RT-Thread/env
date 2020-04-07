@@ -54,7 +54,6 @@ except ImportError:
           "* $ sudo apt-get install python-requests\n"
           "****************************************\n")
 
-"""package command"""
 
 def execute_command(cmdstring, cwd=None, shell=True):
     """Execute the system command at the specified address."""
@@ -72,6 +71,7 @@ def execute_command(cmdstring, cwd=None, shell=True):
 
     return stdout_str
 
+
 def git_pull_repo(repo_path, repo_url=''):
     if platform.system() == "Windows":
         cmd = r'git config --local core.autocrlf true'
@@ -79,12 +79,14 @@ def git_pull_repo(repo_path, repo_url=''):
     cmd = r'git pull ' + repo_url
     execute_command(cmd, cwd=repo_path)
 
+
 def determine_support_chinese(env_root):
     get_flag_file_path = os.path.join(env_root, 'tools', 'bin', 'env_above_ver_1_1')
     if os.path.isfile(get_flag_file_path):
         return True
     else:
         return False
+
 
 def user_input(msg, default_value):
     """Gets the user's keyboard input."""
@@ -103,7 +105,8 @@ def user_input(msg, default_value):
 
     return value
 
-def union_input(msg = None):
+
+def union_input(msg=None):
     """Gets the union keyboard input."""
 
     if sys.version_info < (3, 0):
@@ -226,8 +229,8 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
 
-def determine_url_valid(url_from_srv):
 
+def determine_url_valid(url_from_srv):
     headers = {'Connection': 'keep-alive',
                'Accept-Encoding': 'gzip, deflate',
                'Accept': '*/*',
@@ -289,14 +292,16 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     upstream_change_flag = False
 
     try:
-        if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+        if (not os.path.isfile(env_config_file)) or \
+                (os.path.isfile(env_config_file)
+                 and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
             #  determine whether the package package url is valid
-            if get_package_url != None and determine_url_valid(get_package_url):
+            if get_package_url is not None and determine_url_valid(get_package_url):
                 package_url = get_package_url
 
-                if get_ver_sha != None:
+                if get_ver_sha is not None:
                     ver_sha = get_ver_sha
 
                 upstream_change_flag = True
@@ -315,7 +320,6 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
             git_check_cmd = 'git checkout -q ' + ver_sha
             execute_command(git_check_cmd, cwd=repo_path)
-
         except Exception as e:
             print("\nFailed to download software package with git. Please check the network connection.")
             return False
@@ -325,20 +329,26 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             execute_command(cmd, cwd=repo_path)
 
         # If there is a .gitmodules file in the package, prepare to update submodule.
-        submod_path = os.path.join(repo_path, '.gitmodules')
-        if os.path.isfile(submod_path):
+        submodule_path = os.path.join(repo_path, '.gitmodules')
+        if os.path.isfile(submodule_path):
             print("Start to update submodule")
             # print("开始更新软件包子模块")
 
-            if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+            if (not os.path.isfile(env_config_file)) \
+                    or (os.path.isfile(env_config_file)
+                        and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+
                 # print("开启了镜像加速，开始修改 .gitmodules 文件")
-                replace_list = modify_submod_file_to_mirror(submod_path)  # Modify .gitmodules file
+                replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
 
             # print("开始执行更新动作")
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
-            if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+            if (not os.path.isfile(env_config_file)) or \
+                    (os.path.isfile(env_config_file) and
+                     find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+
                 if len(replace_list):
                     for item in replace_list:
                         submod_dir_path = os.path.join(repo_path, item[2])
@@ -346,11 +356,13 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-            if os.path.isfile(submod_path):
+        if (not os.path.isfile(env_config_file)) or \
+                (os.path.isfile(env_config_file)
+                 and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+
+            if os.path.isfile(submodule_path):
                 cmd = 'git checkout .gitmodules'
                 execute_command(cmd, cwd=repo_path)
-
     else:
         # Download a package of compressed package type.
         if not package.download(pkg['ver'], local_pkgs_path, package_url):
@@ -358,20 +370,20 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
         pkg_dir = package.get_filename(pkg['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
-        pkg_fullpath = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
+        package_path = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(pkg_fullpath):
-            print("package : %s is invalid"%pkg_fullpath.encode("utf-8"))
+        if not archive.packtest(package_path):
+            print("package : %s is invalid" % package_path.encode("utf-8"))
             return False
-     
+
         # unpack package
         if not os.path.exists(pkg_dir):
 
             try:
-                if not package.unpack(pkg_fullpath, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                if not package.unpack(package_path, bsp_pkgs_path, pkg, pkgs_name_in_json):
                     ret = False
             except Exception as e:
-                os.remove(pkg_fullpath)
+                os.remove(package_path)
                 ret = False
                 print('error message: %s\t' % e)
         else:
@@ -394,11 +406,11 @@ def package_list():
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print ("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
-        print ("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
+        print("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
+        print("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
 
-        print ('\033[1;31;40mNo system configuration file : .config.\033[0m')
-        print ('\033[1;31;40mYou should use < menuconfig > command to config bsp first.\033[0m')
+        print('\033[1;31;40mNo system configuration file : .config.\033[0m')
+        print('\033[1;31;40mYou should use < menuconfig > command to config bsp first.\033[0m')
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
@@ -417,12 +429,12 @@ def package_list():
         package.parse(pkg_path)
 
         pkgs_name_in_json = package.get_name()
-        print ("package name : %s, ver : %s "%(pkgs_name_in_json.encode("utf-8"), pkg['ver'].encode("utf-8")))
+        print("package name : %s, ver : %s " % (pkgs_name_in_json.encode("utf-8"), pkg['ver'].encode("utf-8")))
 
     if not pkgs:
-        print ("Packages list is empty.")
-        print ('You can use < menuconfig > command to select online packages.')
-        print ('Then use < pkgs --update > command to install them.')
+        print("Packages list is empty.")
+        print('You can use < menuconfig > command to select online packages.')
+        print('Then use < pkgs --update > command to install them.')
     return
 
 
@@ -471,7 +483,7 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception as e:
-        print('error message:%s%s. %s \n\t' %(cwd.encode("utf-8"), " path doesn't exist", e))
+        print('error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
@@ -512,14 +524,16 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             try:
                 # If mirror acceleration is enabled, get the update address from
                 # the mirror server.
-                if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+                if (not os.path.isfile(env_config_file)) or \
+                        (os.path.isfile(env_config_file)
+                         and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
                     # Change repo's upstream address.
                     mirror_url = get_url_from_mirror_server(
                         payload_pkgs_name_in_json, pkg['ver'])
 
-                    if mirror_url[0] != None:
+                    if mirror_url[0] is not None:
                         cmd = 'git remote set-url origin ' + mirror_url[0]
                         git_cmd_exec(cmd, repo_path)
 
@@ -536,13 +550,13 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             # recover origin url to the path which get from packages.json file
             if package.get_url(pkg['ver']):
                 cmd = 'git remote set-url origin ' + \
-                    package.get_url(pkg['ver'])
+                      package.get_url(pkg['ver'])
                 git_cmd_exec(cmd, repo_path)
             else:
                 print("Can't find the package : %s's url in file : %s" %
                       (payload_pkgs_name_in_json, pkg_path))
 
-            print("==============================>  %s update done\n" %(pkgs_name_in_json))
+            print("==============================>  %s update done\n" % (pkgs_name_in_json))
 
 
 def pre_package_update():
@@ -555,11 +569,11 @@ def pre_package_update():
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print ("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
-        print ("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
+        print("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
+        print("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
 
-        print ('No system configuration file : .config.')
-        print ('You should use < menuconfig > command to config bsp first.')
+        print('No system configuration file : .config.')
+        print('You should use < menuconfig > command to config bsp first.')
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
@@ -583,7 +597,7 @@ def pre_package_update():
     dbsqlite_pathname = os.path.join(bsp_packages_path, 'packages.dbsqlite')
     Export('dbsqlite_pathname')
     dbsqlite_pathname = dbsqlite_pathname.encode('utf-8').decode('gbk')
- 
+
     # Avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
@@ -634,7 +648,7 @@ def pre_package_update():
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
-        with open(os.path.join(bsp_packages_path, 'SConscript'),'w') as f:
+        with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
     return [oldpkgs, newpkgs, pkgs_error, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
@@ -652,11 +666,11 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
-            print("Package name : %s, Ver : %s"%(pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+            print("Package name : %s, Ver : %s" % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
-        for pkg in error_packages_list:                # Redownloaded the packages in error_packages_list
+        for pkg in error_packages_list:  # Redownloaded the packages in error_packages_list
             if install_pkg(env_root, pkgs_root, bsp_root, pkg):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
@@ -667,8 +681,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print ("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
-                   (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+            print("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
+                  (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             write_back_pkgs_json = sub_list(
                 read_back_pkgs_json, error_packages_redownload_error_list)
             read_back_pkgs_json = write_back_pkgs_json
@@ -684,7 +698,7 @@ def rm_package(dir):
     if platform.system() != "Windows":
         shutil.rmtree(dir)
     else:
-        dir = '"' +  dir + '"'
+        dir = '"' + dir + '"'
         cmd = 'rd /s /q ' + dir
         os.system(cmd)
 
@@ -692,15 +706,15 @@ def rm_package(dir):
         if platform.system() != "Windows":
             shutil.rmtree(dir)
         else:
-            dir = '"' +  dir + '"'
+            dir = '"' + dir + '"'
             cmd = 'rmdir /s /q ' + dir
             os.system(cmd)
 
         if os.path.isdir(dir):
-            print ("Folder path: %s" % dir.encode("utf-8"))
+            print("Folder path: %s" % dir.encode("utf-8"))
             return False
     else:
-        print ("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
+        print("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
         return True
 
 
@@ -741,7 +755,7 @@ def handle_download_error_packages(pkgs_fn, bsp_packages_path):
             continue
         else:
             error_packages_list.append(pkg)
-            
+
     # Handle the failed download packages
     get_flag = error_packages_handle(
         error_packages_list, read_back_pkgs_json, pkgs_fn)
@@ -756,7 +770,7 @@ def write_storage_file(pkgs_fn, newpkgs):
     next update.
     """
 
-    with open(pkgs_fn,'w') as f:
+    with open(pkgs_fn, 'w') as f:
         f.write(str(json.dumps(newpkgs, indent=1)))
 
 
@@ -782,7 +796,7 @@ def package_update(isDeleteOld=False):
     # According to the env version, whether Chinese output is supported or not
     if determine_support_chinese(env_root):
         if platform.system() == "Windows":
-            os.system('chcp 65001 > nul') 
+            os.system('chcp 65001 > nul')
 
     oldpkgs = sys_value[0]
     newpkgs = sys_value[1]
@@ -801,11 +815,12 @@ def package_update(isDeleteOld=False):
                 error_package, bsp_packages_path)
 
             if os.path.isdir(removepath_ver):
-                print("\nError: %s package delete failed, begin to remove it."%
+                print("\nError: %s package delete failed, begin to remove it." %
                       error_package['name'].encode("utf-8"))
 
                 if rm_package(removepath_ver) == False:
-                    print("Error: Delete package %s failed! Please delete the folder manually.\n"%error_package['name'].encode("utf-8"))
+                    print("Error: Delete package %s failed! Please delete the folder manually.\n" %
+                          error_package['name'].encode("utf-8"))
                     return
 
     # 1.in old ,not in new : Software packages that need to be removed.
@@ -821,13 +836,13 @@ def package_update(isDeleteOld=False):
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
-            print ("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
+            print("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
                 if rm_package(gitdir) == False:
                     print("Floder delete fail: %s" % gitdir.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
-                print ("The folder is managed by git. Do you want to delete this folder?\n")
+                print("The folder is managed by git. Do you want to delete this folder?\n")
                 if sys.version_info < (3, 0):
                     rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
                 else:
@@ -859,7 +874,7 @@ def package_update(isDeleteOld=False):
         return
     else:
         # write error messages
-        with open(pkgs_error_list_fn,'w') as f:
+        with open(pkgs_error_list_fn, 'w') as f:
             f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
 
     # 2.in new not in old : Software packages to be installed.
@@ -878,7 +893,7 @@ def package_update(isDeleteOld=False):
             # If the PKG download fails, record it in the
             # pkgs_download_fail_list.
             pkgs_download_fail_list.append(pkg)
-            print(pkg, 'download failed.') 
+            print(pkg, 'download failed.')
             flag = False
 
     # Get the currently updated configuration.
@@ -886,7 +901,7 @@ def package_update(isDeleteOld=False):
 
     # Give hints based on the success of the download.
     if len(pkgs_download_fail_list):
-        print("\nPackage download failed list:" )
+        print("\nPackage download failed list:")
         for item in pkgs_download_fail_list:
             print(item)
 
@@ -909,104 +924,107 @@ def package_update(isDeleteOld=False):
         flag = False
 
     if flag:
-        print ("Operation completed successfully.")
+        print("Operation completed successfully.")
     else:
-        print ("Operation failed.")
-        
+        print("Operation failed.")
+
+
 def package_wizard():
     """Packages creation wizard.
 
     The user enters the package name, version number, category, and automatically generates the package index file.
     """
     # Welcome
-    print ('\033[4;32;40mWelcome to using package wizard, please follow below steps.\033[0m\n')
-    
-    #Simple introduction about the wizard
-    print ('note :')
-    print ('      \033[5;35;40m[   ]\033[0m means default setting or optional information.')
-    print ('      \033[5;35;40mEnter\033[0m means using default option or ending and proceeding to the next step.') 
-    
-    #first step
-    print ('\033[5;33;40m\n1.Please input a new package name :\033[0m')
+    print('\033[4;32;40mWelcome to using package wizard, please follow below steps.\033[0m\n')
+
+    # Simple introduction about the wizard
+    print('note :')
+    print('      \033[5;35;40m[   ]\033[0m means default setting or optional information.')
+    print('      \033[5;35;40mEnter\033[0m means using default option or ending and proceeding to the next step.')
+
+    # first step
+    print('\033[5;33;40m\n1.Please input a new package name :\033[0m')
 
     name = union_input()
     regular_obj = re.compile('\W')
     while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
         if name == '' or name.isspace():
-            print ('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
+            print('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
             name = union_input()
-        else:            
-            print ('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
+        else:
+            print('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
             name = union_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
-    #description = user_input('menuconfig option name,default:\n',default_description)
+    # description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
-    description_zh = "请添加软件包 " + name +" 的中文描述。"
-    
-    #second step
+    description_zh = "请添加软件包 " + name + " 的中文描述。"
+
+    # second step
     ver = user_input('\033[5;33;40m\n2.Please input this package version, default :\033[0m', '1.0.0')
     ver_standard = ver.replace('.', '')
-    #keyword = user_input('keyword,default:\n', name)
+    # keyword = user_input('keyword,default:\n', name)
     keyword = name
 
-    #third step
+    # third step
     packageclass = ('iot', 'language', 'misc', 'multimedia',
                     'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
-    print ('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
-    print ("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
+    print('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
+    print(
+        "\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
     classnu = union_input()
-    while classnu == '' or classnu.isdigit()== False or int(classnu) < 1 or int(classnu) >9:
-        if classnu == '' :
-            print ('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
-        else :    
-            print ('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
+    while classnu == '' or classnu.isdigit() == False or int(classnu) < 1 or int(classnu) > 9:
+        if classnu == '':
+            print('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
+        else:
+            print('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
         classnu = union_input()
-     
-    pkgsclass = packageclass[int(classnu) - 1]  
 
-    #fourth step
-    print ("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")        
+    pkgsclass = packageclass[int(classnu) - 1]
+
+    # fourth step
+    print("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")
 
     authorname = union_input()
     while authorname == '':
-        print ("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
+        print("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
         authorname = union_input()
 
-    #fifth step    
-    authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m') 
+    # fifth step
+    authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m')
     while authoremail == '':
-        print ('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        authoremail = union_input()    
-    
-    #sixth step
-    print ('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
-    print ("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")       
+        print('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
+        authoremail = union_input()
+
+        # sixth step
+    print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
+    print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
     license_class = union_input()
-    while license_class == '' :
-        print ('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = union_input()  
+    while license_class == '':
+        print('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
+        license_class = union_input()
 
-    if license_class.isdigit()== True and int(license_class) >= 1 and int(license_class) <= 4:
+    if license_class.isdigit() == True and int(license_class) >= 1 and int(license_class) <= 4:
         license = license_index[int(license_class) - 1]
-    else :
-        license = license_class   
-        
-    #seventh step       
-    print ('\033[5;33;40m\n7.Please input the repository of this package :\033[0m') 
-    print ("\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
-    
+    else:
+        license = license_class
+
+        # seventh step
+    print('\033[5;33;40m\n7.Please input the repository of this package :\033[0m')
+    print(
+        "\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
+
     repository = union_input()
     while repository == '':
-        print ('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = union_input()         
+        print('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
+        repository = union_input()
 
     pkg_path = name
     if not os.path.exists(pkg_path):
         os.mkdir(pkg_path)
     else:
-        print ("\033[1;31;40mError: the package directory is exits!\033[0m")
+        print("\033[1;31;40mError: the package directory is exits!\033[0m")
 
     s = Template(Kconfig_file)
     uppername = str.upper(name)
@@ -1017,7 +1035,9 @@ def package_wizard():
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name=name, pkgsclass=pkgsclass,authorname=authorname,authoremail=authoremail, description=description,  description_zh=description_zh,version=ver, keyword=keyword,license=license, repository=repository, pkgs_using_name=uppername)
+    package = s.substitute(name=name, pkgsclass=pkgsclass, authorname=authorname, authoremail=authoremail,
+                           description=description, description_zh=description_zh, version=ver, keyword=keyword,
+                           license=license, repository=repository, pkgs_using_name=uppername)
     f = open(os.path.join(pkg_path, 'package.json'), 'w')
     f.write(package)
     f.close()
@@ -1025,9 +1045,10 @@ def package_wizard():
     print ('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
     print ('Please \033[5;34;40mupdate\033[0m other information of this package based on Kconfig and package.json in directory '+name+'.')
 
+
 def upgrade_packages_index():
     """Update the package repository index."""
-    
+
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
@@ -1091,26 +1112,26 @@ def upgrade_env_script():
 
 def package_upgrade():
     """Update the package repository directory and env function scripts."""
-    
+
     upgrade_packages_index()
     upgrade_env_script()
 
 
 def package_print_env():
-    print ("Here are some environmental variables.")
-    print (
+    print("Here are some environmental variables.")
+    print(
         "If you meet some problems,please check them. Make sure the configuration is correct.")
-    print ("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
-    print ("RTT_CC:%s" % (os.getenv("RTT_CC")))
-    print ("SCONS:%s" % (os.getenv("SCONS")))
-    print ("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
+    print("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
+    print("RTT_CC:%s" % (os.getenv("RTT_CC")))
+    print("SCONS:%s" % (os.getenv("SCONS")))
+    print("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
 
     env_root = os.getenv('ENV_ROOT')
     if env_root == None:
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
 
-    print ("ENV_ROOT:%s" % (env_root))
+    print("ENV_ROOT:%s" % (env_root))
 
 
 def cmd(args):
