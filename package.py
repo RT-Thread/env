@@ -128,6 +128,7 @@ group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
 Return('group')
 '''
 
+
 class Package:
     pkg = None
 
@@ -185,7 +186,7 @@ class Package:
                 os.remove(path)
             else:
                 if archive.packtest(path):
-                    #print "The file is rigit."
+                    # print "The file is rigit."
                     return True
                 else:
                     os.remove(path)
@@ -200,7 +201,7 @@ class Package:
         print('Start to download package : %s ' % filename.encode("utf-8"))
 
         while True:
-            #print("retryCount : %d"%retryCount)
+            # print("retryCount : %d"%retryCount)
             try:
                 r = requests.get(url_from_srv, stream=True, headers=headers)
 
@@ -233,8 +234,8 @@ class Package:
                         ret = False
                         break
             except Exception as e:
-                print(url_from_srv) 
-                print('error message:%s\t' %e)
+                print(url_from_srv)
+                print('error message:%s\t' % e)
                 retryCount = retryCount + 1
                 if retryCount > 5:
                     print('%s download fail!\n' % path.encode("utf-8"))

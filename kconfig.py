@@ -1,4 +1,4 @@
- # -*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 #
 # File      : kconfig.py
 # This file is part of RT-Thread RTOS
@@ -50,10 +50,12 @@ def pkgs_ver(pkgs, name, ver):
 
 def parse(filename):
     ret = []
+
+    # noinspection PyBroadException
     try:
-        config = open(filename, "r") 
-    except:
-        print('open .config failed') 
+        config = open(filename, "r")
+    except Exception as e:
+        print('open .config failed')
         return ret
 
     for line in config:

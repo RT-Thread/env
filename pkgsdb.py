@@ -29,6 +29,7 @@ import hashlib
 import sys
 
 from vars import Import
+
 SHOW_SQL = False
 
 
@@ -49,7 +50,7 @@ def GetFileMd5(filename):
 def get_conn(path):
     conn = sqlite3.connect(path)
     if os.path.exists(path) and os.path.isfile(path):
-        #print('on disk:[{}]'.format(path))
+        # print('on disk:[{}]'.format(path))
         return conn
     else:
         conn = None
@@ -76,7 +77,7 @@ def create_table(conn, sql):
             print('执行sql:[{}]'.format(sql))
         cu.execute(sql)
         conn.commit()
-        #print('create data table successful!')
+        # print('create data table successful!')
         close_all(conn)
     else:
         print('the [{}] is empty or equal None!'.format(sql))
@@ -113,7 +114,7 @@ def isdataexist(pathname):
     return ret
 
 
-#将数据添加到数据库，如果数据库中已经存在则不重复添加
+# 将数据添加到数据库，如果数据库中已经存在则不重复添加
 def savetodb(pathname, pkgspathname, before_change_name):
     dbpathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
@@ -123,14 +124,14 @@ def savetodb(pathname, pkgspathname, before_change_name):
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(pkgspathname)
     md5pathname = os.path.join(bsppkgs, before_change_name)
-	#print("pathname to save : %s"%pathname)
-	#print("md5pathname : %s"%md5pathname) 
-    
+    # print("pathname to save : %s"%pathname)
+    # print("md5pathname : %s"%md5pathname)
+
     if not os.path.isfile(md5pathname):
         print("md5pathname is Invalid")
-    
+
     md5 = GetFileMd5(md5pathname)
-	#print("md5 to save : %s"%md5) 
+    # print("md5 to save : %s"%md5)
     data = [(pathname, package, md5)]
     save(conn, save_sql, data)
 
@@ -140,33 +141,32 @@ def dbdump(dbpathname):
     c = get_cursor(conn)
     cursor = c.execute("SELECT pathname, package, md5 from packagefile")
     for row in cursor:
-        print("pathname = ", row[0]) 
-        print("package = ", row[1]) 
-        print("md5 = ", row[2], "\n") 
+        print("pathname = ", row[0])
+        print("package = ", row[1])
+        print("md5 = ", row[2], "\n")
     conn.close()
-
-#delete the unchanged file
 
 
 def remove_unchangedfile(pathname, dbpathname, dbsqlname):
+    """delete unchanged files"""
     flag = True
 
     conn = get_conn(dbpathname)
     c = get_cursor(conn)
 
-    #print('pathname : %s'%pathname)
-    #print('dbsqlname : %s'%dbsqlname) 
+    # print('pathname : %s'%pathname)
+    # print('dbsqlname : %s'%dbsqlname)
 
     filemd5 = GetFileMd5(pathname)
-    #print("filemd5 : %s"%filemd5)
+    # print("filemd5 : %s"%filemd5)
     dbmd5 = 0
 
     sql = 'SELECT md5 from packagefile where pathname = "' + dbsqlname + '"'
-    #print sql
+    # print sql
     cursor = c.execute(sql)
     for row in cursor:
         dbmd5 = row[0]  # fetch md5 from databas
-    #print("dbmd5 : %s"%dbmd5)
+    # print("dbmd5 : %s"%dbmd5)
 
     if dbmd5 == filemd5:
         # delete file info from database
@@ -175,10 +175,11 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
         conn.commit()
         os.remove(pathname)
     else:
-        print ("%s has been changed." % pathname)
-        print ('Are you sure you want to permanently delete the file: %s?' %
-               os.path.basename(pathname))
-        print ('If you choose to keep the changed file,you should copy the file to another folder. \nbecaues it may be covered by the next update.')
+        print("%s has been changed." % pathname)
+        print('Are you sure you want to permanently delete the file: %s?' %
+              os.path.basename(pathname))
+        print(
+            'If you choose to keep the changed file,you should copy the file to another folder. \nbecaues it may be covered by the next update.')
 
         if sys.version_info < (3, 0):
             rc = raw_inuput('Press the Y Key to delete the file or just press Enter to keep the file.')
@@ -196,8 +197,8 @@ def remove_unchangedfile(pathname, dbpathname, dbsqlname):
     return flag
 
 
-#删除一个包，如果有文件被改动，则提示(y/n)是否要删除，输入y则删除文件，输入其他字符则保留文件。
-#如果没有文件被改动，直接删除文件夹,包文件夹被完全删除返回true，有被修改的文件没有被删除返回false
+# 删除一个包，如果有文件被改动，则提示(y/n)是否要删除，输入y则删除文件，输入其他字符则保留文件。
+# 如果没有文件被改动，直接删除文件夹,包文件夹被完全删除返回true，有被修改的文件没有被删除返回false
 def deletepackdir(dirpath, dbpathname):
     flag = getdirdisplay(dirpath, dbpathname)
 
@@ -209,11 +210,11 @@ def deletepackdir(dirpath, dbpathname):
                 for name in dirs:
                     os.rmdir(os.path.join(root, name))
             os.rmdir(dirpath)
-        #print "the dir should be delete"
+        # print "the dir should be delete"
     return flag
 
 
-#遍历filepath下所有文件，包括子目录
+# 遍历filepath下所有文件，包括子目录
 def displaydir(filepath, basepath, length, dbpathname):
     flag = True
     if os.path.isdir(filepath):
@@ -225,7 +226,7 @@ def displaydir(filepath, basepath, length, dbpathname):
             else:
                 pathname = os.path.join(filepath, fi_d)
                 dbsqlname = basepath + os.path.join(filepath, fi_d)[length:]
-                #print("dbsqlname : %s"%dbsqlname) 
+                # print("dbsqlname : %s"%dbsqlname)
                 if not remove_unchangedfile(pathname, dbpathname, dbsqlname):
                     flag = False
     return flag
@@ -235,6 +236,5 @@ def getdirdisplay(filepath, dbpathname):
     display = filepath
     length = len(display)
     basepath = os.path.basename(filepath)
-    #print "basepath:",basepath
     flag = displaydir(filepath, basepath, length, dbpathname)
     return flag

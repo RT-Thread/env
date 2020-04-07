@@ -25,18 +25,20 @@
 
 from multiprocessing import Process
 import os
-import sys
+
 
 def run_proc(name, env_root):
-    exec_file = os.path.join(env_root, "tools\scripts\env.py")
+    exec_file = os.path.join(env_root, r"tools\scripts\env.py")
     log_std = os.path.join(env_root, "env_log_std")
     log_err = os.path.join(env_root, "env_log_err")
 
+    # noinspection PyBroadException
     try:
-        os.system("python %s package --upgrade 1>%s 2>%s"%(exec_file, log_std, log_err))
+        os.system("python %s package --upgrade 1>%s 2>%s" % (exec_file, log_std, log_err))
     except Exception as e:
         print("Auto upgrade failed, please check your network.")
         pass
+
 
 def main():
     env_root = env_root = os.getenv("ENV_ROOT")
@@ -44,5 +46,6 @@ def main():
     p.start()
     p.join()
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     main()
