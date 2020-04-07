@@ -818,7 +818,7 @@ def package_update(isDeleteOld=False):
                 print("\nError: %s package delete failed, begin to remove it." %
                       error_package['name'].encode("utf-8"))
 
-                if rm_package(removepath_ver) == False:
+                if not rm_package(removepath_ver):
                     print("Error: Delete package %s failed! Please delete the folder manually.\n" %
                           error_package['name'].encode("utf-8"))
                     return
@@ -1042,8 +1042,9 @@ def package_wizard():
     f.write(package)
     f.close()
 
-    print ('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
-    print ('Please \033[5;34;40mupdate\033[0m other information of this package based on Kconfig and package.json in directory '+name+'.')
+    print('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
+    print('Please \033[5;34;40mupdate\033[0m other information of this package '
+          'based on Kconfig and package.json in directory ' + name + '.')
 
 
 def upgrade_packages_index():
@@ -1051,25 +1052,28 @@ def upgrade_packages_index():
 
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+    if (not os.path.isfile(env_config_file)) or \
+            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+
         get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
-        if get_package_url != None:
+
+        if get_package_url is not None:
             git_repo = get_package_url
         else:
             print("Failed to get url from mirror server. Using default url.")
             git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
     else:
         git_repo = 'https://github.com/RT-Thread/packages.git'
- 
+
     packages_root = pkgs_root
     pkgs_path = os.path.join(packages_root, 'packages')
 
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path
         os.system(cmd)
-        print ("upgrade from :%s" % (git_repo.encode("utf-8")))
+        print("upgrade from :%s" % (git_repo.encode("utf-8")))
     else:
         print("Begin to upgrade env packages.")
         git_pull_repo(pkgs_path, git_repo)
@@ -1093,11 +1097,13 @@ def upgrade_env_script():
 
     print("Begin to upgrade env scripts.")
     env_root = Import('env_root')
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+    if (not os.path.isfile(env_config_file)) or \
+            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
         get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
-        if get_package_url != None:
+
+        if get_package_url is not None:
             env_scripts_repo = get_package_url
         else:
             print("Failed to get url from mirror server. Using default url.")
@@ -1119,15 +1125,14 @@ def package_upgrade():
 
 def package_print_env():
     print("Here are some environmental variables.")
-    print(
-        "If you meet some problems,please check them. Make sure the configuration is correct.")
+    print("If you meet some problems,please check them. Make sure the configuration is correct.")
     print("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
     print("RTT_CC:%s" % (os.getenv("RTT_CC")))
     print("SCONS:%s" % (os.getenv("SCONS")))
     print("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
 
     env_root = os.getenv('ENV_ROOT')
-    if env_root == None:
+    if env_root is None:
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
 
@@ -1135,7 +1140,7 @@ def package_print_env():
 
 
 def cmd(args):
-    """Env's pkgs command execution options."""
+    """Env's packages command execution options."""
 
     if args.package_update_y:
         package_update(True)
@@ -1154,12 +1159,12 @@ def cmd(args):
 
 
 def add_parser(sub):
-    """The pkgs command parser for env."""
+    """The packages command parser for env."""
 
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
     parser.add_argument('--force-update',
-                        help='force update and clean packages, install or remove the packages by your settings in menuconfig',
+                        help='force update and clean packages, install or remove packages by settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update_y')
