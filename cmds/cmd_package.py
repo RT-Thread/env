@@ -110,12 +110,12 @@ def union_input(msg=None):
     """Gets the union keyboard input."""
 
     if sys.version_info < (3, 0):
-        if msg != None:
+        if msg is not None:
             value = raw_input(msg)
         else:
             value = raw_input()
     else:
-        if msg != None:
+        if msg is not None:
             value = input(msg)
         else:
             value = input()
@@ -263,7 +263,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     bsp_pkgs_path = os.path.join(bsp_root, 'packages')
 
     # get the .config file from env
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     package = Package()
@@ -297,7 +297,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
                  and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
-            #  determine whether the package package url is valid
+            #  Check whether the package package url is valid
             if get_package_url is not None and determine_url_valid(get_package_url):
                 package_url = get_package_url
 
@@ -500,7 +500,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
 
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     with open(pkgs_fn, 'r') as f:
@@ -632,8 +632,7 @@ def pre_package_update():
     # print("oldpkgs", oldpkgs)
 
     # regenerate file : packages/pkgs_error.json 
-    pkgs_error_list_fn = os.path.join(
-        bsp_packages_path, 'pkgs_error.json')
+    pkgs_error_list_fn = os.path.join(bsp_packages_path, 'pkgs_error.json')
 
     if not os.path.exists(pkgs_error_list_fn):
         os.chdir(bsp_packages_path)
@@ -914,7 +913,7 @@ def package_update(isDeleteOld=False):
     get_flag = handle_download_error_packages(
         pkgs_fn, bsp_packages_path)
 
-    if get_flag != None:
+    if get_flag is not None:
         flag = get_flag
 
     # Update the software packages, which the version is 'latest'
