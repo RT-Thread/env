@@ -35,6 +35,7 @@ import requests
 from package import Package, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input
+from .cmd_menuconfig import find_macro_in_config
 
 
 def determine_support_chinese(env_root):
@@ -45,39 +46,37 @@ def determine_support_chinese(env_root):
         return False
 
 
-def get_mirror_giturl(submod_name):
+def get_mirror_giturl(submodule_name):
     """Gets the submodule's url on mirror server.
 
     Retrurn the download address of the submodule on the mirror server from the submod_name.
     """
 
-    mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submod_name + '.git'
+    mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submodule_name + '.git'
     return mirror_url
 
 
-def modify_submod_file_to_mirror(submod_path):
+def modify_submod_file_to_mirror(submodule_path):
     """Modify the.gitmodules file based on the submodule to be updated"""
 
     replace_list = []
     try:
-        with open(submod_path, 'r') as f:
+        with open(submodule_path, 'r') as f:
             for line in f:
                 line = line.replace('\t', '').replace(' ', '').replace('\n', '').replace('\r', '')
                 if line.startswith('url'):
-                    submod_git_url = line.split('=')[1]
-                    submodule_name = submod_git_url.split('/')[-1].replace('.git', '')
+                    submodule_git_url = line.split('=')[1]
+                    submodule_name = submodule_git_url.split('/')[-1].replace('.git', '')
                     replace_url = get_mirror_giturl(submodule_name)
-                    # print(replace_url)
                     query_submodule_name = 'submod_' + submodule_name
-                    # print(query_submodule_name)
                     get_package_url, get_ver_sha = get_url_from_mirror_server(
                         query_submodule_name, 'latest')
 
-                    if get_package_url != None and determine_url_valid(get_package_url):
+                    if get_package_url is not None and determine_url_valid(get_package_url):
                         replace_list.append(
-                            (submod_git_url, replace_url, submodule_name))
+                            (submodule_git_url, replace_url, submodule_name))
 
-        with open(submod_path, 'r+') as f:
+        with open(submodule_path, 'r+') as f:
             submod_file_count = f.read()
 
         write_content = submod_file_count
@@ -85,7 +84,7 @@ def modify_submod_file_to_mirror(submod_path):
         for item in replace_list:
             write_content = write_content.replace(item[0], item[1])
 
-        with open(submod_path, 'w') as f:
+        with open(submodule_path, 'w') as f:
             f.write(str(write_content))
 
         return replace_list
@@ -397,6 +396,12 @@ def pre_package_update():
 
         return False
 
+    # According to the env version, whether Chinese output is supported or not
+    if determine_support_chinese(env_root):
+        if platform.system() == "Windows":
+            os.system('chcp 65001 > nul')
+
+    # create packages folder
     bsp_packages_path = os.path.join(bsp_root, 'packages')
     if not os.path.exists(bsp_packages_path):
         os.mkdir("packages")
@@ -415,7 +420,7 @@ def pre_package_update():
     Export('dbsqlite_pathname')
     dbsqlite_pathname = dbsqlite_pathname.encode('utf-8').decode('gbk')
 
-    # Avoid creating tables more than one time
+    # avoid creating tables more than one time
     if not os.path.isfile(dbsqlite_pathname):
         conn = pkgsdb.get_conn(dbsqlite_pathname)
         sql = '''CREATE TABLE packagefile
@@ -424,18 +429,14 @@ def pre_package_update():
 
     fn = '.config'
     pkgs = kconfig.parse(fn)
-
-    # print("newpkgs", pkgs)
-
     newpkgs = pkgs
 
     if not os.path.exists(bsp_packages_path):
         os.mkdir(bsp_packages_path)
 
-    pkgs_fn = os.path.join(bsp_packages_path, 'pkgs.json')
-
     # regenerate file : packages/pkgs.json
-    if not os.path.exists(pkgs_fn):
+    package_json_filename = os.path.join(bsp_packages_path, 'pkgs.json')
+    if not os.path.exists(package_json_filename):
         os.chdir(bsp_packages_path)
         fp = open("pkgs.json", 'w')
         fp.write("[]")
@@ -443,10 +444,8 @@ def pre_package_update():
         os.chdir(bsp_root)
 
     # Reading data back from pkgs.json
-    with open(pkgs_fn, 'r') as f:
+    with open(package_json_filename, 'r') as f:
         oldpkgs = json.load(f)
-
-    # print("oldpkgs", oldpkgs)
 
     # regenerate file : packages/pkgs_error.json
     pkgs_error_list_fn = os.path.join(bsp_packages_path, 'pkgs_error.json')
@@ -458,7 +457,7 @@ def pre_package_update():
         fp.close()
         os.chdir(bsp_root)
 
-    # Reading data back from pkgs_error.json
+    # read data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
         pkgs_error = json.load(f)
 
@@ -467,17 +466,15 @@ def pre_package_update():
         with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
-    return [oldpkgs, newpkgs, pkgs_error, pkgs_fn, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
+    return [oldpkgs, newpkgs, pkgs_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
 
-def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
+def error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename):
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
-
-    flag = None
-
     error_packages_redownload_error_list = []
+    flag = True
 
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
@@ -486,7 +483,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
         print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
         print("Warning: Packages should be deleted in <menuconfig> command.\n")
 
-        for pkg in error_packages_list:  # Redownloaded the packages in error_packages_list
+        # re download the packages in error_packages_list
+        for pkg in error_packages_list:
             if install_pkg(env_root, pkgs_root, bsp_root, pkg):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
@@ -499,57 +497,53 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn):
             print("%s" % error_packages_redownload_error_list)
             print("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
                   (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
-            write_back_pkgs_json = sub_list(
-                read_back_pkgs_json, error_packages_redownload_error_list)
-            read_back_pkgs_json = write_back_pkgs_json
-            # print("write_back_pkgs_json:%s"%write_back_pkgs_json)
-            pkgs_file = file(pkgs_fn, 'w')
-            pkgs_file.write(json.dumps(write_back_pkgs_json, indent=1))
-            pkgs_file.close()
+
+            write_back_package_json = sub_list(read_back_pkgs_json, error_packages_redownload_error_list)
+            with open(package_filename, 'w') as f:
+                f.write(json.dumps(write_back_package_json, indent=1))
 
     return flag
 
 
-def rm_package(dir):
+def rm_package(dir_remove):
     if platform.system() != "Windows":
-        shutil.rmtree(dir)
+        shutil.rmtree(dir_remove)
     else:
-        dir = '"' + dir + '"'
-        cmd = 'rd /s /q ' + dir
+        dir_remove = '"' + dir_remove + '"'
+        cmd = 'rd /s /q ' + dir_remove
         os.system(cmd)
 
-    if os.path.isdir(dir):
+    if os.path.isdir(dir_remove):
         if platform.system() != "Windows":
-            shutil.rmtree(dir)
+            shutil.rmtree(dir_remove)
         else:
-            dir = '"' + dir + '"'
-            cmd = 'rmdir /s /q ' + dir
+            dir_remove = '"' + dir_remove + '"'
+            cmd = 'rmdir /s /q ' + dir_remove
             os.system(cmd)
 
-        if os.path.isdir(dir):
-            print("Folder path: %s" % dir.encode("utf-8"))
+        if os.path.isdir(dir_remove):
+            print("Folder path: %s" % dir_remove.encode("utf-8"))
             return False
     else:
-        print("Path: %s \nSuccess: Folder has been removed. " % dir.encode("utf-8"))
+        print("Path: %s \nSuccess: Folder has been removed. " % dir_remove.encode("utf-8"))
         return True
 
 
 def get_package_remove_path(pkg, bsp_packages_path):
-    dirpath = pkg['path']
+    dir_path = pkg['path']
     ver = pkg['ver']
-    if dirpath[0] == '/' or dirpath[0] == '\\':
-        dirpath = dirpath[1:]
+    if dir_path[0] == '/' or dir_path[0] == '\\':
+        dir_path = dir_path[1:]
 
     if platform.system() == "Windows":
-        dirpath = os.path.basename(dirpath.replace('/', '\\'))
+        dir_path = os.path.basename(dir_path.replace('/', '\\'))
     else:
-        dirpath = os.path.basename(dirpath)
-
-    removepath = os.path.join(bsp_packages_path, dirpath)
+        dir_path = os.path.basename(dir_path)
 
     # Handles the deletion of git repository folders with version Numbers
-    removepath_ver = get_pkg_folder_by_orign_path(removepath, ver)
-    return removepath_ver
+    remove_path = os.path.join(bsp_packages_path, dir_path)
+    remove_path_ver = get_pkg_folder_by_orign_path(remove_path, ver)
+    return remove_path_ver
 
 
 def handle_download_error_packages(pkgs_fn, bsp_packages_path):
@@ -579,57 +573,11 @@ def handle_download_error_packages(pkgs_fn, bsp_packages_path):
     return get_flag
 
 
-def write_storage_file(pkgs_fn, newpkgs):
-    """Writes the updated configuration to pkgs.json file.
-
-    Packages that are not downloaded correctly will be redownloaded at the
-    next update.
-    """
-
-    with open(pkgs_fn, 'w') as f:
-        f.write(str(json.dumps(newpkgs, indent=1)))
-
-
-def package_update(isDeleteOld=False):
-    """Update env's packages.
-
-    Compare the old and new software package list and update the package.
-    Remove unwanted packages and download the newly selected package.-
-    Check if the files in the deleted packages have been changed, and if so,
-    remind the user saved the modified file.
-    """
-
-    sys_value = pre_package_update()
-
-    if not sys_value:
-        return
-
-    bsp_root = Import('bsp_root')
-    env_root = Import('env_root')
-    pkgs_root = Import('pkgs_root')
-    flag = True
-
-    # According to the env version, whether Chinese output is supported or not
-    if determine_support_chinese(env_root):
-        if platform.system() == "Windows":
-            os.system('chcp 65001 > nul')
-
-    oldpkgs = sys_value[0]
-    newpkgs = sys_value[1]
-    pkgs_delete_error_list = sys_value[2]
-    pkgs_fn = sys_value[3]
-    pkgs_error_list_fn = sys_value[4]
-    bsp_packages_path = sys_value[5]
-    dbsqlite_pathname = sys_value[6]
-
-    # print(oldpkgs)
-    # print(newpkgs)
-
-    if len(pkgs_delete_error_list):
-        for error_package in pkgs_delete_error_list:
-            removepath_ver = get_package_remove_path(
-                error_package, bsp_packages_path)
-
+def delete_useless_packages(package_delete_error_list, bsp_packages_path):
+    # try to delete useless packages, exit command if fails
+    if len(package_delete_error_list):
+        for error_package in package_delete_error_list:
+            removepath_ver = get_package_remove_path(error_package, bsp_packages_path)
             if os.path.isdir(removepath_ver):
                 print("\nError: %s package delete failed, begin to remove it." %
                       error_package['name'].encode("utf-8"))
@@ -637,18 +585,26 @@ def package_update(isDeleteOld=False):
                 if not rm_package(removepath_ver):
                     print("Error: Delete package %s failed! Please delete the folder manually.\n" %
                           error_package['name'].encode("utf-8"))
-                    return
+                    return False
+    return True
 
-    # 1.in old ,not in new : Software packages that need to be removed.
-    casedelete = sub_list(oldpkgs, newpkgs)
-    pkgs_delete_fail_list = []
 
-    for pkg in casedelete:
+def remove_packages(sys_value, isDeleteOld):
+    old_package = sys_value[0]
+    new_package = sys_value[1]
+    package_error_list_filename = sys_value[4]
+    bsp_packages_path = sys_value[5]
+    sqlite_pathname = sys_value[6]
+
+    case_delete = sub_list(old_package, new_package)
+    package_delete_fail_list = []
+
+    for pkg in case_delete:
 
         removepath_ver = get_package_remove_path(pkg, bsp_packages_path)
         removepath_git = os.path.join(removepath_ver, '.git')
 
-        # Delete. Git directory.
+        # delete .git directory
         if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
             gitdir = removepath_ver
 
@@ -663,7 +619,7 @@ def package_update(isDeleteOld=False):
                 if rc == 'y' or rc == 'Y':
                     try:
                         if not rm_package(gitdir):
-                            pkgs_delete_fail_list.append(pkg)
+                            package_delete_fail_list.append(pkg)
                             print("Error: Please delete the folder manually.")
                     except Exception as e:
                         print('Error message:%s%s. error.message: %s\n\t' %
@@ -672,63 +628,106 @@ def package_update(isDeleteOld=False):
             if os.path.isdir(removepath_ver):
                 print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
                 try:
-                    pkgsdb.deletepackdir(removepath_ver, dbsqlite_pathname)
+                    pkgsdb.deletepackdir(removepath_ver, sqlite_pathname)
                 except Exception as e:
-                    pkgs_delete_fail_list.append(pkg)
+                    package_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
                         "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e))
 
     # write error messages
-    with open(pkgs_error_list_fn, 'w') as f:
-        f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
+    with open(package_error_list_filename, 'w') as f:
+        f.write(str(json.dumps(package_delete_fail_list, indent=1)))
 
-    if len(pkgs_delete_fail_list):
-        return
+    if len(package_delete_fail_list):
+        return False
 
-    # 2.in new not in old : Software packages to be installed.
-    # If the package download fails, record it, and then download again when
-    # the update command is executed.
+    return True
 
-    case_download = sub_list(newpkgs, oldpkgs)
-    # print 'in new not in old:', casedownload
-    pkgs_download_fail_list = []
+
+def install_packages(new_package, old_package, package_filename):
+    """
+    If the package download fails, record it,
+    and then download again when the update command is executed.
+    """
+
+    bsp_root = Import('bsp_root')
+    pkgs_root = Import('pkgs_root')
+    env_root = Import('env_root')
+
+    case_download = sub_list(new_package, old_package)
+    packages_download_fail_list = []
 
     for pkg in case_download:
         if install_pkg(env_root, pkgs_root, bsp_root, pkg):
             print("==============================>  %s %s is downloaded successfully. \n" % (
                 pkg['name'], pkg['ver']))
         else:
-            # If the PKG download fails, record it in the
-            # pkgs_download_fail_list.
-            pkgs_download_fail_list.append(pkg)
+            # if package download fails, record it in the packages_download_fail_list
+            packages_download_fail_list.append(pkg)
             print(pkg, 'download failed.')
-            flag = False
+            return False
 
     # Get the currently updated configuration.
-    newpkgs = sub_list(newpkgs, pkgs_download_fail_list)
+    new_package = sub_list(new_package, packages_download_fail_list)
 
     # Give hints based on the success of the download.
-    if len(pkgs_download_fail_list):
+    if len(packages_download_fail_list):
         print("\nPackage download failed list:")
-        for item in pkgs_download_fail_list:
+        for item in packages_download_fail_list:
             print(item)
 
         print("You need to reuse the <pkgs -update> command to download again.")
 
     # update pkgs.json and SConscript
-    write_storage_file(pkgs_fn, newpkgs)
+    with open(package_filename, 'w') as f:
+        f.write(str(json.dumps(new_package, indent=1)))
+
+    return True
+
+
+def package_update(isDeleteOld=False):
+    """Update env's packages.
+
+    Compare the old and new software package list and update the package.
+    Remove unwanted packages and download the newly selected package.-
+    Check if the files in the deleted packages have been changed, and if so,
+    remind the user saved the modified file.
+    """
+
+    sys_value = pre_package_update()
+    if not sys_value:
+        return
+
+    flag = True
+
+    old_package = sys_value[0]
+    new_package = sys_value[1]
+    package_delete_error_list = sys_value[2]
+    package_filename = sys_value[3]
+    package_error_list_filename = sys_value[4]
+    bsp_packages_path = sys_value[5]
+    sqlite_pathname = sys_value[6]
+
+    if not delete_useless_packages(package_delete_error_list, bsp_packages_path):
+        return
+
+    # 1. packages in old and not in new : Software packages that need to be removed
+    if not remove_packages(sys_value, isDeleteOld):
+        return
+
+    # 2.in new not in old : Software packages to be installed.
+    if not install_packages(new_package, old_package, package_filename):
+        flag = False
 
     # handle download error packages.
-    get_flag = handle_download_error_packages(
-        pkgs_fn, bsp_packages_path)
+    if not handle_download_error_packages(package_filename, bsp_packages_path):
+        flag = False
 
-    if get_flag is not None:
-        flag = get_flag
-
-    # Update the software packages, which the version is 'latest'
+    # update the software packages, which the version is 'latest'
     try:
-        update_latest_packages(pkgs_fn, bsp_packages_path)
-    except KeyboardInterrupt:
+        update_latest_packages(package_filename, bsp_packages_path)
+    except Exception as e:
+        print('Error message:%s\t' % e)
         flag = False
 
     if flag:
