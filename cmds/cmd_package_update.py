@@ -328,6 +328,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
         read_back_pkgs_json = json.load(f)
 
     for pkg in read_back_pkgs_json:
+        right_path_flag = True
         package = Package()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
@@ -343,8 +344,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
             try:
-                # If mirror acceleration is enabled, get the update address from
-                # the mirror server.
+                # If mirror acceleration is enabled, get the update address from the mirror server.
                 if (not os.path.isfile(env_config_file)) or \
                         (os.path.isfile(env_config_file)
                          and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
@@ -354,13 +354,25 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                     mirror_url = get_url_from_mirror_server(
                         payload_pkgs_name_in_json, pkg['ver'])
 
-                    if mirror_url[0] is not None:
-                        cmd = 'git remote set-url origin ' + mirror_url[0]
-                        git_cmd_exec(cmd, repo_path)
+                    # if git root is same as repo path, then change the upstream
+                    get_git_root = get_git_root_path(repo_path)
+                    if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
+                        if mirror_url[0] is not None:
+                            cmd = 'git remote set-url origin ' + mirror_url[0]
+                            git_cmd_exec(cmd, repo_path)
+                    else:
+                        print("\n==============================> updating")
+                        print("Package path: %s" % repo_path)
+                        print("Git root: %s" % get_git_root)
+                        print("Error: Not currently in a git root directory, cannot switch upstream.\n")
+                        right_path_flag = False
 
             except Exception as e:
                 print("Error message : %s" % e)
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
+
+            if not right_path_flag:
+                continue
 
             # Update the package repository from upstream.
             git_pull_repo(repo_path)
@@ -378,6 +390,18 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                       (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done\n" % (pkgs_name_in_json))
+
+
+def get_git_root_path(repo_path):
+    before = os.getcwd()
+    os.chdir(repo_path)
+    result = os.popen('git rev-parse --show-toplevel')
+    result = result.read()
+    for line in result.splitlines()[:5]:
+        get_git_root = line
+        break
+    os.chdir(before)
+    return get_git_root
 
 
 def pre_package_update():
