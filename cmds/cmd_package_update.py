@@ -117,13 +117,25 @@ def determine_url_valid(url_from_srv):
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
-def install_pkg(env_root, pkgs_root, bsp_root, pkg):
+def is_user_mange_package(bsp_package_path, pkg):
+    for root, dirs, files in os.walk(bsp_package_path, topdown=True):
+        for name in dirs:
+            if name.lower() == pkg["name"].lower():
+                return True
+        break
+    return False
+
+
+def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     """Install the required packages."""
 
-    # default true
     ret = True
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
-    bsp_pkgs_path = os.path.join(bsp_root, 'packages')
+    bsp_package_path = os.path.join(bsp_root, 'packages')
+
+    if not force_update:
+        if is_user_mange_package(bsp_package_path, pkg):
+            return ret
 
     # get the .config file from env
     env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
@@ -140,18 +152,16 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
     package_url = package.get_url(pkg['ver'])
     pkgs_name_in_json = package.get_name()
 
+    # print("==================================================>")
+    # print("packages name :", pkgs_name_in_json.encode("utf-8"))
+    # print("ver :", pkg['ver'])
+    # print("url :", package_url.encode("utf-8"))
+    # print("url_from_json : ", url_from_json.encode("utf-8"))
+    # print("==================================================>")
+
     if package_url[-4:] == '.git':
         ver_sha = package.get_versha(pkg['ver'])
 
-    # print("==================================================>")
-    # print("packages name :"%pkgs_name_in_json.encode("utf-8"))
-    # print("ver :"%pkg['ver'])
-    # print("url :"%package_url.encode("utf-8"))
-    # print("url_from_json : "%url_from_json.encode("utf-8"))
-    # print("==================================================>")
-
-    get_package_url = None
-    get_ver_sha = None
     upstream_change_flag = False
 
     try:
@@ -172,14 +182,14 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
         print('Error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
-    if package_url[-4:] == '.git':
+    if package_url.endswith('.git'):
         try:
-            repo_path = os.path.join(bsp_pkgs_path, pkgs_name_in_json)
+            repo_path = os.path.join(bsp_package_path, pkgs_name_in_json)
             repo_path = repo_path + '-' + pkg['ver']
             repo_path_full = '"' + repo_path + '"'
 
             clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
-            execute_command(clone_cmd, cwd=bsp_pkgs_path)
+            execute_command(clone_cmd, cwd=bsp_package_path)
 
             git_check_cmd = 'git checkout -q ' + ver_sha
             execute_command(git_check_cmd, cwd=repo_path)
@@ -241,9 +251,8 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
         # unpack package
         if not os.path.exists(pkg_dir):
-
             try:
-                if not package.unpack(package_path, bsp_pkgs_path, pkg, pkgs_name_in_json):
+                if not package.unpack(package_path, bsp_package_path, pkg, pkgs_name_in_json):
                     ret = False
             except Exception as e:
                 os.remove(package_path)
@@ -288,11 +297,7 @@ def update_submodule(repo_path):
 
 
 def get_pkg_folder_by_orign_path(orign_path, version):
-    # TODO fix for old version project, will remove after new major version
-    # release
-    if os.path.exists(orign_path + '-' + version):
-        return orign_path + '-' + version
-    return orign_path
+    return orign_path + '-' + version
 
 
 def git_cmd_exec(cmd, cwd):
@@ -466,10 +471,11 @@ def pre_package_update():
         with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
-    return [oldpkgs, newpkgs, pkgs_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
+    return [oldpkgs, newpkgs, pkgs_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
+            dbsqlite_pathname]
 
 
-def error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename):
+def error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename, force_update):
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
@@ -480,12 +486,14 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
         print("\n==============================> Packages list to download :  \n")
         for pkg in error_packages_list:
             print("Package name : %s, Ver : %s" % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
-        print("\nThe packages in the list above are accidentally deleted, env will redownload them.")
-        print("Warning: Packages should be deleted in <menuconfig> command.\n")
+        print("\nThe packages in the list above are accidentally deleted or renamed.")
+        print("\nIf you manually delete the version suffix of the package folder name, ")
+        print("you can use the <pkgs --force-update> command to re-download these packages.")
+        print("\nIn case of accidental deletion, the ENV tool will automatically re-download these packages.")
 
         # re download the packages in error_packages_list
         for pkg in error_packages_list:
-            if install_pkg(env_root, pkgs_root, bsp_root, pkg):
+            if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
                 print("==============================> %s %s is redownloaded successfully. \n" % (
                     pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
@@ -546,7 +554,7 @@ def get_package_remove_path(pkg, bsp_packages_path):
     return remove_path_ver
 
 
-def handle_download_error_packages(pkgs_fn, bsp_packages_path):
+def handle_download_error_packages(pkgs_fn, bsp_packages_path, force_update):
     """ handle download error packages.
 
     Check to see if the packages stored in the Json file list actually exist,
@@ -559,16 +567,15 @@ def handle_download_error_packages(pkgs_fn, bsp_packages_path):
     error_packages_list = []
 
     for pkg in read_back_pkgs_json:
-        removepath = get_package_remove_path(pkg, bsp_packages_path)
-
-        if os.path.exists(removepath):
+        remove_path = get_package_remove_path(pkg, bsp_packages_path)
+        if os.path.exists(remove_path):
             continue
         else:
+            print("Error packages add: ", pkg)
             error_packages_list.append(pkg)
 
     # Handle the failed download packages
-    get_flag = error_packages_handle(
-        error_packages_list, read_back_pkgs_json, pkgs_fn)
+    get_flag = error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn, force_update)
 
     return get_flag
 
@@ -644,7 +651,7 @@ def remove_packages(sys_value, isDeleteOld):
     return True
 
 
-def install_packages(new_package, old_package, package_filename):
+def install_packages(new_package, old_package, package_filename, force_update):
     """
     If the package download fails, record it,
     and then download again when the update command is executed.
@@ -658,7 +665,7 @@ def install_packages(new_package, old_package, package_filename):
     packages_download_fail_list = []
 
     for pkg in case_download:
-        if install_pkg(env_root, pkgs_root, bsp_root, pkg):
+        if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
             print("==============================>  %s %s is downloaded successfully. \n" % (
                 pkg['name'], pkg['ver']))
         else:
@@ -685,7 +692,7 @@ def install_packages(new_package, old_package, package_filename):
     return True
 
 
-def package_update(isDeleteOld=False):
+def package_update(force_update=False):
     """Update env's packages.
 
     Compare the old and new software package list and update the package.
@@ -712,15 +719,15 @@ def package_update(isDeleteOld=False):
         return
 
     # 1. packages in old and not in new : Software packages that need to be removed
-    if not remove_packages(sys_value, isDeleteOld):
+    if not remove_packages(sys_value, force_update):
         return
 
     # 2.in new not in old : Software packages to be installed.
-    if not install_packages(new_package, old_package, package_filename):
+    if not install_packages(new_package, old_package, package_filename, force_update):
         flag = False
 
     # handle download error packages.
-    if not handle_download_error_packages(package_filename, bsp_packages_path):
+    if not handle_download_error_packages(package_filename, bsp_packages_path, force_update):
         flag = False
 
     # update the software packages, which the version is 'latest'
