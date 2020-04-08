@@ -23,6 +23,7 @@
 # 2018-05-28     SummerGift      Add copyright information
 # 2018-12-28     Ernest Chen     Add package information and enjoy package maker
 # 2019-01-07     SummerGift      The prompt supports utf-8 encoding
+# 2020-04-08     SummerGift      Optimize program structure
 #
 
 import os
@@ -31,17 +32,18 @@ import kconfig
 import pkgsdb
 import shutil
 import platform
-import subprocess
 import time
 import archive
 import sys
-from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
+import requests
+from package import Package, Bridge_SConscript
 from vars import Import, Export
 from .cmd_menuconfig import find_macro_in_config
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_printenv import package_print_env
 from .cmd_package_upgrade import package_upgrade
+from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo
 
 
 def determine_support_chinese(env_root):
