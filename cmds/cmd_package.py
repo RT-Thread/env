@@ -100,7 +100,7 @@ def modify_submod_file_to_mirror(submod_path):
         return replace_list
 
     except Exception as e:
-        print('error message:%s\t' % e)
+        print('Error message:%s\t' % e)
 
 
 def determine_url_valid(url_from_srv):
@@ -123,7 +123,7 @@ def determine_url_valid(url_from_srv):
         return True
 
     except Exception as e:
-        print('error message:%s\t' % e)
+        print('Error message:%s\t' % e)
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
@@ -179,7 +179,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
 
                 upstream_change_flag = True
     except Exception as e:
-        print('error message:%s\t' % e)
+        print('Error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if package_url[-4:] == '.git':
@@ -258,7 +258,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
             except Exception as e:
                 os.remove(package_path)
                 ret = False
-                print('error message: %s\t' % e)
+                print('Error message: %s\t' % e)
         else:
             print("The file does not exist.")
     return ret
@@ -309,7 +309,7 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception as e:
-        print('error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
+        print('Error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
@@ -364,7 +364,7 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                         git_cmd_exec(cmd, repo_path)
 
             except Exception as e:
-                print("error message : %s" % e)
+                print("Error message : %s" % e)
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.

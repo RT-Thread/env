@@ -31,13 +31,10 @@ import sys
 import requests
 
 
-def execute_command(cmdstring, cwd=None, shell=True):
+def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
 
-    if shell:
-        cmdstring_list = cmdstring
-
-    sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
+    sub = subprocess.Popen(cmd_string, cwd=cwd, stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, shell=shell, bufsize=4096)
 
     stdout_str = ''
@@ -56,17 +53,17 @@ def git_pull_repo(repo_path, repo_url=''):
     execute_command(cmd, cwd=repo_path)
 
 
-def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
+def get_url_from_mirror_server(package_name, package_version):
     """Get the download address from the mirror server based on the package name."""
 
     try:
-        if type(pkgs_name_in_json) != type("str"):
+        if isinstance(package_name, str):
             if sys.version_info < (3, 0):
-                pkgs_name_in_json = str(pkgs_name_in_json)
+                package_name = str(package_name)
             else:
-                pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
+                package_name = str(package_name)[2:-1]
     except Exception as e:
-        print('error message:%s' % e)
+        print('Error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
 
@@ -78,9 +75,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             }
         ]
     }
-    payload["packages"][0]['name'] = pkgs_name_in_json
-
-    # print(payload)
+    payload["packages"][0]['name'] = package_name
 
     try:
         r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
@@ -95,7 +90,7 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
                 return None, None
             else:
                 for item in package_info['packages'][0]['packages_info']['site']:
-                    if item['version'] == pkgs_ver:
+                    if item['version'] == package_version:
                         # Change download url
                         download_url = item['URL']
                         if download_url[-4:] == '.git':
@@ -109,6 +104,6 @@ def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
             return None, None
 
     except Exception as e:
-        print('error message:%s' % e)
+        print('Error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
