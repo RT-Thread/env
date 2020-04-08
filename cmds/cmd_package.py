@@ -33,7 +33,6 @@ import shutil
 import platform
 import subprocess
 import time
-import logging
 import archive
 import sys
 import re
@@ -41,18 +40,7 @@ from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file,
 from vars import Import, Export
 from string import Template
 from .cmd_menuconfig import find_macro_in_config
-
-try:
-    import requests
-except ImportError:
-    print("****************************************\n"
-          "* Import requests module error.\n"
-          "* Please install requests module first.\n"
-          "* pip install step:\n"
-          "* $ pip install requests\n"
-          "* command install step:\n"
-          "* $ sudo apt-get install python-requests\n"
-          "****************************************\n")
+from .cmd_package_list import list_packages
 
 
 def execute_command(cmdstring, cwd=None, shell=True):
@@ -389,53 +377,6 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg):
         else:
             print("The file does not exist.")
     return ret
-
-
-def package_list():
-    """Print the packages list in env.
-
-    Read the.config file in the BSP directory, 
-    and list the version number of the selected package.
-    """
-
-    fn = '.config'
-    env_root = Import('env_root')
-    pkgs_root = Import('pkgs_root')
-
-    if not os.path.isfile(fn):
-        if platform.system() == "Windows":
-            os.system('chcp 65001  > nul')
-
-        print("\n\033[1;31;40m当前路径下没有发现 .config 文件，请确保当前目录为 BSP 根目录。\033[0m")
-        print("\033[1;31;40m如果确定当前目录为 BSP 根目录，请先使用 <menuconfig> 命令来生成 .config 文件。\033[0m\n")
-
-        print('\033[1;31;40mNo system configuration file : .config.\033[0m')
-        print('\033[1;31;40mYou should use < menuconfig > command to config bsp first.\033[0m')
-
-        if platform.system() == "Windows":
-            os.system('chcp 437  > nul')
-
-        return
-
-    pkgs = kconfig.parse(fn)
-
-    for pkg in pkgs:
-        package = Package()
-        pkg_path = pkg['path']
-        if pkg_path[0] == '/' or pkg_path[0] == '\\':
-            pkg_path = pkg_path[1:]
-
-        pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
-        package.parse(pkg_path)
-
-        pkgs_name_in_json = package.get_name()
-        print("package name : %s, ver : %s " % (pkgs_name_in_json.encode("utf-8"), pkg['ver'].encode("utf-8")))
-
-    if not pkgs:
-        print("Packages list is empty.")
-        print('You can use < menuconfig > command to select online packages.')
-        print('Then use < pkgs --update > command to install them.')
-    return
 
 
 def sub_list(aList, bList):
@@ -1147,8 +1088,8 @@ def cmd(args):
         package_update()
     elif args.package_create:
         package_wizard()
-    elif args.package_list:
-        package_list()
+    elif args.list_packages:
+        list_packages()
     elif args.package_upgrade:
         package_upgrade()
     elif args.package_print_env:
@@ -1178,7 +1119,7 @@ def add_parser(sub):
                         help='list target packages',
                         action='store_true',
                         default=False,
-                        dest='package_list')
+                        dest='list_packages')
 
     parser.add_argument('--wizard',
                         help='create a new package with wizard',
