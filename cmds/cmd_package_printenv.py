@@ -41,3 +41,7 @@ def package_print_env():
             env_root = os.path.join(os.getenv('HOME'), '.env')
 
     print("ENV_ROOT:%s" % (env_root))
+
+
+def package_print_help():
+    os.system('pkgs -h')
