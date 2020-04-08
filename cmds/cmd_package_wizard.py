@@ -2,7 +2,7 @@
 #
 # File      : cmd_package.py
 # This file is part of RT-Thread RTOS
-# COPYRIGHT (C) 2006 - 2018, RT-Thread Development Team
+# COPYRIGHT (C) 2006 - 2020, RT-Thread Development Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by

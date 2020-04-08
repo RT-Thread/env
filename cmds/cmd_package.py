@@ -41,31 +41,7 @@ from .cmd_menuconfig import find_macro_in_config
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_printenv import package_print_env
-
-
-def execute_command(cmdstring, cwd=None, shell=True):
-    """Execute the system command at the specified address."""
-
-    if shell:
-        cmdstring_list = cmdstring
-
-    sub = subprocess.Popen(cmdstring_list, cwd=cwd, stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE, shell=shell, bufsize=4096)
-
-    stdout_str = ''
-    while sub.poll() is None:
-        stdout_str += str(sub.stdout.read())
-        time.sleep(0.1)
-
-    return stdout_str
-
-
-def git_pull_repo(repo_path, repo_url=''):
-    if platform.system() == "Windows":
-        cmd = r'git config --local core.autocrlf true'
-        execute_command(cmd, cwd=repo_path)
-    cmd = r'git pull ' + repo_url
-    execute_command(cmd, cwd=repo_path)
+from .cmd_package_upgrade import package_upgrade
 
 
 def determine_support_chinese(env_root):
@@ -123,64 +99,6 @@ def modify_submod_file_to_mirror(submod_path):
 
     except Exception as e:
         print('error message:%s\t' % e)
-
-
-def get_url_from_mirror_server(pkgs_name_in_json, pkgs_ver):
-    """Get the download address from the mirror server based on the package name."""
-
-    try:
-        if type(pkgs_name_in_json) != type("str"):
-            if sys.version_info < (3, 0):
-                pkgs_name_in_json = str(pkgs_name_in_json)
-            else:
-                pkgs_name_in_json = str(pkgs_name_in_json)[2:-1]
-    except Exception as e:
-        print('error message:%s' % e)
-        print("\nThe mirror server could not be contacted. Please check your network connection.")
-        return None, None
-
-    payload = {
-        "userName": "RT-Thread",
-        "packages": [
-            {
-                "name": "NULL",
-            }
-        ]
-    }
-    payload["packages"][0]['name'] = pkgs_name_in_json
-
-    # print(payload)
-
-    try:
-        r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
-
-        if r.status_code == requests.codes.ok:
-            package_info = json.loads(r.text)
-
-            # Can't find package,change git package SHA if it's a git
-            # package
-            if len(package_info['packages']) == 0:
-                print("Package was NOT found on mirror server. Using a non-mirrored address to download.")
-                return None, None
-            else:
-                for item in package_info['packages'][0]['packages_info']['site']:
-                    if item['version'] == pkgs_ver:
-                        # Change download url
-                        download_url = item['URL']
-                        if download_url[-4:] == '.git':
-                            # Change git package SHA
-                            repo_sha = item['VER_SHA']
-                            return download_url, repo_sha
-                        return download_url, None
-
-            print("\nTips : \nThe system needs to be upgraded.")
-            print("Please use the <pkgs --upgrade> command to upgrade packages index.\n")
-            return None, None
-
-    except Exception as e:
-        print('error message:%s' % e)
-        print("\nThe mirror server could not be contacted. Please check your network connection.")
-        return None, None
 
 
 def determine_url_valid(url_from_srv):
@@ -832,82 +750,6 @@ def package_update(isDeleteOld=False):
         print("Operation completed successfully.")
     else:
         print("Operation failed.")
-
-
-def upgrade_packages_index():
-    """Update the package repository index."""
-
-    env_root = Import('env_root')
-    pkgs_root = Import('pkgs_root')
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or \
-            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-
-        get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
-
-        if get_package_url is not None:
-            git_repo = get_package_url
-        else:
-            print("Failed to get url from mirror server. Using default url.")
-            git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
-    else:
-        git_repo = 'https://github.com/RT-Thread/packages.git'
-
-    packages_root = pkgs_root
-    pkgs_path = os.path.join(packages_root, 'packages')
-
-    if not os.path.isdir(pkgs_path):
-        cmd = 'git clone ' + git_repo + ' ' + pkgs_path
-        os.system(cmd)
-        print("upgrade from :%s" % (git_repo.encode("utf-8")))
-    else:
-        print("Begin to upgrade env packages.")
-        git_pull_repo(pkgs_path, git_repo)
-        print("==============================>  Env packages upgrade done \n")
-
-    for filename in os.listdir(packages_root):
-        package_path = os.path.join(packages_root, filename)
-        if os.path.isdir(package_path):
-
-            if package_path == pkgs_path:
-                continue
-
-            if os.path.isdir(os.path.join(package_path, '.git')):
-                print("Begin to upgrade %s." % filename)
-                git_pull_repo(package_path)
-                print("==============================>  Env %s update done \n" % filename)
-
-
-def upgrade_env_script():
-    """Update env function scripts."""
-
-    print("Begin to upgrade env scripts.")
-    env_root = Import('env_root')
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or \
-            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
-
-        if get_package_url is not None:
-            env_scripts_repo = get_package_url
-        else:
-            print("Failed to get url from mirror server. Using default url.")
-            env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
-    else:
-        env_scripts_repo = 'https://github.com/RT-Thread/env.git'
-
-    env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
-    git_pull_repo(env_scripts_root, env_scripts_repo)
-    print("==============================>  Env scripts upgrade done \n")
-
-
-def package_upgrade():
-    """Update the package repository directory and env function scripts."""
-
-    upgrade_packages_index()
-    upgrade_env_script()
 
 
 def cmd(args):
