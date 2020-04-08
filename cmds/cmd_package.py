@@ -43,7 +43,7 @@ from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_printenv import package_print_env
 from .cmd_package_upgrade import package_upgrade
-from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo
+from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input
 
 
 def determine_support_chinese(env_root):
@@ -663,19 +663,15 @@ def package_update(isDeleteOld=False):
 
             print("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
             if isDeleteOld:
-                if rm_package(gitdir) == False:
+                if not rm_package(gitdir):
                     print("Floder delete fail: %s" % gitdir.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
                 print("The folder is managed by git. Do you want to delete this folder?\n")
-                if sys.version_info < (3, 0):
-                    rc = raw_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
-                else:
-                    rc = input('Press the Y Key to delete the folder or just press Enter to keep it : ')
-
+                rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
                 if rc == 'y' or rc == 'Y':
                     try:
-                        if rm_package(gitdir) == False:
+                        if not rm_package(gitdir):
                             pkgs_delete_fail_list.append(pkg)
                             print("Error: Please delete the folder manually.")
                     except Exception as e:

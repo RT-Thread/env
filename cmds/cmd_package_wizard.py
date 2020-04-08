@@ -28,41 +28,7 @@ import re
 import sys
 from package import Kconfig_file, Package_json_file
 from string import Template
-
-
-def user_input(msg, default_value):
-    """Gets the user's keyboard input."""
-
-    if default_value != '':
-        msg = '%s[%s]' % (msg, default_value)
-
-    print(msg)
-    if sys.version_info < (3, 0):
-        value = raw_input()
-    else:
-        value = input()
-
-    if value == '':
-        value = default_value
-
-    return value
-
-
-def union_input(msg=None):
-    """Gets the union keyboard input."""
-
-    if sys.version_info < (3, 0):
-        if msg is not None:
-            value = raw_input(msg)
-        else:
-            value = raw_input()
-    else:
-        if msg is not None:
-            value = input(msg)
-        else:
-            value = input()
-
-    return value
+from .cmd_package_utils import user_input
 
 
 def package_wizard():
@@ -70,6 +36,7 @@ def package_wizard():
 
     The user enters the package name, version number, category, and automatically generates the package index file.
     """
+
     # Welcome
     print('\033[4;32;40mWelcome to using package wizard, please follow below steps.\033[0m\n')
 
@@ -81,80 +48,85 @@ def package_wizard():
     # first step
     print('\033[5;33;40m\n1.Please input a new package name :\033[0m')
 
-    name = union_input()
+    name = user_input()
     regular_obj = re.compile('\W')
     while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
         if name == '' or name.isspace():
             print('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-            name = union_input()
+            name = user_input()
         else:
             print('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
-            name = union_input()
+            name = user_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
-    # description = user_input('menuconfig option name,default:\n',default_description)
     description = default_description
     description_zh = "请添加软件包 " + name + " 的中文描述。"
 
     # second step
-    ver = user_input('\033[5;33;40m\n2.Please input this package version, default :\033[0m', '1.0.0')
+    print("\033[5;33;40m\n2.Please input this package version, default : '1.0.0' \033[0m")
+    ver = user_input()
+    if ver == '':
+        print("using default version 1.0.0")
+        ver = '1.0.0'
+
     ver_standard = ver.replace('.', '')
-    # keyword = user_input('keyword,default:\n', name)
     keyword = name
 
     # third step
-    packageclass = ('iot', 'language', 'misc', 'multimedia',
-                    'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
+    package_class_list = ('iot', 'language', 'misc', 'multimedia',
+                          'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
     print('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
-    print(
-        "\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
-    classnu = union_input()
-    while classnu == '' or classnu.isdigit() == False or int(classnu) < 1 or int(classnu) > 9:
-        if classnu == '':
+    print("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
+          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
+
+    class_number = user_input()
+    while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 9:
+        if class_number == '':
             print('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else:
             print('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
-        classnu = union_input()
+        class_number = user_input()
 
-    pkgsclass = packageclass[int(classnu) - 1]
+    package_class = package_class_list[int(class_number) - 1]
 
     # fourth step
     print("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")
 
-    authorname = union_input()
-    while authorname == '':
+    author_name = user_input()
+    while author_name == '':
         print("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
-        authorname = union_input()
+        author_name = user_input()
 
     # fifth step
-    authoremail = union_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m')
-    while authoremail == '':
+    author_email = user_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m')
+    while author_email == '':
         print('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        authoremail = union_input()
+        author_email = user_input()
 
-        # sixth step
+    # sixth step
     print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
     print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
-    license_class = union_input()
+    license_class = user_input()
     while license_class == '':
         print('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = union_input()
+        license_class = user_input()
 
-    if license_class.isdigit() == True and int(license_class) >= 1 and int(license_class) <= 4:
-        license = license_index[int(license_class) - 1]
+    if license_class.isdigit() and 1 <= int(license_class) <= 4:
+        license_choice = license_index[int(license_class) - 1]
     else:
-        license = license_class
+        license_choice = license_class
 
-        # seventh step
+    # seventh step
     print('\033[5;33;40m\n7.Please input the repository of this package :\033[0m')
     print(
-        "\033[1;32;40mFor example, hello package's repository url is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
+        "\033[1;32;40mFor example, hello package's repository url "
+        "is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
 
-    repository = union_input()
+    repository = user_input()
     while repository == '':
         print('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = union_input()
+        repository = user_input()
 
     pkg_path = name
     if not os.path.exists(pkg_path):
@@ -163,17 +135,17 @@ def package_wizard():
         print("\033[1;31;40mError: the package directory is exits!\033[0m")
 
     s = Template(Kconfig_file)
-    uppername = str.upper(name)
-    kconfig = s.substitute(name=uppername, description=description, version=ver,
-                           pkgs_class=pkgsclass, lowercase_name=name, version_standard=ver_standard)
+    upper_name = str.upper(name)
+    kconfig = s.substitute(name=upper_name, description=description, version=ver,
+                           pkgs_class=package_class, lowercase_name=name, version_standard=ver_standard)
     f = open(os.path.join(pkg_path, 'Kconfig'), 'w')
     f.write(kconfig)
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name=name, pkgsclass=pkgsclass, authorname=authorname, authoremail=authoremail,
+    package = s.substitute(name=name, pkgsclass=package_class, authorname=author_name, authoremail=author_email,
                            description=description, description_zh=description_zh, version=ver, keyword=keyword,
-                           license=license, repository=repository, pkgs_using_name=uppername)
+                           license=license_choice, repository=repository, pkgs_using_name=upper_name)
     f = open(os.path.join(pkg_path, 'package.json'), 'w')
     f.write(package)
     f.close()

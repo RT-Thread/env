@@ -107,3 +107,20 @@ def get_url_from_mirror_server(package_name, package_version):
         print('Error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
         return None, None
+
+
+def user_input(msg=None):
+    """Gets the union keyboard input."""
+
+    if sys.version_info < (3, 0):
+        if msg is not None:
+            value = raw_input(msg)
+        else:
+            value = raw_input()
+    else:
+        if msg is not None:
+            value = input(msg)
+        else:
+            value = input()
+
+    return value
