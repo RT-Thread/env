@@ -37,10 +37,10 @@ import archive
 import sys
 from package import Package, Bridge_SConscript, Kconfig_file, Package_json_file, Sconscript_file
 from vars import Import, Export
-from string import Template
 from .cmd_menuconfig import find_macro_in_config
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
+from .cmd_package_printenv import package_print_env
 
 
 def execute_command(cmdstring, cwd=None, shell=True):
@@ -908,22 +908,6 @@ def package_upgrade():
 
     upgrade_packages_index()
     upgrade_env_script()
-
-
-def package_print_env():
-    print("Here are some environmental variables.")
-    print("If you meet some problems,please check them. Make sure the configuration is correct.")
-    print("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
-    print("RTT_CC:%s" % (os.getenv("RTT_CC")))
-    print("SCONS:%s" % (os.getenv("SCONS")))
-    print("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
-
-    env_root = os.getenv('ENV_ROOT')
-    if env_root is None:
-        if platform.system() != 'Windows':
-            env_root = os.path.join(os.getenv('HOME'), '.env')
-
-    print("ENV_ROOT:%s" % (env_root))
 
 
 def cmd(args):
