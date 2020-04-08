@@ -34,7 +34,6 @@ import shutil
 import platform
 import time
 import archive
-import sys
 import requests
 from package import Package, Bridge_SConscript
 from vars import Import, Export
@@ -687,26 +686,22 @@ def package_update(isDeleteOld=False):
                     print('Error message:\n%s %s. %s \n\t' % (
                         "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e))
 
+    # write error messages
+    with open(pkgs_error_list_fn, 'w') as f:
+        f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
+
     if len(pkgs_delete_fail_list):
-        # write error messages
-        pkgs_file = file(pkgs_error_list_fn, 'w')
-        pkgs_file.write(json.dumps(pkgs_delete_fail_list, indent=1))
-        pkgs_file.close()
         return
-    else:
-        # write error messages
-        with open(pkgs_error_list_fn, 'w') as f:
-            f.write(str(json.dumps(pkgs_delete_fail_list, indent=1)))
 
     # 2.in new not in old : Software packages to be installed.
     # If the package download fails, record it, and then download again when
     # the update command is executed.
 
-    casedownload = sub_list(newpkgs, oldpkgs)
+    case_download = sub_list(newpkgs, oldpkgs)
     # print 'in new not in old:', casedownload
     pkgs_download_fail_list = []
 
-    for pkg in casedownload:
+    for pkg in case_download:
         if install_pkg(env_root, pkgs_root, bsp_root, pkg):
             print("==============================>  %s %s is downloaded successfully. \n" % (
                 pkg['name'], pkg['ver']))
