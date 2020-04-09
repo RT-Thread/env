@@ -205,16 +205,11 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         submodule_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submodule_path):
             print("Start to update submodule")
-            # print("开始更新软件包子模块")
-
             if (not os.path.isfile(env_config_file)) \
                     or (os.path.isfile(env_config_file)
                         and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-
-                # print("开启了镜像加速，开始修改 .gitmodules 文件")
                 replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
 
-            # print("开始执行更新动作")
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
@@ -286,14 +281,16 @@ def and_list(aList, bList):
 def update_submodule(repo_path):
     """Update the submodules in the repository."""
 
-    submod_path = os.path.join(repo_path, '.gitmodules')
-    if os.path.isfile(submod_path):
-        print("Please wait a few seconds in order to update the submodule.")
-        cmd = 'git submodule init -q'
-        execute_command(cmd, cwd=repo_path)
-        cmd = 'git submodule update'
-        execute_command(cmd, cwd=repo_path)
-        print("Submodule update successful")
+    try:
+        if os.path.isfile(os.path.join(repo_path, '.gitmodules')):
+            print("Please wait a few seconds in order to update the submodule.")
+            cmd = 'git submodule init -q'
+            execute_command(cmd, cwd=repo_path)
+            cmd = 'git submodule update'
+            execute_command(cmd, cwd=repo_path)
+            print("Submodule update successful")
+    except Exception as e:
+        print('Error message:%s' % e)
 
 
 def get_pkg_folder_by_orign_path(orign_path, version):
@@ -308,7 +305,7 @@ def git_cmd_exec(cmd, cwd):
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
-def update_latest_packages(pkgs_fn, bsp_packages_path):
+def update_latest_packages(sys_value):
     """ update the packages that are latest version.
 
     If the selected package is the latest version,
@@ -318,13 +315,18 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
     message provided by git.
     """
 
+    result = True
+
+    package_filename = sys_value[3]
+    bsp_packages_path = sys_value[5]
+
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
 
     env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    with open(pkgs_fn, 'r') as f:
+    with open(package_filename, 'r') as f:
         read_back_pkgs_json = json.load(f)
 
     for pkg in read_back_pkgs_json:
@@ -356,16 +358,21 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
 
                     # if git root is same as repo path, then change the upstream
                     get_git_root = get_git_root_path(repo_path)
-                    if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
-                        if mirror_url[0] is not None:
-                            cmd = 'git remote set-url origin ' + mirror_url[0]
-                            git_cmd_exec(cmd, repo_path)
+                    if get_git_root is not None:
+                        if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
+                            if mirror_url[0] is not None:
+                                cmd = 'git remote set-url origin ' + mirror_url[0]
+                                git_cmd_exec(cmd, repo_path)
+                        else:
+                            print("\n==============================> updating")
+                            print("Package path: %s" % repo_path)
+                            print("Git root: %s" % get_git_root)
+                            print("Error: Not currently in a git root directory, cannot switch upstream.\n")
+                            right_path_flag = False
+                            result = False
                     else:
-                        print("\n==============================> updating")
-                        print("Package path: %s" % repo_path)
-                        print("Git root: %s" % get_git_root)
-                        print("Error: Not currently in a git root directory, cannot switch upstream.\n")
                         right_path_flag = False
+                        result = False
 
             except Exception as e:
                 print("Error message : %s" % e)
@@ -389,19 +396,29 @@ def update_latest_packages(pkgs_fn, bsp_packages_path):
                 print("Can't find the package : %s's url in file : %s" %
                       (payload_pkgs_name_in_json, pkg_path))
 
-            print("==============================>  %s update done\n" % (pkgs_name_in_json))
+            print("==============================>  %s update done\n" % pkgs_name_in_json)
+
+    return result
 
 
 def get_git_root_path(repo_path):
-    before = os.getcwd()
-    os.chdir(repo_path)
-    result = os.popen('git rev-parse --show-toplevel')
-    result = result.read()
-    for line in result.splitlines()[:5]:
-        get_git_root = line
-        break
-    os.chdir(before)
-    return get_git_root
+    if os.path.isdir(repo_path):
+        try:
+            before = os.getcwd()
+            os.chdir(repo_path)
+            result = os.popen('git rev-parse --show-toplevel')
+            result = result.read()
+            for line in result.splitlines()[:5]:
+                get_git_root = line
+                break
+            os.chdir(before)
+            return get_git_root
+        except Exception as e:
+            print("Error message : %s" % e)
+            return None
+    else:
+        print("Missing path %s" % repo_path)
+        return None
 
 
 def pre_package_update():
@@ -512,14 +529,14 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
             print("Package name : %s, Ver : %s" % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted or renamed.")
         print("\nIf you manually delete the version suffix of the package folder name, ")
-        print("you can use the <pkgs --force-update> command to re-download these packages.")
-        print("\nIn case of accidental deletion, the ENV tool will automatically re-download these packages.")
+        print("you can use <pkgs --force-update> command to re-download these packages.")
+        print("In case of accidental deletion, the ENV tool will automatically re-download these packages.")
 
-        # re download the packages in error_packages_list
+        # re-download the packages in error_packages_list
         for pkg in error_packages_list:
             if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
-                print("==============================> %s %s is redownloaded successfully. \n" % (
-                    pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+                print("\n==============================> %s %s update done \n"
+                      % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
                 print(pkg, 'download failed.')
@@ -527,8 +544,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
 
         if len(error_packages_redownload_error_list):
             print("%s" % error_packages_redownload_error_list)
-            print("Packages:%s,%s redownloed error, you need to use <pkgs --update> command again to redownload them." %
-                  (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+            print("Packages:%s,%s re-download error, you need to use <pkgs --update> command again to re-download them."
+                  % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
 
             write_back_package_json = sub_list(read_back_pkgs_json, error_packages_redownload_error_list)
             with open(package_filename, 'w') as f:
@@ -578,14 +595,16 @@ def get_package_remove_path(pkg, bsp_packages_path):
     return remove_path_ver
 
 
-def handle_download_error_packages(pkgs_fn, bsp_packages_path, force_update):
+def handle_download_error_packages(sys_value, force_update):
     """ handle download error packages.
 
     Check to see if the packages stored in the Json file list actually exist,
     and then download the packages if they don't exist.
     """
+    package_filename = sys_value[3]
+    bsp_packages_path = sys_value[5]
 
-    with open(pkgs_fn, 'r') as f:
+    with open(package_filename, 'r') as f:
         read_back_pkgs_json = json.load(f)
 
     error_packages_list = []
@@ -595,32 +614,35 @@ def handle_download_error_packages(pkgs_fn, bsp_packages_path, force_update):
         if os.path.exists(remove_path):
             continue
         else:
-            print("Error packages add: ", pkg)
+            print("Error package : %s" % pkg)
             error_packages_list.append(pkg)
 
     # Handle the failed download packages
-    get_flag = error_packages_handle(error_packages_list, read_back_pkgs_json, pkgs_fn, force_update)
+    get_flag = error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename, force_update)
 
     return get_flag
 
 
-def delete_useless_packages(package_delete_error_list, bsp_packages_path):
+def delete_useless_packages(sys_value):
+    package_delete_error_list = sys_value[2]
+    bsp_packages_path = sys_value[5]
+
     # try to delete useless packages, exit command if fails
     if len(package_delete_error_list):
         for error_package in package_delete_error_list:
-            removepath_ver = get_package_remove_path(error_package, bsp_packages_path)
-            if os.path.isdir(removepath_ver):
+            remove_path_with_version = get_package_remove_path(error_package, bsp_packages_path)
+            if os.path.isdir(remove_path_with_version):
                 print("\nError: %s package delete failed, begin to remove it." %
                       error_package['name'].encode("utf-8"))
 
-                if not rm_package(removepath_ver):
+                if not rm_package(remove_path_with_version):
                     print("Error: Delete package %s failed! Please delete the folder manually.\n" %
                           error_package['name'].encode("utf-8"))
                     return False
     return True
 
 
-def remove_packages(sys_value, isDeleteOld):
+def remove_packages(sys_value, force_update):
     old_package = sys_value[0]
     new_package = sys_value[1]
     package_error_list_filename = sys_value[4]
@@ -631,39 +653,39 @@ def remove_packages(sys_value, isDeleteOld):
     package_delete_fail_list = []
 
     for pkg in case_delete:
-
-        removepath_ver = get_package_remove_path(pkg, bsp_packages_path)
-        removepath_git = os.path.join(removepath_ver, '.git')
+        remove_path_with_version = get_package_remove_path(pkg, bsp_packages_path)
+        remove_path_git = os.path.join(remove_path_with_version, '.git')
 
         # delete .git directory
-        if os.path.isdir(removepath_ver) and os.path.isdir(removepath_git):
-            gitdir = removepath_ver
+        if os.path.isdir(remove_path_with_version) and os.path.isdir(remove_path_git):
+            git_folder_to_remove = remove_path_with_version
 
-            print("\nStart to remove %s \nplease wait..." % gitdir.encode("utf-8"))
-            if isDeleteOld:
-                if not rm_package(gitdir):
-                    print("Floder delete fail: %s" % gitdir.encode("utf-8"))
+            print("\nStart to remove %s \nplease wait..." % git_folder_to_remove.encode("utf-8"))
+            if force_update:
+                if not rm_package(git_folder_to_remove):
+                    print("Floder delete fail: %s" % git_folder_to_remove.encode("utf-8"))
                     print("Please delete this folder manually.")
             else:
                 print("The folder is managed by git. Do you want to delete this folder?\n")
                 rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
                 if rc == 'y' or rc == 'Y':
                     try:
-                        if not rm_package(gitdir):
+                        if not rm_package(git_folder_to_remove):
                             package_delete_fail_list.append(pkg)
                             print("Error: Please delete the folder manually.")
                     except Exception as e:
                         print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", gitdir.encode("utf-8"), e))
+                              ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
         else:
-            if os.path.isdir(removepath_ver):
-                print("Start to remove %s \nplease wait..." % removepath_ver.encode("utf-8"))
+            if os.path.isdir(remove_path_with_version):
+                print("Start to remove %s \nplease wait..." % remove_path_with_version.encode("utf-8"))
                 try:
-                    pkgsdb.deletepackdir(removepath_ver, sqlite_pathname)
+                    pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
                 except Exception as e:
                     package_delete_fail_list.append(pkg)
                     print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually", removepath_ver.encode("utf-8"), e))
+                        "Delete folder failed, please delete the folder manually",
+                        remove_path_with_version.encode("utf-8"), e))
 
     # write error messages
     with open(package_error_list_filename, 'w') as f:
@@ -675,12 +697,15 @@ def remove_packages(sys_value, isDeleteOld):
     return True
 
 
-def install_packages(new_package, old_package, package_filename, force_update):
+def install_packages(sys_value, force_update):
     """
     If the package download fails, record it,
     and then download again when the update command is executed.
     """
 
+    old_package = sys_value[0]
+    new_package = sys_value[1]
+    package_filename = sys_value[3]
     bsp_root = Import('bsp_root')
     pkgs_root = Import('pkgs_root')
     env_root = Import('env_root')
@@ -709,7 +734,7 @@ def install_packages(new_package, old_package, package_filename, force_update):
 
         print("You need to reuse the <pkgs -update> command to download again.")
 
-    # update pkgs.json and SConscript
+    # Update pkgs.json and SConscript
     with open(package_filename, 'w') as f:
         f.write(str(json.dumps(new_package, indent=1)))
 
@@ -731,34 +756,23 @@ def package_update(force_update=False):
 
     flag = True
 
-    old_package = sys_value[0]
-    new_package = sys_value[1]
-    package_delete_error_list = sys_value[2]
-    package_filename = sys_value[3]
-    package_error_list_filename = sys_value[4]
-    bsp_packages_path = sys_value[5]
-    sqlite_pathname = sys_value[6]
-
-    if not delete_useless_packages(package_delete_error_list, bsp_packages_path):
+    if not delete_useless_packages(sys_value):
         return
 
-    # 1. packages in old and not in new : Software packages that need to be removed
+    # 1.in old and not in new : Software packages that need to be removed
     if not remove_packages(sys_value, force_update):
         return
 
     # 2.in new not in old : Software packages to be installed.
-    if not install_packages(new_package, old_package, package_filename, force_update):
+    if not install_packages(sys_value, force_update):
         flag = False
 
-    # handle download error packages.
-    if not handle_download_error_packages(package_filename, bsp_packages_path, force_update):
+    # 3.handle download error packages.
+    if not handle_download_error_packages(sys_value, force_update):
         flag = False
 
-    # update the software packages, which the version is 'latest'
-    try:
-        update_latest_packages(package_filename, bsp_packages_path)
-    except Exception as e:
-        print('Error message:%s\t' % e)
+    # 4.update the software packages, which the version is 'latest'
+    if not update_latest_packages(sys_value):
         flag = False
 
     if flag:

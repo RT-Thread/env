@@ -46,11 +46,14 @@ def execute_command(cmd_string, cwd=None, shell=True):
 
 
 def git_pull_repo(repo_path, repo_url=''):
-    if platform.system() == "Windows":
-        cmd = r'git config --local core.autocrlf true'
+    try:
+        if platform.system() == "Windows":
+            cmd = r'git config --local core.autocrlf true'
+            execute_command(cmd, cwd=repo_path)
+        cmd = r'git pull ' + repo_url
         execute_command(cmd, cwd=repo_path)
-    cmd = r'git pull ' + repo_url
-    execute_command(cmd, cwd=repo_path)
+    except Exception as e:
+        print('Error message:%s' % e)
 
 
 def get_url_from_mirror_server(package_name, package_version):
