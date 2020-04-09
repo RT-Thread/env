@@ -530,12 +530,12 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
         print("\nThe packages in the list above are accidentally deleted or renamed.")
         print("\nIf you manually delete the version suffix of the package folder name, ")
         print("you can use <pkgs --force-update> command to re-download these packages.")
-        print("\nIn case of accidental deletion, the ENV tool will automatically re-download these packages.")
+        print("In case of accidental deletion, the ENV tool will automatically re-download these packages.")
 
         # re-download the packages in error_packages_list
         for pkg in error_packages_list:
             if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
-                print("==============================> %s %s is redownloaded successfully. \n"
+                print("\n==============================> %s %s update done \n"
                       % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
                 error_packages_redownload_error_list.append(pkg)
@@ -614,7 +614,7 @@ def handle_download_error_packages(sys_value, force_update):
         if os.path.exists(remove_path):
             continue
         else:
-            print("Error packages add: ", pkg)
+            print("Error package : %s" % pkg)
             error_packages_list.append(pkg)
 
     # Handle the failed download packages
@@ -625,7 +625,6 @@ def handle_download_error_packages(sys_value, force_update):
 
 def delete_useless_packages(sys_value):
     package_delete_error_list = sys_value[2]
-    package_filename = sys_value[3]
     bsp_packages_path = sys_value[5]
 
     # try to delete useless packages, exit command if fails
@@ -643,7 +642,7 @@ def delete_useless_packages(sys_value):
     return True
 
 
-def remove_packages(sys_value, isDeleteOld):
+def remove_packages(sys_value, force_update):
     old_package = sys_value[0]
     new_package = sys_value[1]
     package_error_list_filename = sys_value[4]
@@ -662,7 +661,7 @@ def remove_packages(sys_value, isDeleteOld):
             git_folder_to_remove = remove_path_with_version
 
             print("\nStart to remove %s \nplease wait..." % git_folder_to_remove.encode("utf-8"))
-            if isDeleteOld:
+            if force_update:
                 if not rm_package(git_folder_to_remove):
                     print("Floder delete fail: %s" % git_folder_to_remove.encode("utf-8"))
                     print("Please delete this folder manually.")
@@ -706,10 +705,7 @@ def install_packages(sys_value, force_update):
 
     old_package = sys_value[0]
     new_package = sys_value[1]
-    package_delete_error_list = sys_value[2]
     package_filename = sys_value[3]
-    bsp_packages_path = sys_value[5]
-
     bsp_root = Import('bsp_root')
     pkgs_root = Import('pkgs_root')
     env_root = Import('env_root')
@@ -738,7 +734,7 @@ def install_packages(sys_value, force_update):
 
         print("You need to reuse the <pkgs -update> command to download again.")
 
-    # update pkgs.json and SConscript
+    # Update pkgs.json and SConscript
     with open(package_filename, 'w') as f:
         f.write(str(json.dumps(new_package, indent=1)))
 
