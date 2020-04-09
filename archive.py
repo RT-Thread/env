@@ -83,11 +83,11 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
                     dir_name = os.path.split(right_path)[0]
                     change_dirname = pkgs_name_in_json + '-' + pkg_ver
                     flag = False
-    
+
                 right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
                 pkgsdb.savetodb(right_name_to_db, archive_fn, right_path)
         arch.close()
-        
+
     # Change the folder name
     change_dirname = pkgs_name_in_json + '-' + pkg_ver
 
@@ -97,8 +97,8 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             os.system(cmd)
         else:
             shutil.rmtree(os.path.join(path, change_dirname))
-    
-    os.rename(os.path.join(path, dir_name),os.path.join(path, change_dirname)) 
+
+    os.rename(os.path.join(path, dir_name), os.path.join(path, change_dirname))
 
 
 def packtest(path):

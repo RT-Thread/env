@@ -53,7 +53,7 @@ def main():
     bsp_root = os.getcwd()
     script_root = os.path.split(os.path.realpath(__file__))[0]
     env_root = os.getenv("ENV_ROOT")
-    if env_root == None:
+    if env_root is None:
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
         else:
@@ -62,13 +62,14 @@ def main():
     sys.path = sys.path + [os.path.join(script_root)]
     
     pkgs_root = os.getenv("PKGS_ROOT")
-    if pkgs_root == None:
+    if pkgs_root is None:
         pkgs_root = os.path.join(env_root, 'packages')
 
     Export('env_root')
     Export('bsp_root')
     Export('pkgs_root')
 
+    # noinspection PyBroadException
     try:
         bsp_root.encode('utf-8').decode("ascii")
     except Exception as e:

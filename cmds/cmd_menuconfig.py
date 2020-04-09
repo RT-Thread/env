@@ -32,7 +32,7 @@ from vars import Import, Export
 
 
 def is_pkg_special_config(config_str):
-    ''' judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER'''
+    """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
     if type(config_str) == type('a'):
         if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
@@ -43,7 +43,7 @@ def is_pkg_special_config(config_str):
 def mk_rtconfig(filename):
     try:
         config = open(filename, 'r')
-    except:
+    except Exception as e:
         print('open config:%s failed' % filename)
         return
 
@@ -89,7 +89,7 @@ def mk_rtconfig(filename):
                 if setting[1] == 'y':
                     rtconfig.write('#define %s\n' % setting[0])
                 else:
-                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$",line)[0]))
+                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$", line)[0]))
 
     if os.path.isfile('rtconfig_project.h'):
         rtconfig.write('#include "rtconfig_project.h"\n')
@@ -102,7 +102,7 @@ def mk_rtconfig(filename):
 def find_macro_in_config(filename, macro_name):
     try:
         config = open(filename, "r")
-    except:
+    except Exception as e:
         print('open .config failed')
         return
 
@@ -122,7 +122,7 @@ def find_macro_in_config(filename, macro_name):
                 empty_line = 1
                 continue
 
-            #comment_line = line[1:]
+            # comment_line = line[1:]
             if line.startswith('# CONFIG_'):
                 line = ' ' + line[9:]
             else:
@@ -146,7 +146,6 @@ def find_macro_in_config(filename, macro_name):
 
 
 def cmd(args):
-
     env_root = Import('env_root')
     os_version = platform.platform(True)[10:13]
     kconfig_win7_path = os.path.join(
@@ -159,9 +158,9 @@ def cmd(args):
         print("\n\033[1;31;40m<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"\033[0m")
         print("\033[1;31;40m请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\033[0m\n")
 
-        print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
-        print ("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
-        print ("You should check if there is a Kconfig file in your bsp root first.")
+        print("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
+        print("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
+        print("You should check if there is a Kconfig file in your bsp root first.")
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
@@ -242,13 +241,13 @@ def cmd(args):
         if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
-                print("Create mdk4 project done") 
+                print("Create mdk4 project done")
             elif find_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
-                print("Create mdk5 project done") 
+                print("Create mdk5 project done")
             elif find_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
-                print("Create iar project done") 
+                print("Create iar project done")
 
 
 def add_parser(sub):
