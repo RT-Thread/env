@@ -194,6 +194,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
             git_check_cmd = 'git checkout -q ' + ver_sha
             execute_command(git_check_cmd, cwd=repo_path)
         except Exception as e:
+            print('Error message:%s' % e)
             print("\nFailed to download software package with git. Please check the network connection.")
             return False
 
@@ -240,7 +241,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         pkg_dir = os.path.splitext(pkg_dir)[0]
         package_path = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(package_path):
+        if not archive.package_integrity_test(package_path):
             print("package : %s is invalid" % package_path.encode("utf-8"))
             return False
 

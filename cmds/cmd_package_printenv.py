@@ -40,7 +40,7 @@ def package_print_env():
         if platform.system() != 'Windows':
             env_root = os.path.join(os.getenv('HOME'), '.env')
 
-    print("ENV_ROOT:%s" % (env_root))
+    print("ENV_ROOT:%s" % env_root)
 
 
 def package_print_help():
