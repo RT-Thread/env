@@ -115,14 +115,14 @@ def isdataexist(pathname):
 
 # 将数据添加到数据库，如果数据库中已经存在则不重复添加
 def save_to_database(pathname, package_pathname, before_change_name):
-    dbpathname = Import('dbsqlite_pathname')
+    db_pathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
-    bsppkgs = os.path.join(bsp_root, 'packages')
+    bsp_packages_path = os.path.join(bsp_root, 'packages')
 
-    conn = get_conn(dbpathname)
+    conn = get_conn(db_pathname)
     save_sql = '''insert into packagefile values (?, ?, ?)'''
     package = os.path.basename(package_pathname)
-    md5pathname = os.path.join(bsppkgs, before_change_name)
+    md5pathname = os.path.join(bsp_packages_path, before_change_name)
 
     if not os.path.isfile(md5pathname):
         print("md5pathname is Invalid")

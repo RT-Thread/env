@@ -32,7 +32,7 @@ import platform
 import shutil
 
 
-def unpack(archive_fn, path, pkg, pkgs_name_in_json):
+def unpack(archive_fn, path, pkg, package_name):
     pkg_ver = pkg['ver']
     flag = True
 
@@ -82,7 +82,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
                 # Gets the folder name and change_dirname only once
                 if flag:
                     dir_name = os.path.split(right_path)[0]
-                    change_dirname = pkgs_name_in_json + '-' + pkg_ver
+                    change_dirname = package_name + '-' + pkg_ver
                     flag = False
 
                 right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
@@ -90,7 +90,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
         arch.close()
 
     # Change the folder name
-    change_dirname = pkgs_name_in_json + '-' + pkg_ver
+    change_dirname = package_name + '-' + pkg_ver
 
     if os.path.isdir(os.path.join(path, change_dirname)):
         if is_windows:
