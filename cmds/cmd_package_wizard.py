@@ -25,7 +25,6 @@
 
 import os
 import re
-import sys
 from package import Kconfig_file, Package_json_file
 from string import Template
 from .cmd_package_utils import user_input

@@ -32,7 +32,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'rt-thread packages v1.1.0'
+__version__ = 'rt-thread packages v1.2.0'
 
 
 def init_argparse():
@@ -60,7 +60,7 @@ def main():
             env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
 
     sys.path = sys.path + [os.path.join(script_root)]
-    
+
     pkgs_root = os.getenv("PKGS_ROOT")
     if pkgs_root is None:
         pkgs_root = os.path.join(env_root, 'packages')
@@ -76,10 +76,10 @@ def main():
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print ("\n\033[1;31;40m警告：\033[0m")
-        print ("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
-        print ("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
-        print ("\033[1;31;40mPlease modify the current path to a pure English path.\033[0m")
+        print("\n\033[1;31;40m警告：\033[0m")
+        print("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
+        print("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
+        print("\033[1;31;40mPlease modify the current path to a pure English path.\033[0m")
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')

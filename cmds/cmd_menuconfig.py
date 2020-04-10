@@ -28,7 +28,7 @@
 import os
 import platform
 import re
-from vars import Import, Export
+from vars import Import
 
 
 def is_pkg_special_config(config_str):
@@ -44,6 +44,7 @@ def mk_rtconfig(filename):
     try:
         config = open(filename, 'r')
     except Exception as e:
+        print('Error message:%s' % e)
         print('open config:%s failed' % filename)
         return
 
@@ -103,6 +104,7 @@ def find_macro_in_config(filename, macro_name):
     try:
         config = open(filename, "r")
     except Exception as e:
+        print('Error message:%s' % e)
         print('open .config failed')
         return
 
@@ -194,7 +196,7 @@ def cmd(args):
                 os.system('kconfig-mconf Kconfig -n')
 
     elif args.menuconfig_setting:
-        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
 
@@ -228,7 +230,7 @@ def cmd(args):
         mk_rtconfig(fn)
 
     if platform.system() == "Windows":
-        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
         fn = os.path.join(env_kconfig_path, '.config')
 
         if not os.path.isfile(fn):
@@ -276,7 +278,7 @@ def add_parser(sub):
                         dest='menuconfig_setting')
 
     parser.add_argument('--easy',
-                        help='easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
+                        help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',
                         action='store_true',
                         default=False,
                         dest='menuconfig_easy')
