@@ -29,6 +29,7 @@ import os
 import platform
 import re
 from vars import Import
+from .cmd_package.cmd_package_utils import find_macro_in_config
 
 
 def is_pkg_special_config(config_str):
@@ -98,53 +99,6 @@ def mk_rtconfig(filename):
     rtconfig.write('\n')
     rtconfig.write('#endif\n')
     rtconfig.close()
-
-
-def find_macro_in_config(filename, macro_name):
-    try:
-        config = open(filename, "r")
-    except Exception as e:
-        print('Error message:%s' % e)
-        print('open .config failed')
-        return
-
-    empty_line = 1
-
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
-            continue
-
-        if line[0] == '#':
-            if len(line) == 1:
-                if empty_line:
-                    continue
-
-                empty_line = 1
-                continue
-
-            # comment_line = line[1:]
-            if line.startswith('# CONFIG_'):
-                line = ' ' + line[9:]
-            else:
-                line = line[1:]
-
-            # print line
-
-            empty_line = 0
-        else:
-            empty_line = 0
-            setting = line.split('=')
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_'):
-                    setting[0] = setting[0][7:]
-
-                    if setting[0] == macro_name and setting[1] == 'y':
-                        return True
-
-    config.close()
-    return False
 
 
 def cmd(args):

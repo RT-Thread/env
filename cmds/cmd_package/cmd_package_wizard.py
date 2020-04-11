@@ -152,3 +152,4 @@ def package_wizard():
     print('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
     print('Please \033[5;34;40mupdate\033[0m other information of this package '
           'based on Kconfig and package.json in directory ' + name + '.')
+
