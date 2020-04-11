@@ -186,7 +186,7 @@ class Package:
             if not os.path.getsize(path):
                 os.remove(path)
             else:
-                if archive.packtest(path):
+                if archive.package_integrity_test(path):
                     # print "The file is rigit."
                     return True
                 else:
@@ -219,7 +219,7 @@ class Package:
 
                 retry_count = retry_count + 1
 
-                if archive.packtest(path):  # make sure the file is right
+                if archive.package_integrity_test(path):  # make sure the file is right
                     ret = True
                     print("\rDownloded %d KB  " % flush_count)
                     print('Start to unpack. Please wait...')

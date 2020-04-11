@@ -34,8 +34,7 @@ import archive
 import requests
 from package import Package, Bridge_SConscript
 from vars import Import, Export
-from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input
-from .cmd_menuconfig import find_macro_in_config
+from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, find_macro_in_config
 
 
 def determine_support_chinese(env_root):
@@ -194,6 +193,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
             git_check_cmd = 'git checkout -q ' + ver_sha
             execute_command(git_check_cmd, cwd=repo_path)
         except Exception as e:
+            print('Error message:%s' % e)
             print("\nFailed to download software package with git. Please check the network connection.")
             return False
 
@@ -240,7 +240,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         pkg_dir = os.path.splitext(pkg_dir)[0]
         package_path = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
 
-        if not archive.packtest(package_path):
+        if not archive.package_integrity_test(package_path):
             print("package : %s is invalid" % package_path.encode("utf-8"))
             return False
 

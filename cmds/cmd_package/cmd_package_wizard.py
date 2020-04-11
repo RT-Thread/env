@@ -25,7 +25,6 @@
 
 import os
 import re
-import sys
 from package import Kconfig_file, Package_json_file
 from string import Template
 from .cmd_package_utils import user_input
@@ -153,3 +152,4 @@ def package_wizard():
     print('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
     print('Please \033[5;34;40mupdate\033[0m other information of this package '
           'based on Kconfig and package.json in directory ' + name + '.')
+

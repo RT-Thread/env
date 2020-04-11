@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
+# 2020-4-10      SummerGift      Code clear up
 #
 
 import tarfile
@@ -31,14 +32,14 @@ import platform
 import shutil
 
 
-def unpack(archive_fn, path, pkg, pkgs_name_in_json):
+def unpack(archive_fn, path, pkg, package_name):
     pkg_ver = pkg['ver']
     flag = True
 
-    iswindows = False
-
     if platform.system() == "Windows":
-        iswindows = True
+        is_windows = True
+    else:
+        is_windows = False
 
     if ".tar.bz2" in archive_fn:
         arch = tarfile.open(archive_fn, "r:bz2")
@@ -46,12 +47,12 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if iswindows:
+                if is_windows:
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
-                pkgsdb.savetodb(a, archive_fn)
+                pkgsdb.save_to_database(a, archive_fn)
         arch.close()
 
     if ".tar.gz" in archive_fn:
@@ -60,12 +61,12 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if iswindows:
+                if is_windows:
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
-                pkgsdb.savetodb(a, archive_fn)
+                pkgsdb.save_to_database(a, archive_fn)
         arch.close()
 
     if ".zip" in archive_fn:
@@ -73,7 +74,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
         for item in arch.namelist():
             arch.extract(item, path)
             if not os.path.isdir(os.path.join(path, item)):
-                if iswindows:
+                if is_windows:
                     right_path = item.replace('/', '\\')
                 else:
                     right_path = item
@@ -81,18 +82,18 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
                 # Gets the folder name and change_dirname only once
                 if flag:
                     dir_name = os.path.split(right_path)[0]
-                    change_dirname = pkgs_name_in_json + '-' + pkg_ver
+                    change_dirname = package_name + '-' + pkg_ver
                     flag = False
 
                 right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
-                pkgsdb.savetodb(right_name_to_db, archive_fn, right_path)
+                pkgsdb.save_to_database(right_name_to_db, archive_fn, right_path)
         arch.close()
 
     # Change the folder name
-    change_dirname = pkgs_name_in_json + '-' + pkg_ver
+    change_dirname = package_name + '-' + pkg_ver
 
     if os.path.isdir(os.path.join(path, change_dirname)):
-        if iswindows:
+        if is_windows:
             cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
             os.system(cmd)
         else:
@@ -101,7 +102,7 @@ def unpack(archive_fn, path, pkg, pkgs_name_in_json):
     os.rename(os.path.join(path, dir_name), os.path.join(path, change_dirname))
 
 
-def packtest(path):
+def package_integrity_test(path):
     ret = True
 
     if path.find(".zip") != -1:
@@ -116,7 +117,7 @@ def packtest(path):
                 ret = False
                 print('package check error. \n')
         except Exception as e:
-            print('packtest error message:%s\t' % e)
+            print('Package test error message:%s\t' % e)
             print("The archive package is broken. \n")
             arch.close()
             ret = False
@@ -127,6 +128,7 @@ def packtest(path):
             if not tarfile.is_tarfile(path):
                 ret = False
         except Exception as e:
+            print('Error message:%s' % e)
             ret = False
 
     # if ".tar.gz" in path:
@@ -135,6 +137,7 @@ def packtest(path):
             if not tarfile.is_tarfile(path):
                 ret = False
         except Exception as e:
+            print('Error message:%s' % e)
             ret = False
 
     return ret

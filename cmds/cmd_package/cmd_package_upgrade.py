@@ -25,8 +25,7 @@
 
 import os
 from vars import Import
-from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server
-from .cmd_menuconfig import find_macro_in_config
+from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_macro_in_config
 
 
 def upgrade_packages_index():
