@@ -27,8 +27,7 @@
 import sqlite3
 import os
 import hashlib
-import sys
-
+from cmds.cmd_package.cmd_package_utils import user_input
 from vars import Import
 
 SHOW_SQL = False
@@ -171,10 +170,7 @@ def remove_unchanged_file(pathname, dbfilename, dbsqlname):
         print('If you choose to keep the changed file,you should copy the file to another folder. '
               '\nbecaues it may be covered by the next update.')
 
-        if sys.version_info < (3, 0):
-            rc = raw_inuput('Press the Y Key to delete the file or just press Enter to keep the file.')
-        else:
-            rc = input('Press the Y Key to delete the file or just press Enter to keep the file.')
+        rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
         if rc == 'y' or rc == 'Y':
             sql = "DELETE from packagefile where pathname = '" + dbsqlname + "'"
             conn.commit()

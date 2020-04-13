@@ -35,7 +35,7 @@ from .cmd_package.cmd_package_utils import find_macro_in_config
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
-    if type(config_str) == type('a'):
+    if isinstance(config_str, str):
         if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
             return True
     return False
