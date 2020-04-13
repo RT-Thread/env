@@ -91,7 +91,7 @@ def modify_submod_file_to_mirror(submodule_path):
         return replace_list
 
     except Exception as e:
-        print('Error message:%s\t' % e)
+        logging.warning('Error message:%s\t' % e)
 
 
 def determine_url_valid(url_from_srv):
@@ -115,9 +115,8 @@ def determine_url_valid(url_from_srv):
         return True
 
     except Exception as e:
-        # print('Error message:%s\t' % e)
         # So much error message should be ignore
-        print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
+        logging.error('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
 def is_user_mange_package(bsp_package_path, pkg):
@@ -142,17 +141,94 @@ def is_git_url(package_url):
     return package_url.endswith('.git')
 
 
+def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed,
+                        url_origin, env_config_file):
+    try:
+        repo_path = os.path.join(bsp_package_path, package_name)
+        repo_path = repo_path + '-' + package_info['ver']
+        repo_path_full = '"' + repo_path + '"'
+
+        clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
+        logging.info(clone_cmd)
+        execute_command(clone_cmd, cwd=bsp_package_path)
+
+        git_check_cmd = 'git checkout -q ' + ver_sha
+        execute_command(git_check_cmd, cwd=repo_path)
+    except Exception as e:
+        print('Error message:%s' % e)
+        print("\nFailed to download software package with git. Please check the network connection.")
+        return False
+
+    # change upstream to origin url
+    if upstream_changed:
+        cmd = 'git remote set-url origin ' + url_origin
+        execute_command(cmd, cwd=repo_path)
+
+    # If there is a .gitmodules file in the package, prepare to update submodule.
+    submodule_path = os.path.join(repo_path, '.gitmodules')
+    if os.path.isfile(submodule_path):
+        print("Start to update submodule")
+        if need_using_mirror_download(env_config_file):
+            replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
+
+        cmd = 'git submodule update --init --recursive'
+        execute_command(cmd, cwd=repo_path)
+
+        if need_using_mirror_download(env_config_file):
+            if len(replace_list):
+                for item in replace_list:
+                    submod_dir_path = os.path.join(repo_path, item[2])
+                    if os.path.isdir(submod_dir_path):
+                        cmd = 'git remote set-url origin ' + item[0]
+                        execute_command(cmd, cwd=submod_dir_path)
+
+    if need_using_mirror_download(env_config_file):
+        if os.path.isfile(submodule_path):
+            cmd = 'git checkout .gitmodules'
+            execute_command(cmd, cwd=repo_path)
+
+    return True
+
+
+def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json):
+    # Download a package of compressed package type.
+    if not package.download(package_info['ver'], local_pkgs_path, package_url):
+        return False
+
+    pkg_dir = package.get_filename(package_info['ver'])
+    pkg_dir = os.path.splitext(pkg_dir)[0]
+    package_path = os.path.join(local_pkgs_path, package.get_filename(package_info['ver']))
+
+    if not archive.package_integrity_test(package_path):
+        print("package : %s is invalid" % package_path.encode("utf-8"))
+        return False
+
+    # unpack package
+    if not os.path.exists(pkg_dir):
+        try:
+            if not package.unpack(package_path, bsp_package_path, package_info, pkgs_name_in_json):
+                result = False
+        except Exception as e:
+            os.remove(package_path)
+            result = False
+            print('Error message: %s\t' % e)
+    else:
+        print("The file does not exist.")
+
+    return True
+
+
 # noinspection PyUnboundLocalVariable
-def install_pkg(env_root, pkgs_root, bsp_root, package_info, force_update):
+def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     """Install the required packages."""
 
-    ret = True
+    result = True
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
         if is_user_mange_package(bsp_package_path, package_info):
-            return ret
+            return result
 
     # get the .config file from env
     env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
@@ -174,6 +250,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, package_info, force_update):
 
     upstream_changed = False
 
+    # noinspection PyBroadException
     try:
         if need_using_mirror_download(env_config_file):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, package_info['ver'])
@@ -187,78 +264,18 @@ def install_pkg(env_root, pkgs_root, bsp_root, package_info, force_update):
 
                 upstream_changed = True
     except Exception as e:
-        print('Error message:%s\t' % e)
-        print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
+        logging.warning("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if is_git_url(package_url):
-        try:
-            repo_path = os.path.join(bsp_package_path, pkgs_name_in_json)
-            repo_path = repo_path + '-' + package_info['ver']
-            repo_path_full = '"' + repo_path + '"'
-
-            clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
-            logging.info(clone_cmd)
-            execute_command(clone_cmd, cwd=bsp_package_path)
-
-            git_check_cmd = 'git checkout -q ' + ver_sha
-            execute_command(git_check_cmd, cwd=repo_path)
-        except Exception as e:
-            print('Error message:%s' % e)
-            print("\nFailed to download software package with git. Please check the network connection.")
-            return False
-
-        # change upstream to origin url
-        if upstream_changed:
-            cmd = 'git remote set-url origin ' + url_from_json
-            execute_command(cmd, cwd=repo_path)
-
-        # If there is a .gitmodules file in the package, prepare to update submodule.
-        submodule_path = os.path.join(repo_path, '.gitmodules')
-        if os.path.isfile(submodule_path):
-            print("Start to update submodule")
-            if need_using_mirror_download(env_config_file):
-                replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
-
-            cmd = 'git submodule update --init --recursive'
-            execute_command(cmd, cwd=repo_path)
-
-            if need_using_mirror_download(env_config_file):
-                if len(replace_list):
-                    for item in replace_list:
-                        submod_dir_path = os.path.join(repo_path, item[2])
-                        if os.path.isdir(submod_dir_path):
-                            cmd = 'git remote set-url origin ' + item[0]
-                            execute_command(cmd, cwd=submod_dir_path)
-
-        if need_using_mirror_download(env_config_file):
-            if os.path.isfile(submodule_path):
-                cmd = 'git checkout .gitmodules'
-                execute_command(cmd, cwd=repo_path)
+        if not install_git_package(bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha,
+                                   upstream_changed,
+                                   url_from_json, env_config_file):
+            result = False
     else:
-        # Download a package of compressed package type.
-        if not package.download(package_info['ver'], local_pkgs_path, package_url):
-            return False
-
-        pkg_dir = package.get_filename(package_info['ver'])
-        pkg_dir = os.path.splitext(pkg_dir)[0]
-        package_path = os.path.join(local_pkgs_path, package.get_filename(package_info['ver']))
-
-        if not archive.package_integrity_test(package_path):
-            print("package : %s is invalid" % package_path.encode("utf-8"))
-            return False
-
-        # unpack package
-        if not os.path.exists(pkg_dir):
-            try:
-                if not package.unpack(package_path, bsp_package_path, package_info, pkgs_name_in_json):
-                    ret = False
-            except Exception as e:
-                os.remove(package_path)
-                ret = False
-                print('Error message: %s\t' % e)
-        else:
-            print("The file does not exist.")
-    return ret
+        if not install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path,
+                                       pkgs_name_in_json):
+            result = False
+    return result
 
 
 def sub_list(aList, bList):
@@ -293,7 +310,7 @@ def update_submodule(repo_path):
             execute_command(cmd, cwd=repo_path)
             print("Submodule update successful")
     except Exception as e:
-        print('Error message:%s' % e)
+        logging.warning('Error message:%s' % e)
 
 
 def get_pkg_folder_by_orign_path(orign_path, version):
@@ -304,7 +321,7 @@ def git_cmd_exec(cmd, cwd):
     try:
         execute_command(cmd, cwd=cwd)
     except Exception as e:
-        print('Error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
+        logging.warning('Error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
 
 
@@ -381,8 +398,7 @@ def update_latest_packages(sys_value):
                         result = False
 
             except Exception as e:
-                # print("Error message : %s" % e)
-                print("Failed to connect to the mirror server, using non-mirror server to update.")
+                logging.warning("Failed to connect to the mirror server, using non-mirror server to update.")
 
             if not right_path_flag:
                 continue
@@ -420,7 +436,7 @@ def get_git_root_path(repo_path):
             os.chdir(before)
             return get_git_root
         except Exception as e:
-            print("Error message : %s" % e)
+            logging.warning("Error message : %s" % e)
             return None
     else:
         print("Missing path %s" % repo_path)
@@ -541,7 +557,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
 
         # re-download the packages in error_packages_list
         for pkg in error_packages_list:
-            if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
+            if install_package(env_root, pkgs_root, bsp_root, pkg, force_update):
                 print("\n==============================> %s %s update done \n"
                       % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
@@ -678,8 +694,8 @@ def delete_git_package(pkg, remove_path_with_version, force_update, package_dele
                     package_delete_fail_list.append(pkg)
                     print("Error: Please delete the folder manually.")
             except Exception as e:
-                print('Error message:%s%s. error.message: %s\n\t' %
-                      ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
+                logging.warning('Error message:%s%s. error.message: %s\n\t' %
+                                ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
 
 
 def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname):
@@ -689,7 +705,7 @@ def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, 
             pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
         except Exception as e:
             package_delete_fail_list.append(pkg)
-            print('Error message:\n%s %s. %s \n\t' % (
+            logging.warning('Error message:\n%s %s. %s \n\t' % (
                 "Delete folder failed, please delete the folder manually",
                 remove_path_with_version.encode("utf-8"), e))
 
@@ -743,7 +759,7 @@ def install_packages(sys_value, force_update):
     packages_download_fail_list = []
 
     for package in case_download:
-        if install_pkg(env_root, pkgs_root, bsp_root, package, force_update):
+        if install_package(env_root, pkgs_root, bsp_root, package, force_update):
             print("==============================>  %s %s is downloaded successfully. \n" % (
                 package['name'], package['ver']))
         else:
