@@ -112,7 +112,8 @@ def determine_url_valid(url_from_srv):
         return True
 
     except Exception as e:
-        print('Error message:%s\t' % e)
+        # print('Error message:%s\t' % e)
+        # So much error message should be ignore
         print('Network connection error or the url : %s is invalid.\n' % url_from_srv.encode("utf-8"))
 
 
@@ -375,7 +376,7 @@ def update_latest_packages(sys_value):
                         result = False
 
             except Exception as e:
-                print("Error message : %s" % e)
+                # print("Error message : %s" % e)
                 print("Failed to connect to the mirror server, using non-mirror server to update.")
 
             if not right_path_flag:
