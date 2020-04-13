@@ -128,6 +128,16 @@ def is_user_mange_package(bsp_package_path, pkg):
     return False
 
 
+def need_using_mirror_download(config_file):
+    """default using mirror url to download packages"""
+
+    if not os.path.isfile(config_file):
+        return True
+    elif os.path.isfile(config_file) and find_macro_in_config(config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+        return True
+
+
+# noinspection PyUnboundLocalVariable
 def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     """Install the required packages."""
 
@@ -167,9 +177,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     upstream_change_flag = False
 
     try:
-        if (not os.path.isfile(env_config_file)) or \
-                (os.path.isfile(env_config_file)
-                 and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+        if need_using_mirror_download(env_config_file):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
             #  Check whether the package package url is valid
@@ -208,18 +216,13 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         submodule_path = os.path.join(repo_path, '.gitmodules')
         if os.path.isfile(submodule_path):
             print("Start to update submodule")
-            if (not os.path.isfile(env_config_file)) \
-                    or (os.path.isfile(env_config_file)
-                        and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+            if need_using_mirror_download(env_config_file):
                 replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
 
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
-            if (not os.path.isfile(env_config_file)) or \
-                    (os.path.isfile(env_config_file) and
-                     find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-
+            if need_using_mirror_download(env_config_file):
                 if len(replace_list):
                     for item in replace_list:
                         submod_dir_path = os.path.join(repo_path, item[2])
@@ -227,10 +230,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
                             cmd = 'git remote set-url origin ' + item[0]
                             execute_command(cmd, cwd=submod_dir_path)
 
-        if (not os.path.isfile(env_config_file)) or \
-                (os.path.isfile(env_config_file)
-                 and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
-
+        if need_using_mirror_download(env_config_file):
             if os.path.isfile(submodule_path):
                 cmd = 'git checkout .gitmodules'
                 execute_command(cmd, cwd=repo_path)
