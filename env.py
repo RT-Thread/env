@@ -56,12 +56,13 @@ def init_logger(env_root):
     os.makedirs(log_path)
     log_name = os.path.join(log_path, "running_log.txt")
 
-    log_format = "%(asctime)s %(name)s %(levelname)s %(pathname)s %(lineno)d %(message)s "
+    log_format = "%(pathname)s %(lineno)d %(message)s "
     date_format = '%Y-%m-%d  %H:%M:%S %a '
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.WARNING,
                         format=log_format,
                         datefmt=date_format,
-                        filename=log_name)
+                        # filename=log_name
+                        )
 
 
 def get_env_root():
