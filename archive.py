@@ -30,11 +30,18 @@ import os
 import pkgsdb
 import platform
 import shutil
+import logging
 
 
-def unpack(archive_fn, path, pkg, package_name):
-    pkg_ver = pkg['ver']
+def unpack(archive_fn, path, package_info, package_name):
+    pkg_ver = package_info['ver']
     flag = True
+
+    package_temp_path = os.path.join(path, "package_temp")
+    os.makedirs(package_temp_path)
+
+    logging.info("archive_fn", archive_fn)
+    logging.info("path", path)
 
     if platform.system() == "Windows":
         is_windows = True
@@ -52,6 +59,7 @@ def unpack(archive_fn, path, pkg, package_name):
                 else:
                     right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
+
                 pkgsdb.save_to_database(a, archive_fn)
         arch.close()
 
@@ -72,8 +80,8 @@ def unpack(archive_fn, path, pkg, package_name):
     if ".zip" in archive_fn:
         arch = zipfile.ZipFile(archive_fn, "r")
         for item in arch.namelist():
-            arch.extract(item, path)
-            if not os.path.isdir(os.path.join(path, item)):
+            arch.extract(item, package_temp_path)
+            if not os.path.isdir(os.path.join(package_temp_path, item)):
                 if is_windows:
                     right_path = item.replace('/', '\\')
                 else:
@@ -86,6 +94,7 @@ def unpack(archive_fn, path, pkg, package_name):
                     flag = False
 
                 right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
+                right_path = os.path.join("package_temp", right_path)
                 pkgsdb.save_to_database(right_name_to_db, archive_fn, right_path)
         arch.close()
 
@@ -99,7 +108,14 @@ def unpack(archive_fn, path, pkg, package_name):
         else:
             shutil.rmtree(os.path.join(path, change_dirname))
 
-    os.rename(os.path.join(path, dir_name), os.path.join(path, change_dirname))
+    rename_path = os.path.join(package_temp_path, change_dirname)
+    os.rename(os.path.join(package_temp_path, dir_name), rename_path)
+
+    # copy to bsp packages path.
+    shutil.move(rename_path, os.path.join(path, change_dirname))
+
+    # remove temp dir
+    shutil.rmtree(package_temp_path)
 
 
 def package_integrity_test(path):

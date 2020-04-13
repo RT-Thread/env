@@ -192,6 +192,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
 
 
 def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json):
+    result = True
     # Download a package of compressed package type.
     if not package.download(package_info['ver'], local_pkgs_path, package_url):
         return False
@@ -216,7 +217,7 @@ def install_not_git_package(package, package_info, local_pkgs_path, package_url,
     else:
         print("The file does not exist.")
 
-    return True
+    return result
 
 
 # noinspection PyUnboundLocalVariable

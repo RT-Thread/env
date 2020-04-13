@@ -22,6 +22,7 @@
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
 # 2019-1-16      SummerGift      Add chinese detection
+# 2020-4-13      SummerGift      refactoring
 #
 
 import os
