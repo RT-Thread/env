@@ -34,7 +34,8 @@ import archive
 import requests
 from package import Package, Bridge_SConscript
 from vars import Import, Export
-from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, find_macro_in_config
+from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
+    find_macro_in_config
 
 
 def determine_support_chinese(env_root):
@@ -98,6 +99,7 @@ def determine_url_valid(url_from_srv):
                'Accept': '*/*',
                'User-Agent': 'curl/7.54.0'}
 
+    # noinspection PyBroadException
     try:
         for i in range(0, 3):
             r = requests.get(url_from_srv, stream=True, headers=headers)
@@ -346,6 +348,7 @@ def update_latest_packages(sys_value):
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
             repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
 
+            # noinspection PyBroadException
             try:
                 # If mirror acceleration is enabled, get the update address from the mirror server.
                 if (not os.path.isfile(env_config_file)) or \
