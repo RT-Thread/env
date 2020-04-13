@@ -138,6 +138,10 @@ def need_using_mirror_download(config_file):
         return True
 
 
+def is_git_url(package_url):
+    return package_url.endswith('.git')
+
+
 # noinspection PyUnboundLocalVariable
 def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     """Install the required packages."""
@@ -165,14 +169,8 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     package_url = package.get_url(pkg['ver'])
     pkgs_name_in_json = package.get_name()
 
-    # print("==================================================>")
-    # print("packages name :", pkgs_name_in_json.encode("utf-8"))
-    # print("ver :", pkg['ver'])
-    # print("url :", package_url.encode("utf-8"))
-    # print("url_from_json : ", url_from_json.encode("utf-8"))
-    # print("==================================================>")
-
-    if package_url[-4:] == '.git':
+    logging.info("begin to install packages: {0}".format(pkgs_name_in_json))
+    if is_git_url(package_url):
         ver_sha = package.get_versha(pkg['ver'])
 
     upstream_change_flag = False
@@ -193,7 +191,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         print('Error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
-    if package_url.endswith('.git'):
+    if is_git_url(package_url):
         try:
             repo_path = os.path.join(bsp_package_path, pkgs_name_in_json)
             repo_path = repo_path + '-' + pkg['ver']
