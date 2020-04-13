@@ -173,7 +173,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     if is_git_url(package_url):
         ver_sha = package.get_versha(pkg['ver'])
 
-    upstream_change_flag = False
+    upstream_changed = False
 
     try:
         if need_using_mirror_download(env_config_file):
@@ -186,7 +186,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
                 if get_ver_sha:
                     ver_sha = get_ver_sha
 
-                upstream_change_flag = True
+                upstream_changed = True
     except Exception as e:
         print('Error message:%s\t' % e)
         print("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
@@ -207,7 +207,8 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
             print("\nFailed to download software package with git. Please check the network connection.")
             return False
 
-        if upstream_change_flag:
+        # change upstream to origin url
+        if upstream_changed:
             cmd = 'git remote set-url origin ' + url_from_json
             execute_command(cmd, cwd=repo_path)
 
