@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2020-04-08     SummerGift      Optimize program structure
+# 2020-04-13     SummerGift      refactoring
 #
 
 import os
@@ -33,7 +34,7 @@ import time
 import archive
 import requests
 import logging
-from package import Package, Bridge_SConscript
+from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
     find_macro_in_config
@@ -233,7 +234,7 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     # get the .config file from env
     env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
 
-    package = Package()
+    package = PackageOperation()
     pkg_path = package_info['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\':
         pkg_path = pkg_path[1:]
@@ -345,15 +346,14 @@ def update_latest_packages(sys_value):
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
 
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
+    env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
 
     with open(package_filename, 'r') as f:
         read_back_pkgs_json = json.load(f)
 
     for pkg in read_back_pkgs_json:
         right_path_flag = True
-        package = Package()
+        package = PackageOperation()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]
@@ -370,9 +370,7 @@ def update_latest_packages(sys_value):
             # noinspection PyBroadException
             try:
                 # If mirror acceleration is enabled, get the update address from the mirror server.
-                if (not os.path.isfile(env_config_file)) or \
-                        (os.path.isfile(env_config_file)
-                         and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+                if need_using_mirror_download(env_config_file):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
                     # Change repo's upstream address.

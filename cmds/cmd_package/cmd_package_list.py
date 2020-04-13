@@ -26,7 +26,7 @@
 import os
 import platform
 import kconfig
-from package import Package
+from package import PackageOperation
 from vars import Import
 
 
@@ -55,7 +55,7 @@ def list_packages():
     packages = kconfig.parse(config_file)
 
     for pkg in packages:
-        package = Package()
+        package = PackageOperation()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
             pkg_path = pkg_path[1:]

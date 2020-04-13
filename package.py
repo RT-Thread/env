@@ -130,7 +130,7 @@ Return('group')
 '''
 
 
-class Package:
+class PackageOperation:
     pkg = None
 
     def parse(self, filename):
