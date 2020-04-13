@@ -32,6 +32,7 @@ import platform
 import time
 import archive
 import requests
+import logging
 from package import Package, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
@@ -181,10 +182,10 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
 
             #  Check whether the package package url is valid
-            if get_package_url is not None and determine_url_valid(get_package_url):
+            if get_package_url and determine_url_valid(get_package_url):
                 package_url = get_package_url
 
-                if get_ver_sha is not None:
+                if get_ver_sha:
                     ver_sha = get_ver_sha
 
                 upstream_change_flag = True
@@ -318,6 +319,8 @@ def update_latest_packages(sys_value):
     message provided by git.
     """
 
+    logging.info("Begin to update latest version packages")
+
     result = True
 
     package_filename = sys_value[3]
@@ -428,6 +431,7 @@ def get_git_root_path(repo_path):
 def pre_package_update():
     """ Make preparations before updating the software package. """
 
+    logging.info("Begin prepare package update")
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
 
@@ -559,6 +563,8 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
 
 
 def rm_package(dir_remove):
+    logging.info("remove dir: {0}".format(dir_remove))
+
     if platform.system() != "Windows":
         shutil.rmtree(dir_remove)
     else:
@@ -605,15 +611,17 @@ def handle_download_error_packages(sys_value, force_update):
     Check to see if the packages stored in the Json file list actually exist,
     and then download the packages if they don't exist.
     """
+
+    logging.info("begin to handel download error packages")
     package_filename = sys_value[3]
     bsp_packages_path = sys_value[5]
 
     with open(package_filename, 'r') as f:
-        read_back_pkgs_json = json.load(f)
+        package_json = json.load(f)
 
     error_packages_list = []
 
-    for pkg in read_back_pkgs_json:
+    for pkg in package_json:
         remove_path = get_package_remove_path(pkg, bsp_packages_path)
         if os.path.exists(remove_path):
             continue
@@ -622,12 +630,13 @@ def handle_download_error_packages(sys_value, force_update):
             error_packages_list.append(pkg)
 
     # Handle the failed download packages
-    get_flag = error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename, force_update)
+    get_flag = error_packages_handle(error_packages_list, package_json, package_filename, force_update)
 
     return get_flag
 
 
 def delete_useless_packages(sys_value):
+    logging.info("Begin to delete useless packages")
     package_delete_error_list = sys_value[2]
     bsp_packages_path = sys_value[5]
 
@@ -646,7 +655,48 @@ def delete_useless_packages(sys_value):
     return True
 
 
+def is_git_package(pkg, bsp_packages_path):
+    remove_path_with_version = get_package_remove_path(pkg, bsp_packages_path)
+    remove_path_git = os.path.join(remove_path_with_version, '.git')
+    return os.path.isdir(remove_path_with_version) and os.path.isdir(remove_path_git)
+
+
+def delete_git_package(pkg, remove_path_with_version, force_update, package_delete_fail_list):
+    git_folder_to_remove = remove_path_with_version
+
+    print("\nStart to remove %s \nplease wait..." % git_folder_to_remove.encode("utf-8"))
+    if force_update:
+        logging.info("package force update, Begin to remove package {0}".format(git_folder_to_remove))
+        if not rm_package(git_folder_to_remove):
+            print("Floder delete fail: %s" % git_folder_to_remove.encode("utf-8"))
+            print("Please delete this folder manually.")
+    else:
+        print("The folder is managed by git. Do you want to delete this folder?\n")
+        rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
+        if rc == 'y' or rc == 'Y':
+            try:
+                if not rm_package(git_folder_to_remove):
+                    package_delete_fail_list.append(pkg)
+                    print("Error: Please delete the folder manually.")
+            except Exception as e:
+                print('Error message:%s%s. error.message: %s\n\t' %
+                      ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
+
+
+def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname):
+    if os.path.isdir(remove_path_with_version):
+        print("Start to remove %s \nplease wait..." % remove_path_with_version.encode("utf-8"))
+        try:
+            pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
+        except Exception as e:
+            package_delete_fail_list.append(pkg)
+            print('Error message:\n%s %s. %s \n\t' % (
+                "Delete folder failed, please delete the folder manually",
+                remove_path_with_version.encode("utf-8"), e))
+
+
 def remove_packages(sys_value, force_update):
+    logging.info("Begin to remove packages")
     old_package = sys_value[0]
     new_package = sys_value[1]
     package_error_list_filename = sys_value[4]
@@ -658,38 +708,12 @@ def remove_packages(sys_value, force_update):
 
     for pkg in case_delete:
         remove_path_with_version = get_package_remove_path(pkg, bsp_packages_path)
-        remove_path_git = os.path.join(remove_path_with_version, '.git')
 
         # delete .git directory
-        if os.path.isdir(remove_path_with_version) and os.path.isdir(remove_path_git):
-            git_folder_to_remove = remove_path_with_version
-
-            print("\nStart to remove %s \nplease wait..." % git_folder_to_remove.encode("utf-8"))
-            if force_update:
-                if not rm_package(git_folder_to_remove):
-                    print("Floder delete fail: %s" % git_folder_to_remove.encode("utf-8"))
-                    print("Please delete this folder manually.")
-            else:
-                print("The folder is managed by git. Do you want to delete this folder?\n")
-                rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
-                if rc == 'y' or rc == 'Y':
-                    try:
-                        if not rm_package(git_folder_to_remove):
-                            package_delete_fail_list.append(pkg)
-                            print("Error: Please delete the folder manually.")
-                    except Exception as e:
-                        print('Error message:%s%s. error.message: %s\n\t' %
-                              ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
+        if is_git_package(pkg, bsp_packages_path):
+            delete_git_package(pkg, remove_path_with_version, force_update, package_delete_fail_list)
         else:
-            if os.path.isdir(remove_path_with_version):
-                print("Start to remove %s \nplease wait..." % remove_path_with_version.encode("utf-8"))
-                try:
-                    pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
-                except Exception as e:
-                    package_delete_fail_list.append(pkg)
-                    print('Error message:\n%s %s. %s \n\t' % (
-                        "Delete folder failed, please delete the folder manually",
-                        remove_path_with_version.encode("utf-8"), e))
+            delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname)
 
     # write error messages
     with open(package_error_list_filename, 'w') as f:
@@ -706,6 +730,8 @@ def install_packages(sys_value, force_update):
     If the package download fails, record it,
     and then download again when the update command is executed.
     """
+
+    logging.info("Begin to install packages")
 
     old_package = sys_value[0]
     new_package = sys_value[1]
