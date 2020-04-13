@@ -56,7 +56,7 @@ def init_logger(env_root):
     os.makedirs(log_path)
     log_name = os.path.join(log_path, "running_log.txt")
 
-    log_format = "%(pathname)s %(lineno)d %(message)s "
+    log_format = "%(filename)s %(lineno)d %(message)s "
     date_format = '%Y-%m-%d  %H:%M:%S %a '
     logging.basicConfig(level=logging.WARNING,
                         format=log_format,
