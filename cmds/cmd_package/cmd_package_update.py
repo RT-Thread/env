@@ -143,7 +143,7 @@ def is_git_url(package_url):
 
 
 # noinspection PyUnboundLocalVariable
-def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
+def install_pkg(env_root, pkgs_root, bsp_root, package_info, force_update):
     """Install the required packages."""
 
     ret = True
@@ -151,33 +151,32 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
-        if is_user_mange_package(bsp_package_path, pkg):
+        if is_user_mange_package(bsp_package_path, package_info):
             return ret
 
     # get the .config file from env
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
+    env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
 
     package = Package()
-    pkg_path = pkg['path']
+    pkg_path = package_info['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\':
         pkg_path = pkg_path[1:]
     pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
     package.parse(pkg_path)
 
-    url_from_json = package.get_url(pkg['ver'])
-    package_url = package.get_url(pkg['ver'])
+    url_from_json = package.get_url(package_info['ver'])
+    package_url = package.get_url(package_info['ver'])
     pkgs_name_in_json = package.get_name()
 
     logging.info("begin to install packages: {0}".format(pkgs_name_in_json))
     if is_git_url(package_url):
-        ver_sha = package.get_versha(pkg['ver'])
+        ver_sha = package.get_versha(package_info['ver'])
 
     upstream_changed = False
 
     try:
         if need_using_mirror_download(env_config_file):
-            get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, pkg['ver'])
+            get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, package_info['ver'])
 
             #  Check whether the package package url is valid
             if get_package_url and determine_url_valid(get_package_url):
@@ -194,10 +193,11 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
     if is_git_url(package_url):
         try:
             repo_path = os.path.join(bsp_package_path, pkgs_name_in_json)
-            repo_path = repo_path + '-' + pkg['ver']
+            repo_path = repo_path + '-' + package_info['ver']
             repo_path_full = '"' + repo_path + '"'
 
             clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
+            logging.info(clone_cmd)
             execute_command(clone_cmd, cwd=bsp_package_path)
 
             git_check_cmd = 'git checkout -q ' + ver_sha
@@ -236,12 +236,12 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
                 execute_command(cmd, cwd=repo_path)
     else:
         # Download a package of compressed package type.
-        if not package.download(pkg['ver'], local_pkgs_path, package_url):
+        if not package.download(package_info['ver'], local_pkgs_path, package_url):
             return False
 
-        pkg_dir = package.get_filename(pkg['ver'])
+        pkg_dir = package.get_filename(package_info['ver'])
         pkg_dir = os.path.splitext(pkg_dir)[0]
-        package_path = os.path.join(local_pkgs_path, package.get_filename(pkg['ver']))
+        package_path = os.path.join(local_pkgs_path, package.get_filename(package_info['ver']))
 
         if not archive.package_integrity_test(package_path):
             print("package : %s is invalid" % package_path.encode("utf-8"))
@@ -250,7 +250,7 @@ def install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
         # unpack package
         if not os.path.exists(pkg_dir):
             try:
-                if not package.unpack(package_path, bsp_package_path, pkg, pkgs_name_in_json):
+                if not package.unpack(package_path, bsp_package_path, package_info, pkgs_name_in_json):
                     ret = False
             except Exception as e:
                 os.remove(package_path)
@@ -742,14 +742,14 @@ def install_packages(sys_value, force_update):
     case_download = sub_list(new_package, old_package)
     packages_download_fail_list = []
 
-    for pkg in case_download:
-        if install_pkg(env_root, pkgs_root, bsp_root, pkg, force_update):
+    for package in case_download:
+        if install_pkg(env_root, pkgs_root, bsp_root, package, force_update):
             print("==============================>  %s %s is downloaded successfully. \n" % (
-                pkg['name'], pkg['ver']))
+                package['name'], package['ver']))
         else:
             # if package download fails, record it in the packages_download_fail_list
-            packages_download_fail_list.append(pkg)
-            print(pkg, 'download failed.')
+            packages_download_fail_list.append(package)
+            print(package, 'download failed.')
             return False
 
     # Get the currently updated configuration.
