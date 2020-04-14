@@ -229,8 +229,12 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
+        logging.info("Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
         if is_user_mange_package(bsp_package_path, package_info):
+            logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
             return result
+        else:
+            logging.info("NOT User managed package {0}, {1} need install. \n".format(bsp_package_path, package_info))
 
     # get the .config file from env
     env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
@@ -315,8 +319,8 @@ def update_submodule(repo_path):
         logging.warning('Error message:%s' % e)
 
 
-def get_pkg_folder_by_orign_path(orign_path, version):
-    return orign_path + '-' + version
+def get_package_folder(origin_path, version):
+    return origin_path + '-' + version
 
 
 def git_cmd_exec(cmd, cwd):
@@ -366,7 +370,7 @@ def update_latest_packages(sys_value):
         # Find out the packages which version is 'latest'
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
-            repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
+            repo_path = get_package_folder(repo_path, pkg['ver'])
 
             # noinspection PyBroadException
             try:
@@ -427,7 +431,7 @@ def get_git_root_path(repo_path):
         try:
             before = os.getcwd()
             os.chdir(repo_path)
-            result = os.popen('git rev-parse --show-toplevel')
+            result = os.popen("git rev-parse --show-toplevel")
             result = result.read()
             for line in result.splitlines()[:5]:
                 get_git_root = line
@@ -542,7 +546,7 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
-    error_packages_redownload_error_list = []
+    download_error = []
     flag = True
 
     if len(error_packages_list):
@@ -560,18 +564,20 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
                 print("\n==============================> %s %s update done \n"
                       % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
             else:
-                error_packages_redownload_error_list.append(pkg)
+                download_error.append(pkg)
                 print(pkg, 'download failed.')
                 flag = False
 
-        if len(error_packages_redownload_error_list):
-            print("%s" % error_packages_redownload_error_list)
-            print("Packages:%s,%s re-download error, you need to use <pkgs --update> command again to re-download them."
-                  % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+        if len(download_error):
+            print("%s" % download_error)
 
-            write_back_package_json = sub_list(read_back_pkgs_json, error_packages_redownload_error_list)
+            for pkg in download_error:
+                print("Packages:%s, %s re-download error, you can use <pkgs --update> command to re-download them."
+                      % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+
+            error_write_back = sub_list(read_back_pkgs_json, download_error)
             with open(package_filename, 'w') as f:
-                f.write(json.dumps(write_back_package_json, indent=1))
+                f.write(json.dumps(error_write_back, indent=1))
 
     return flag
 
@@ -615,7 +621,7 @@ def get_package_remove_path(pkg, bsp_packages_path):
 
     # Handles the deletion of git repository folders with version Numbers
     remove_path = os.path.join(bsp_packages_path, dir_path)
-    remove_path_ver = get_pkg_folder_by_orign_path(remove_path, ver)
+    remove_path_ver = get_package_folder(remove_path, ver)
     return remove_path_ver
 
 
@@ -749,6 +755,10 @@ def install_packages(sys_value, force_update):
 
     old_package = sys_value[0]
     new_package = sys_value[1]
+
+    logging.info("old_package {0}".format(old_package))
+    logging.info("new_package {0}".format(new_package))
+
     package_filename = sys_value[3]
     bsp_root = Import('bsp_root')
     pkgs_root = Import('pkgs_root')
