@@ -191,7 +191,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
     return True
 
 
-def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json):
+def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, package_name):
     result = True
     # Download a package of compressed package type.
     if not package.download(package_info['ver'], local_pkgs_path, package_url):
@@ -208,10 +208,9 @@ def install_not_git_package(package, package_info, local_pkgs_path, package_url,
     # unpack package
     if not os.path.exists(pkg_dir):
         try:
-            if not package.unpack(package_path, bsp_package_path, package_info, pkgs_name_in_json):
+            if not archive.unpack(package_path, bsp_package_path, package_info, package_name):
                 result = False
         except Exception as e:
-            os.remove(package_path)
             result = False
             print('Error message: %s\t' % e)
     else:
@@ -229,8 +228,13 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
+        logging.info(
+            "Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
         if is_user_mange_package(bsp_package_path, package_info):
+            logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
             return result
+        else:
+            logging.info("NOT User managed package {0}, {1} need install. \n".format(bsp_package_path, package_info))
 
     # get the .config file from env
     env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
@@ -315,8 +319,8 @@ def update_submodule(repo_path):
         logging.warning('Error message:%s' % e)
 
 
-def get_pkg_folder_by_orign_path(orign_path, version):
-    return orign_path + '-' + version
+def get_package_folder(origin_path, version):
+    return origin_path + '-' + version
 
 
 def git_cmd_exec(cmd, cwd):
@@ -366,7 +370,7 @@ def update_latest_packages(sys_value):
         # Find out the packages which version is 'latest'
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
-            repo_path = get_pkg_folder_by_orign_path(repo_path, pkg['ver'])
+            repo_path = get_package_folder(repo_path, pkg['ver'])
 
             # noinspection PyBroadException
             try:
@@ -380,7 +384,7 @@ def update_latest_packages(sys_value):
 
                     # if git root is same as repo path, then change the upstream
                     get_git_root = get_git_root_path(repo_path)
-                    if get_git_root is not None:
+                    if get_git_root:
                         if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
                             if mirror_url[0] is not None:
                                 cmd = 'git remote set-url origin ' + mirror_url[0]
@@ -427,7 +431,7 @@ def get_git_root_path(repo_path):
         try:
             before = os.getcwd()
             os.chdir(repo_path)
-            result = os.popen('git rev-parse --show-toplevel')
+            result = os.popen("git rev-parse --show-toplevel")
             result = result.read()
             for line in result.splitlines()[:5]:
                 get_git_root = line
@@ -438,7 +442,8 @@ def get_git_root_path(repo_path):
             logging.warning("Error message : %s" % e)
             return None
     else:
-        print("Missing path %s" % repo_path)
+        logging.warning("Missing path {0}".format(repo_path))
+        logging.warning("If you manage this package manually, Env tool will not update it.")
         return None
 
 
@@ -527,14 +532,14 @@ def pre_package_update():
 
     # read data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
-        pkgs_error = json.load(f)
+        package_error = json.load(f)
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
         with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
-    return [oldpkgs, newpkgs, pkgs_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
+    return [oldpkgs, newpkgs, package_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
             dbsqlite_pathname]
 
 
@@ -542,36 +547,38 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
     bsp_root = Import('bsp_root')
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
-    error_packages_redownload_error_list = []
+    download_error = []
     flag = True
 
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
-        for pkg in error_packages_list:
-            print("Package name : %s, Ver : %s" % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+        for package in error_packages_list:
+            print("Package name : %s, Ver : %s" % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted or renamed.")
         print("\nIf you manually delete the version suffix of the package folder name, ")
         print("you can use <pkgs --force-update> command to re-download these packages.")
         print("In case of accidental deletion, the ENV tool will automatically re-download these packages.")
 
         # re-download the packages in error_packages_list
-        for pkg in error_packages_list:
-            if install_package(env_root, pkgs_root, bsp_root, pkg, force_update):
+        for package in error_packages_list:
+            if install_package(env_root, pkgs_root, bsp_root, package, force_update):
                 print("\n==============================> %s %s update done \n"
-                      % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
             else:
-                error_packages_redownload_error_list.append(pkg)
-                print(pkg, 'download failed.')
+                download_error.append(package)
+                print(package, 'download failed.')
                 flag = False
 
-        if len(error_packages_redownload_error_list):
-            print("%s" % error_packages_redownload_error_list)
-            print("Packages:%s,%s re-download error, you need to use <pkgs --update> command again to re-download them."
-                  % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+        if len(download_error):
+            print("%s" % download_error)
 
-            write_back_package_json = sub_list(read_back_pkgs_json, error_packages_redownload_error_list)
+            for package in download_error:
+                print("Packages:%s, %s re-download error, you can use <pkgs --update> command to re-download them."
+                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
+
+            error_write_back = sub_list(read_back_pkgs_json, download_error)
             with open(package_filename, 'w') as f:
-                f.write(json.dumps(write_back_package_json, indent=1))
+                f.write(json.dumps(error_write_back, indent=1))
 
     return flag
 
@@ -615,7 +622,7 @@ def get_package_remove_path(pkg, bsp_packages_path):
 
     # Handles the deletion of git repository folders with version Numbers
     remove_path = os.path.join(bsp_packages_path, dir_path)
-    remove_path_ver = get_pkg_folder_by_orign_path(remove_path, ver)
+    remove_path_ver = get_package_folder(remove_path, ver)
     return remove_path_ver
 
 
@@ -749,6 +756,10 @@ def install_packages(sys_value, force_update):
 
     old_package = sys_value[0]
     new_package = sys_value[1]
+
+    logging.info("old_package {0}".format(old_package))
+    logging.info("new_package {0}".format(new_package))
+
     package_filename = sys_value[3]
     bsp_root = Import('bsp_root')
     pkgs_root = Import('pkgs_root')
