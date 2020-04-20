@@ -384,7 +384,7 @@ def update_latest_packages(sys_value):
 
                     # if git root is same as repo path, then change the upstream
                     get_git_root = get_git_root_path(repo_path)
-                    if get_git_root is not None:
+                    if get_git_root:
                         if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
                             if mirror_url[0] is not None:
                                 cmd = 'git remote set-url origin ' + mirror_url[0]
@@ -442,7 +442,8 @@ def get_git_root_path(repo_path):
             logging.warning("Error message : %s" % e)
             return None
     else:
-        print("Missing path %s" % repo_path)
+        logging.warning("Missing path {0}".format(repo_path))
+        logging.warning("If you manage this package manually, Env tool will not update it.")
         return None
 
 
