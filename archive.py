@@ -40,8 +40,8 @@ def unpack(archive_fn, path, package_info, package_name):
     package_temp_path = os.path.join(path, "package_temp")
     os.makedirs(package_temp_path)
 
-    logging.info("archive_fn", archive_fn)
-    logging.info("path", path)
+    logging.info("archive filename : {0}".format(archive_fn))
+    logging.info("path {0}".format(path))
 
     if platform.system() == "Windows":
         is_windows = True
