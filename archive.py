@@ -24,36 +24,23 @@
 # 2020-4-10      SummerGift      Code clear up
 #
 
+import logging
+import os
+import shutil
 import tarfile
 import zipfile
-import os
 import pkgsdb
-import platform
-import shutil
-import logging
-
-
-def is_windows():
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
-
-
-def remove_folder(folder_path):
-    if os.path.isdir(folder_path):
-        if is_windows():
-            cmd = 'rd /s /q ' + folder_path
-            os.system(cmd)
-        else:
-            shutil.rmtree(folder_path)
+from cmds.cmd_package.cmd_package_utils import is_windows, remove_folder
 
 
 def unpack(archive_filename, path, package_info, package_name):
     package_version = package_info['ver']
-
     package_temp_path = os.path.join(path, "package_temp")
-    os.makedirs(package_temp_path)
+    try:
+        remove_folder(package_temp_path)
+        os.makedirs(package_temp_path)
+    except Exception as e:
+        logging.warning('Error message : {0}'.format(e))
 
     logging.info("BSP packages path {0}".format(path))
     logging.info("BSP package temp path: {0}".format(package_temp_path))
@@ -124,13 +111,23 @@ def unpack(archive_filename, path, package_info, package_name):
     # rename package folder name
     package_name_with_version = package_name + '-' + package_version
     rename_path = os.path.join(package_temp_path, package_name_with_version)
-    os.rename(os.path.join(package_temp_path, dir_name), rename_path)
 
-    # copy package to bsp packages path.
-    shutil.move(rename_path, os.path.join(path, package_name_with_version))
+    logging.info("origin name: {0}".format(os.path.join(package_temp_path, dir_name)))
+    logging.info("rename name: {0}".format(rename_path))
+
+    try:
+        os.rename(os.path.join(package_temp_path, dir_name), rename_path)
+    except Exception as e:
+        # remove temp folder and archive file
+        logging.warning('{0}'.format(e))
+
+    if not os.path.isdir(os.path.join(path, package_name_with_version)):
+        # copy package to bsp packages path.
+        shutil.move(rename_path, os.path.join(path, package_name_with_version))
 
     # remove temp folder
     remove_folder(package_temp_path)
+
     return True
 
 

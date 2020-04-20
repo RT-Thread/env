@@ -23,11 +23,13 @@
 # 2020-04-08     SummerGift      Optimize program structure
 #
 
+import json
+import os
 import platform
 import subprocess
-import time
-import json
 import sys
+import time
+import shutil
 import requests
 
 
@@ -175,3 +177,18 @@ def find_macro_in_config(filename, macro_name):
     config.close()
     return False
 
+
+def is_windows():
+    if platform.system() == "Windows":
+        return True
+    else:
+        return False
+
+
+def remove_folder(folder_path):
+    if os.path.isdir(folder_path):
+        if is_windows():
+            cmd = 'rd /s /q ' + folder_path
+            os.system(cmd)
+        else:
+            shutil.rmtree(folder_path)

@@ -29,7 +29,6 @@ import os
 import sys
 import argparse
 import logging
-import time
 import platform
 
 from cmds import *

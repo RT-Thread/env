@@ -25,11 +25,14 @@
 # 2020-4-7       SummerGift      Code improvement
 #
 
-import os
 import json
-import archive
+import logging
+import os
 import sys
+
 import requests
+
+import archive
 
 """Template for creating a new file"""
 
@@ -151,11 +154,15 @@ class PackageOperation:
         return None
 
     def get_url(self, ver):
+        url = None
         for item in self.pkg['site']:
             if item['version'].lower() == ver.lower():
-                return item['URL']
+                url = item['URL']
 
-        return None
+        if not url:
+            logging.warning("Can't find right url {0}, please check {1}".format(ver.lower(), self.pkg['site']))
+
+        return url
 
     def get_versha(self, ver):
         for item in self.pkg['site']:
