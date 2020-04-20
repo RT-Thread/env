@@ -33,89 +33,105 @@ import shutil
 import logging
 
 
-def unpack(archive_fn, path, package_info, package_name):
-    pkg_ver = package_info['ver']
-    flag = True
+def is_windows():
+    if platform.system() == "Windows":
+        return True
+    else:
+        return False
+
+
+def remove_folder(folder_path):
+    if os.path.isdir(folder_path):
+        if is_windows():
+            cmd = 'rd /s /q ' + folder_path
+            os.system(cmd)
+        else:
+            shutil.rmtree(folder_path)
+
+
+def unpack(archive_filename, path, package_info, package_name):
+    package_version = package_info['ver']
 
     package_temp_path = os.path.join(path, "package_temp")
     os.makedirs(package_temp_path)
 
-    logging.info("archive filename : {0}".format(archive_fn))
-    logging.info("path {0}".format(path))
+    logging.info("BSP packages path {0}".format(path))
+    logging.info("BSP package temp path: {0}".format(package_temp_path))
+    logging.info("archive filename : {0}".format(archive_filename))
 
-    if platform.system() == "Windows":
-        is_windows = True
-    else:
-        is_windows = False
-
-    if ".tar.bz2" in archive_fn:
-        arch = tarfile.open(archive_fn, "r:bz2")
+    if ".tar.bz2" in archive_filename:
+        arch = tarfile.open(archive_filename, "r:bz2")
         for tarinfo in arch:
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if is_windows:
+                if is_windows():
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
 
-                pkgsdb.save_to_database(a, archive_fn)
+                pkgsdb.save_to_database(a, archive_filename)
         arch.close()
 
-    if ".tar.gz" in archive_fn:
-        arch = tarfile.open(archive_fn, "r:gz")
+    if ".tar.gz" in archive_filename:
+        arch = tarfile.open(archive_filename, "r:gz")
         for tarinfo in arch:
             arch.extract(tarinfo, path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(path, a)):
-                if is_windows:
+                if is_windows():
                     right_path = a.replace('/', '\\')
                 else:
                     right_path = a
                 a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
-                pkgsdb.save_to_database(a, archive_fn)
+                pkgsdb.save_to_database(a, archive_filename)
         arch.close()
 
-    if ".zip" in archive_fn:
-        arch = zipfile.ZipFile(archive_fn, "r")
-        for item in arch.namelist():
-            arch.extract(item, package_temp_path)
-            if not os.path.isdir(os.path.join(package_temp_path, item)):
-                if is_windows:
-                    right_path = item.replace('/', '\\')
-                else:
-                    right_path = item
+    try:
+        if ".zip" in archive_filename:
+            flag = True
+            dir_name = ""
+            package_name_with_version = ""
 
-                # Gets the folder name and change_dirname only once
-                if flag:
-                    dir_name = os.path.split(right_path)[0]
-                    change_dirname = package_name + '-' + pkg_ver
-                    flag = False
+            arch = zipfile.ZipFile(archive_filename, "r")
+            for item in arch.namelist():
+                arch.extract(item, package_temp_path)
+                if not os.path.isdir(os.path.join(package_temp_path, item)):
+                    if is_windows():
+                        right_path = item.replace('/', '\\')
+                    else:
+                        right_path = item
 
-                right_name_to_db = right_path.replace(dir_name, change_dirname, 1)
-                right_path = os.path.join("package_temp", right_path)
-                pkgsdb.save_to_database(right_name_to_db, archive_fn, right_path)
-        arch.close()
+                    # Gets the folder name and changed folder name only once
+                    if flag:
+                        dir_name = os.path.split(right_path)[0]
+                        package_name_with_version = package_name + '-' + package_version
+                        flag = False
 
-    # Change the folder name
-    change_dirname = package_name + '-' + pkg_ver
+                    right_name_to_db = right_path.replace(dir_name, package_name_with_version, 1)
+                    right_path = os.path.join("package_temp", right_path)
+                    pkgsdb.save_to_database(right_name_to_db, archive_filename, right_path)
+            arch.close()
+    except Exception as e:
+        # remove temp folder and archive file
+        logging.warning('unpack error message : {0}'.format(e))
+        logging.warning('unpack {0} failed'.format(os.path.basename(archive_filename)))
+        remove_folder(package_temp_path)
+        os.remove(archive_filename)
+        return False
 
-    if os.path.isdir(os.path.join(path, change_dirname)):
-        if is_windows:
-            cmd = 'rd /s /q ' + os.path.join(path, change_dirname)
-            os.system(cmd)
-        else:
-            shutil.rmtree(os.path.join(path, change_dirname))
-
-    rename_path = os.path.join(package_temp_path, change_dirname)
+    # rename package folder name
+    package_name_with_version = package_name + '-' + package_version
+    rename_path = os.path.join(package_temp_path, package_name_with_version)
     os.rename(os.path.join(package_temp_path, dir_name), rename_path)
 
-    # copy to bsp packages path.
-    shutil.move(rename_path, os.path.join(path, change_dirname))
+    # copy package to bsp packages path.
+    shutil.move(rename_path, os.path.join(path, package_name_with_version))
 
-    # remove temp dir
-    shutil.rmtree(package_temp_path)
+    # remove temp folder
+    remove_folder(package_temp_path)
+    return True
 
 
 def package_integrity_test(path):

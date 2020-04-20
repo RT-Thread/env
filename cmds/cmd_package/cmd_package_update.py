@@ -191,7 +191,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
     return True
 
 
-def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json):
+def install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path, package_name):
     result = True
     # Download a package of compressed package type.
     if not package.download(package_info['ver'], local_pkgs_path, package_url):
@@ -208,10 +208,9 @@ def install_not_git_package(package, package_info, local_pkgs_path, package_url,
     # unpack package
     if not os.path.exists(pkg_dir):
         try:
-            if not package.unpack(package_path, bsp_package_path, package_info, pkgs_name_in_json):
+            if not archive.unpack(package_path, bsp_package_path, package_info, package_name):
                 result = False
         except Exception as e:
-            os.remove(package_path)
             result = False
             print('Error message: %s\t' % e)
     else:
@@ -229,7 +228,8 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
-        logging.info("Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
+        logging.info(
+            "Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
         if is_user_mange_package(bsp_package_path, package_info):
             logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
             return result
@@ -531,14 +531,14 @@ def pre_package_update():
 
     # read data back from pkgs_error.json
     with open(pkgs_error_list_fn, 'r') as f:
-        pkgs_error = json.load(f)
+        package_error = json.load(f)
 
     # create SConscript file
     if not os.path.isfile(os.path.join(bsp_packages_path, 'SConscript')):
         with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
-    return [oldpkgs, newpkgs, pkgs_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
+    return [oldpkgs, newpkgs, package_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
             dbsqlite_pathname]
 
 
@@ -551,29 +551,29 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
 
     if len(error_packages_list):
         print("\n==============================> Packages list to download :  \n")
-        for pkg in error_packages_list:
-            print("Package name : %s, Ver : %s" % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+        for package in error_packages_list:
+            print("Package name : %s, Ver : %s" % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
         print("\nThe packages in the list above are accidentally deleted or renamed.")
         print("\nIf you manually delete the version suffix of the package folder name, ")
         print("you can use <pkgs --force-update> command to re-download these packages.")
         print("In case of accidental deletion, the ENV tool will automatically re-download these packages.")
 
         # re-download the packages in error_packages_list
-        for pkg in error_packages_list:
-            if install_package(env_root, pkgs_root, bsp_root, pkg, force_update):
+        for package in error_packages_list:
+            if install_package(env_root, pkgs_root, bsp_root, package, force_update):
                 print("\n==============================> %s %s update done \n"
-                      % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
             else:
-                download_error.append(pkg)
-                print(pkg, 'download failed.')
+                download_error.append(package)
+                print(package, 'download failed.')
                 flag = False
 
         if len(download_error):
             print("%s" % download_error)
 
-            for pkg in download_error:
+            for package in download_error:
                 print("Packages:%s, %s re-download error, you can use <pkgs --update> command to re-download them."
-                      % (pkg['name'].encode("utf-8"), pkg['ver'].encode("utf-8")))
+                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
 
             error_write_back = sub_list(read_back_pkgs_json, download_error)
             with open(package_filename, 'w') as f:

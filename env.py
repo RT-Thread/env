@@ -53,9 +53,9 @@ def init_argparse():
 
 def init_logger(env_root):
     localtime = time.asctime(time.localtime(time.time()))
-    log_path = os.path.join(env_root, "env_logging", localtime.replace(" ", "-").replace(":", "-"))
-    os.makedirs(log_path)
-    log_name = os.path.join(log_path, "running_log.txt")
+    # log_path = os.path.join(env_root, "env_logging", localtime.replace(" ", "-").replace(":", "-"))
+    # os.makedirs(log_path)
+    # log_name = os.path.join(log_path, "running_log.txt")
 
     log_format = "%(filename)s %(lineno)d %(message)s "
     date_format = '%Y-%m-%d  %H:%M:%S %a '

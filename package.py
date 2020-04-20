@@ -245,14 +245,4 @@ class PackageOperation:
                     return False
         return ret
 
-    @staticmethod
-    def unpack(package_path, path, pkg, package_name_in_json):
-        try:
-            # ignore the return value
-            archive.unpack(package_path, path, pkg, package_name_in_json)
-            return True
-        except Exception as e:
-            print('unpack error message :%s' % e)
-            print('unpack %s failed' % os.path.basename(package_path))
-            os.remove(package_path)
-            return False
+
