@@ -24,16 +24,18 @@
 # 2020-04-13     SummerGift      refactoring
 #
 
-import os
 import json
+import logging
+import os
+import platform
+import shutil
+import time
+
+import requests
+
+import archive
 import kconfig
 import pkgsdb
-import shutil
-import platform
-import time
-import archive
-import requests
-import logging
 from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
@@ -212,7 +214,7 @@ def install_not_git_package(package, package_info, local_pkgs_path, package_url,
                 result = False
         except Exception as e:
             result = False
-            print('Error message: %s\t' % e)
+            logging.error('Error message: {0}'.format(e))
     else:
         print("The file does not exist.")
 
@@ -247,9 +249,13 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     package.parse(pkg_path)
 
     url_from_json = package.get_url(package_info['ver'])
-    package_url = package.get_url(package_info['ver'])
-    pkgs_name_in_json = package.get_name()
 
+    if not url_from_json:
+        return False
+
+    package_url = url_from_json
+
+    pkgs_name_in_json = package.get_name()
     logging.info("begin to install packages: {0}".format(pkgs_name_in_json))
     if is_git_url(package_url):
         ver_sha = package.get_versha(package_info['ver'])
