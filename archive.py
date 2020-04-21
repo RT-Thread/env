@@ -122,31 +122,33 @@ def handle_zip_package(archive_filename, bsp_package_path, package_name, package
     return True
 
 
-def move_package_to_bsp_packages(package_folder_name, package_name, package_temp_path, package_version, path):
-    # rename package folder name
+def move_package_to_bsp_packages(package_folder_name, package_name, package_temp_path, package_version,
+                                 bsp_packages_path):
+    """move package in temp folder to bsp packages folder."""
+    origin_package_folder_path = os.path.join(package_temp_path, package_folder_name)
     package_name_with_version = package_name + '-' + package_version
-    rename_path = os.path.join(package_temp_path, package_name_with_version)
-    logging.info("origin name: {0}".format(os.path.join(package_temp_path, package_folder_name)))
-    logging.info("rename name: {0}".format(rename_path))
+    package_folder_in_temp = os.path.join(package_temp_path, package_name_with_version)
+    bsp_package_path = os.path.join(bsp_packages_path, package_name_with_version)
+    logging.info("origin name: {0}".format(origin_package_folder_path))
+    logging.info("rename name: {0}".format(package_folder_in_temp))
 
+    result = True
     try:
-        os.rename(os.path.join(package_temp_path, package_folder_name), rename_path)
-    except Exception as e:
-        logging.warning('{0}'.format(e))
+        # rename package folder name to package name with version
+        os.rename(origin_package_folder_path, package_folder_in_temp)
 
-    try:
         # if there is no specified version package in the bsp package path,
-        # then move package from package_temp to bsp packages path
-        if not os.path.isdir(os.path.join(path, package_name_with_version)):
-            shutil.move(rename_path, os.path.join(path, package_name_with_version))
+        # then move package from package_folder_in_temp to bsp_package_path
+        if not os.path.isdir(bsp_package_path):
+            shutil.move(package_folder_in_temp, bsp_package_path)
     except Exception as e:
         logging.warning('{0}'.format(e))
-        return False
+        result = False
+    finally:
+        # must remove temp folder
+        remove_folder(package_temp_path)
 
-    # remove temp folder
-    remove_folder(package_temp_path)
-
-    return True
+    return result
 
 
 def package_integrity_test(path):
