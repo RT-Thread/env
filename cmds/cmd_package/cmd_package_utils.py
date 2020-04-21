@@ -31,6 +31,7 @@ import sys
 import time
 import shutil
 import requests
+import logging
 
 
 def execute_command(cmd_string, cwd=None, shell=True):
@@ -186,9 +187,16 @@ def is_windows():
 
 
 def remove_folder(folder_path):
-    if os.path.isdir(folder_path):
-        if is_windows():
-            cmd = 'rd /s /q ' + folder_path
-            os.system(cmd)
+    try:
+        if os.path.isdir(folder_path):
+            if is_windows():
+                cmd = 'rd /s /q ' + folder_path
+                os.system(cmd)
+            else:
+                shutil.rmtree(folder_path)
+            return True
         else:
-            shutil.rmtree(folder_path)
+            return True
+    except Exception as e:
+        logging.warning('Error message : {0}'.format(e))
+        return False
