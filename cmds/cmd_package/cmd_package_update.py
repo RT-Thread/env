@@ -149,9 +149,9 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
     try:
         repo_path = os.path.join(bsp_package_path, package_name)
         repo_path = repo_path + '-' + package_info['ver']
-        repo_path_full = '"' + repo_path + '"'
+        repo_name_with_version = '"' + repo_path + '"'
 
-        clone_cmd = 'git clone ' + package_url + ' ' + repo_path_full
+        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version
         logging.info(clone_cmd)
         execute_command(clone_cmd, cwd=bsp_package_path)
 
@@ -180,10 +180,10 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         if need_using_mirror_download(env_config_file):
             if len(replace_list):
                 for item in replace_list:
-                    submod_dir_path = os.path.join(repo_path, item[2])
-                    if os.path.isdir(submod_dir_path):
+                    submodule_path = os.path.join(repo_path, item[2])
+                    if os.path.isdir(submodule_path):
                         cmd = 'git remote set-url origin ' + item[0]
-                        execute_command(cmd, cwd=submod_dir_path)
+                        execute_command(cmd, cwd=submodule_path)
 
     if need_using_mirror_download(env_config_file):
         if os.path.isfile(submodule_path):
