@@ -33,25 +33,13 @@ import pkgsdb
 from cmds.cmd_package.cmd_package_utils import is_windows, remove_folder
 
 
-def unpack(archive_filename, path, package_info, package_name):
-    package_version = package_info['ver']
-    package_temp_path = os.path.join(path, "package_temp")
-    try:
-        remove_folder(package_temp_path)
-        os.makedirs(package_temp_path)
-    except Exception as e:
-        logging.warning('Error message : {0}'.format(e))
-
-    logging.info("BSP packages path {0}".format(path))
-    logging.info("BSP package temp path: {0}".format(package_temp_path))
-    logging.info("archive filename : {0}".format(archive_filename))
-
+def unpack(archive_filename, bsp_package_path, package_info, package_name):
     if ".tar.bz2" in archive_filename:
         arch = tarfile.open(archive_filename, "r:bz2")
         for tarinfo in arch:
-            arch.extract(tarinfo, path)
+            arch.extract(tarinfo, bsp_package_path)
             a = tarinfo.name
-            if not os.path.isdir(os.path.join(path, a)):
+            if not os.path.isdir(os.path.join(bsp_package_path, a)):
                 if is_windows():
                     right_path = a.replace('/', '\\')
                 else:
@@ -64,9 +52,9 @@ def unpack(archive_filename, path, package_info, package_name):
     if ".tar.gz" in archive_filename:
         arch = tarfile.open(archive_filename, "r:gz")
         for tarinfo in arch:
-            arch.extract(tarinfo, path)
+            arch.extract(tarinfo, bsp_package_path)
             a = tarinfo.name
-            if not os.path.isdir(os.path.join(path, a)):
+            if not os.path.isdir(os.path.join(bsp_package_path, a)):
                 if is_windows():
                     right_path = a.replace('/', '\\')
                 else:
@@ -75,55 +63,85 @@ def unpack(archive_filename, path, package_info, package_name):
                 pkgsdb.save_to_database(a, archive_filename)
         arch.close()
 
+    if ".zip" in archive_filename:
+        if not handle_zip_package(archive_filename, bsp_package_path, package_name, package_info):
+            return False
+
+    return True
+
+
+def handle_zip_package(archive_filename, bsp_package_path, package_name, package_info):
+    package_version = package_info['ver']
+    package_temp_path = os.path.join(bsp_package_path, "package_temp")
+
     try:
-        if ".zip" in archive_filename:
-            flag = True
-            dir_name = ""
-            package_name_with_version = ""
-
-            arch = zipfile.ZipFile(archive_filename, "r")
-            for item in arch.namelist():
-                arch.extract(item, package_temp_path)
-                if not os.path.isdir(os.path.join(package_temp_path, item)):
-                    if is_windows():
-                        right_path = item.replace('/', '\\')
-                    else:
-                        right_path = item
-
-                    # Gets the folder name and changed folder name only once
-                    if flag:
-                        dir_name = os.path.split(right_path)[0]
-                        package_name_with_version = package_name + '-' + package_version
-                        flag = False
-
-                    right_name_to_db = right_path.replace(dir_name, package_name_with_version, 1)
-                    right_path = os.path.join("package_temp", right_path)
-                    pkgsdb.save_to_database(right_name_to_db, archive_filename, right_path)
-            arch.close()
+        if remove_folder(package_temp_path):
+            os.makedirs(package_temp_path)
     except Exception as e:
-        # remove temp folder and archive file
+        logging.warning('Error message : {0}'.format(e))
+
+    logging.info("BSP packages path {0}".format(bsp_package_path))
+    logging.info("BSP package temp path: {0}".format(package_temp_path))
+    logging.info("archive filename : {0}".format(archive_filename))
+
+    try:
+        flag = True
+        package_folder_name = ""
+        package_name_with_version = ""
+        arch = zipfile.ZipFile(archive_filename, "r")
+        for item in arch.namelist():
+            arch.extract(item, package_temp_path)
+            if not os.path.isdir(os.path.join(package_temp_path, item)):
+                if is_windows():
+                    right_path = item.replace('/', '\\')
+                else:
+                    right_path = item
+
+                # Gets the folder name and changed folder name only once
+                if flag:
+                    package_folder_name = os.path.split(right_path)[0]
+                    package_name_with_version = package_name + '-' + package_version
+                    flag = False
+
+                right_name_to_db = right_path.replace(package_folder_name, package_name_with_version, 1)
+                right_path = os.path.join("package_temp", right_path)
+                pkgsdb.save_to_database(right_name_to_db, archive_filename, right_path)
+        arch.close()
+
+        if not move_package_to_bsp_packages(package_folder_name, package_name, package_temp_path, package_version,
+                                            bsp_package_path):
+            return False
+    except Exception as e:
         logging.warning('unpack error message : {0}'.format(e))
         logging.warning('unpack {0} failed'.format(os.path.basename(archive_filename)))
+        # remove temp folder and archive file
         remove_folder(package_temp_path)
         os.remove(archive_filename)
         return False
 
+    return True
+
+
+def move_package_to_bsp_packages(package_folder_name, package_name, package_temp_path, package_version, path):
     # rename package folder name
     package_name_with_version = package_name + '-' + package_version
     rename_path = os.path.join(package_temp_path, package_name_with_version)
-
-    logging.info("origin name: {0}".format(os.path.join(package_temp_path, dir_name)))
+    logging.info("origin name: {0}".format(os.path.join(package_temp_path, package_folder_name)))
     logging.info("rename name: {0}".format(rename_path))
 
     try:
-        os.rename(os.path.join(package_temp_path, dir_name), rename_path)
+        os.rename(os.path.join(package_temp_path, package_folder_name), rename_path)
     except Exception as e:
-        # remove temp folder and archive file
         logging.warning('{0}'.format(e))
 
-    if not os.path.isdir(os.path.join(path, package_name_with_version)):
-        # copy package to bsp packages path.
-        shutil.move(rename_path, os.path.join(path, package_name_with_version))
+    try:
+        # if there is no specified version package in the bsp package path,
+        # then move package from package_temp to bsp packages path
+        if not os.path.isdir(os.path.join(path, package_name_with_version)):
+            shutil.move(rename_path, os.path.join(path, package_name_with_version))
+    except Exception as e:
+        logging.warning('{0}'.format(e))
+        return False
 
     # remove temp folder
     remove_folder(package_temp_path)
