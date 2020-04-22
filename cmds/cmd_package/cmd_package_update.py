@@ -125,7 +125,10 @@ def determine_url_valid(url_from_srv):
 def is_user_mange_package(bsp_package_path, pkg):
     for root, dirs, files in os.walk(bsp_package_path, topdown=True):
         for name in dirs:
-            if name.lower() == pkg["name"].lower():
+            package_name_lower = pkg["name"].lower()
+            folder_name_lower = name.lower()
+            folder_name_common = folder_name_lower.replace("-", "_")
+            if folder_name_lower == package_name_lower or folder_name_common == package_name_lower:
                 return True
         break
     return False
