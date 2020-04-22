@@ -22,13 +22,17 @@
 # Date           Author          Notes
 # 2018-5-28      SummerGift      Add copyright information
 # 2018-12-28     Ernest Chen     Add package information and enjoy package maker
+# 2020-4-7       SummerGift      Code improvement
 #
 
-import os
 import json
-import archive
+import logging
+import os
 import sys
+
 import requests
+
+import archive
 
 """Template for creating a new file"""
 
@@ -128,7 +132,8 @@ group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
 Return('group')
 '''
 
-class Package:
+
+class PackageOperation:
     pkg = None
 
     def parse(self, filename):
@@ -149,11 +154,15 @@ class Package:
         return None
 
     def get_url(self, ver):
+        url = None
         for item in self.pkg['site']:
             if item['version'].lower() == ver.lower():
-                return item['URL']
+                url = item['URL']
 
-        return None
+        if not url:
+            logging.warning("Can't find right url {0}, please check {1}".format(ver.lower(), self.pkg['site']))
+
+        return url
 
     def get_versha(self, ver):
         for item in self.pkg['site']:
@@ -184,13 +193,13 @@ class Package:
             if not os.path.getsize(path):
                 os.remove(path)
             else:
-                if archive.packtest(path):
-                    #print "The file is rigit."
+                if archive.package_integrity_test(path):
+                    # print "The file is rigit."
                     return True
                 else:
                     os.remove(path)
 
-        retryCount = 0
+        retry_count = 0
 
         headers = {'Connection': 'keep-alive',
                    'Accept-Encoding': 'gzip, deflate',
@@ -200,7 +209,7 @@ class Package:
         print('Start to download package : %s ' % filename.encode("utf-8"))
 
         while True:
-            #print("retryCount : %d"%retryCount)
+            # print("retry_count : %d"%retry_count)
             try:
                 r = requests.get(url_from_srv, stream=True, headers=headers)
 
@@ -215,9 +224,9 @@ class Package:
                         sys.stdout.write("\rDownloding %d KB" % flush_count)
                         sys.stdout.flush()
 
-                retryCount = retryCount + 1
+                retry_count = retry_count + 1
 
-                if archive.packtest(path):  # make sure the file is right
+                if archive.package_integrity_test(path):  # make sure the file is right
                     ret = True
                     print("\rDownloded %d KB  " % flush_count)
                     print('Start to unpack. Please wait...')
@@ -225,7 +234,7 @@ class Package:
                 else:
                     if os.path.isfile(path):
                         os.remove(path)
-                    if retryCount > 5:
+                    if retry_count > 5:
                         print(
                             "error: Have tried downloading 5 times.\nstop Downloading file :%s" % path)
                         if os.path.isfile(path):
@@ -233,23 +242,14 @@ class Package:
                         ret = False
                         break
             except Exception as e:
-                print(url_from_srv) 
-                print('error message:%s\t' %e)
-                retryCount = retryCount + 1
-                if retryCount > 5:
+                print(url_from_srv)
+                print('error message:%s\t' % e)
+                retry_count = retry_count + 1
+                if retry_count > 5:
                     print('%s download fail!\n' % path.encode("utf-8"))
                     if os.path.isfile(path):
                         os.remove(path)
                     return False
         return ret
 
-    def unpack(self, fullpkg_path, path, pkg, pkgs_name_in_json):
-        try:
-            # ignore the return value
-            archive.unpack(fullpkg_path, path, pkg, pkgs_name_in_json)
-            return True
-        except Exception as e:
-            print('unpack error message :%s' % e)
-            print('unpack %s failed' % os.path.basename(fullpkg_path))
-            os.remove(fullpkg_path)
-            return False
+

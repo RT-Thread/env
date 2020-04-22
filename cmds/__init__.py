@@ -24,3 +24,15 @@
 #
 
 __all__ = ['cmd_package', 'cmd_system', 'cmd_menuconfig']
+
+try:
+    import requests
+except ImportError:
+    print("****************************************\n"
+          "* Import requests module error.\n"
+          "* Please install requests module first.\n"
+          "* pip install step:\n"
+          "* $ pip install requests\n"
+          "* command install step:\n"
+          "* $ sudo apt-get install python-requests\n"
+          "****************************************\n")

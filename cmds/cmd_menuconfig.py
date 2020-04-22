@@ -28,13 +28,14 @@
 import os
 import platform
 import re
-from vars import Import, Export
+from vars import Import
+from .cmd_package.cmd_package_utils import find_macro_in_config
 
 
 def is_pkg_special_config(config_str):
-    ''' judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER'''
+    """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
-    if type(config_str) == type('a'):
+    if isinstance(config_str, str):
         if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
             return True
     return False
@@ -43,7 +44,8 @@ def is_pkg_special_config(config_str):
 def mk_rtconfig(filename):
     try:
         config = open(filename, 'r')
-    except:
+    except Exception as e:
+        print('Error message:%s' % e)
         print('open config:%s failed' % filename)
         return
 
@@ -89,7 +91,7 @@ def mk_rtconfig(filename):
                 if setting[1] == 'y':
                     rtconfig.write('#define %s\n' % setting[0])
                 else:
-                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$",line)[0]))
+                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$", line)[0]))
 
     if os.path.isfile('rtconfig_project.h'):
         rtconfig.write('#include "rtconfig_project.h"\n')
@@ -99,54 +101,7 @@ def mk_rtconfig(filename):
     rtconfig.close()
 
 
-def find_macro_in_config(filename, macro_name):
-    try:
-        config = open(filename, "r")
-    except:
-        print('open .config failed')
-        return
-
-    empty_line = 1
-
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
-            continue
-
-        if line[0] == '#':
-            if len(line) == 1:
-                if empty_line:
-                    continue
-
-                empty_line = 1
-                continue
-
-            #comment_line = line[1:]
-            if line.startswith('# CONFIG_'):
-                line = ' ' + line[9:]
-            else:
-                line = line[1:]
-
-            # print line
-
-            empty_line = 0
-        else:
-            empty_line = 0
-            setting = line.split('=')
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_'):
-                    setting[0] = setting[0][7:]
-
-                    if setting[0] == macro_name and setting[1] == 'y':
-                        return True
-
-    config.close()
-    return False
-
-
 def cmd(args):
-
     env_root = Import('env_root')
     os_version = platform.platform(True)[10:13]
     kconfig_win7_path = os.path.join(
@@ -159,9 +114,9 @@ def cmd(args):
         print("\n\033[1;31;40m<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"\033[0m")
         print("\033[1;31;40m请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\033[0m\n")
 
-        print ("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
-        print ("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
-        print ("You should check if there is a Kconfig file in your bsp root first.")
+        print("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
+        print("Example: \"rt-thread/bsp/stm32/stm32f091-st-nucleo\"")
+        print("You should check if there is a Kconfig file in your bsp root first.")
 
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
@@ -195,7 +150,7 @@ def cmd(args):
                 os.system('kconfig-mconf Kconfig -n')
 
     elif args.menuconfig_setting:
-        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
 
@@ -229,7 +184,7 @@ def cmd(args):
         mk_rtconfig(fn)
 
     if platform.system() == "Windows":
-        env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
         fn = os.path.join(env_kconfig_path, '.config')
 
         if not os.path.isfile(fn):
@@ -242,13 +197,13 @@ def cmd(args):
         if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
-                print("Create mdk4 project done") 
+                print("Create mdk4 project done")
             elif find_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
-                print("Create mdk5 project done") 
+                print("Create mdk5 project done")
             elif find_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
-                print("Create iar project done") 
+                print("Create iar project done")
 
 
 def add_parser(sub):
@@ -277,7 +232,7 @@ def add_parser(sub):
                         dest='menuconfig_setting')
 
     parser.add_argument('--easy',
-                        help='easy mode,place kconfig file everywhere,just modify the option env="RTT_ROOT" default "../.."',
+                        help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',
                         action='store_true',
                         default=False,
                         dest='menuconfig_easy')

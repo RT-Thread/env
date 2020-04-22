@@ -1,8 +1,8 @@
 # -*- coding:utf-8 -*-
 #
-# File      : env.py
+# File      : cmd_package.py
 # This file is part of RT-Thread RTOS
-# COPYRIGHT (C) 2006 - 2019, RT-Thread Development Team
+# COPYRIGHT (C) 2006 - 2020, RT-Thread Development Team
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -20,32 +20,28 @@
 #
 # Change Logs:
 # Date           Author          Notes
-# 2019-8-26      SummerGift      first version
+# 2020-04-08     SummerGift      Optimize program structure
 #
 
-from multiprocessing import Process
 import os
+import platform
 
 
-def run_proc(name, env_root):
-    exec_file = os.path.join(env_root, r"tools\scripts\env.py")
-    log_std = os.path.join(env_root, "env_log_std")
-    log_err = os.path.join(env_root, "env_log_err")
+def package_print_env():
+    print("Here are some environmental variables.")
+    print("If you meet some problems,please check them. Make sure the configuration is correct.")
+    print("RTT_EXEC_PATH:%s" % (os.getenv("RTT_EXEC_PATH")))
+    print("RTT_CC:%s" % (os.getenv("RTT_CC")))
+    print("SCONS:%s" % (os.getenv("SCONS")))
+    print("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
 
-    # noinspection PyBroadException
-    try:
-        os.system("python %s package --upgrade 1>%s 2>%s" % (exec_file, log_std, log_err))
-    except Exception as e:
-        print("Auto upgrade failed, please check your network.")
-        pass
+    env_root = os.getenv('ENV_ROOT')
+    if env_root is None:
+        if platform.system() != 'Windows':
+            env_root = os.path.join(os.getenv('HOME'), '.env')
 
-
-def main():
-    env_root = env_root = os.getenv("ENV_ROOT")
-    p = Process(target=run_proc, args=('upgrade', env_root))
-    p.start()
-    p.join()
+    print("ENV_ROOT:%s" % env_root)
 
 
-if __name__ == '__main__':
-    main()
+def package_print_help():
+    os.system('pkgs -h')
