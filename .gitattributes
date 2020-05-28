@@ -1,0 +1,30 @@
+# .gitattributes for Env Project.
+
+# Handle line endings automatically for files detected as text
+# and leave all files detected as binary untouched.
+# ============
+* text=auto
+
+# Source files
+# ============
+*.pxd    text eol=crlf diff=python
+*.py     text eol=crlf diff=python
+*.py3    text eol=crlf diff=python
+*.pyw    text eol=crlf diff=python
+*.pyx    text eol=crlf diff=python
+*.pyz    text eol=crlf diff=python
+*.pyi    text eol=crlf diff=python
+
+# Binary files
+# ============
+*.db     binary
+*.p      binary
+*.pkl    binary
+*.pickle binary
+*.pyc    binary
+*.pyd    binary
+*.pyo    binary
+
+# MarkDown
+*.md     text eol=crlf
+
