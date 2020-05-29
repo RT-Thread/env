@@ -112,7 +112,7 @@ def isdataexist(pathname):
     return ret
 
 
-# 将数据添加到数据库，如果数据库中已经存在则不重复添加
+# Add data to the database, if the data already exists, don't add again
 def save_to_database(pathname, package_pathname, before_change_name):
     db_pathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
