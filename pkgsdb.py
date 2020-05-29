@@ -112,7 +112,7 @@ def isdataexist(pathname):
     return ret
 
 
-# 将数据添加到数据库，如果数据库中已经存在则不重复添加
+# Add data to the database, if the data already exists, don't add again
 def save_to_database(pathname, package_pathname, before_change_name):
     db_pathname = Import('dbsqlite_pathname')
     bsp_root = Import('bsp_root')
@@ -199,7 +199,7 @@ def deletepackdir(dirpath, dbpathname):
     return flag
 
 
-# 遍历filepath下所有文件，包括子目录
+# walk through all files in filepath, include subfolder
 def displaydir(filepath, basepath, length, dbpathname):
     flag = True
     if os.path.isdir(filepath):

@@ -26,6 +26,7 @@
 import os
 from vars import Import
 from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_macro_in_config
+from .cmd_package_update import need_using_mirror_download
 
 
 def upgrade_packages_index():
@@ -35,9 +36,8 @@ def upgrade_packages_index():
     pkgs_root = Import('pkgs_root')
     env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or \
-            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
 
+    if need_using_mirror_download(env_config_file):
         get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
 
         if get_package_url is not None:
@@ -80,8 +80,8 @@ def upgrade_env_script():
     env_root = Import('env_root')
     env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
-    if (not os.path.isfile(env_config_file)) or \
-            (os.path.isfile(env_config_file) and find_macro_in_config(env_config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE')):
+
+    if need_using_mirror_download(env_config_file):
         get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
 
         if get_package_url is not None:
