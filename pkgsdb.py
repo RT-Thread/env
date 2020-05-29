@@ -199,7 +199,7 @@ def deletepackdir(dirpath, dbpathname):
     return flag
 
 
-# 遍历filepath下所有文件，包括子目录
+# walk through all files in filepath, include subfolder
 def displaydir(filepath, basepath, length, dbpathname):
     flag = True
     if os.path.isdir(filepath):
