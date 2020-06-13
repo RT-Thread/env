@@ -40,6 +40,34 @@ def is_pkg_special_config(config_str):
             return True
     return False
 
+def get_target_file(filename):
+    try:
+        config = open(filename, "r")
+    except:
+        print('open config:%s failed' % filename)
+        return None
+    
+    for line in config:
+        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
+
+        if len(line) == 0: continue
+
+        if line[0] == '#':
+            continue
+        else:
+            setting = line.split('=')
+            if len(setting) >= 2:
+                if setting[0].startswith('CONFIG_TARGET_FILE'):
+                    target_fn = re.findall(r"^.*?=(.*)$",line)[0]
+                    if target_fn.startswith('"'):
+                        target_fn = target_fn.replace('"', '')
+
+                    if target_fn == '':
+                        return None
+                    else:
+                        return target_fn
+
+    return 'rtconfig.h'
 
 def mk_rtconfig(filename):
     try:
@@ -49,7 +77,11 @@ def mk_rtconfig(filename):
         print('open config:%s failed' % filename)
         return
 
-    rtconfig = open('rtconfig.h', 'w')
+    target_fn = get_target_file(filename)
+    if target_fn == None:
+        return
+
+    rtconfig = open(target_fn, 'w')
     rtconfig.write('#ifndef RT_CONFIG_H__\n')
     rtconfig.write('#define RT_CONFIG_H__\n\n')
 
@@ -214,7 +246,7 @@ def add_parser(sub):
                         dest='menuconfig_fn')
 
     parser.add_argument('--generate',
-                        help='generate rtconfig.h by .config.',
+                        help='generate configuration header file by .config.',
                         action='store_true',
                         default=False,
                         dest='menuconfig_g')
