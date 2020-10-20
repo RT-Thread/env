@@ -63,11 +63,11 @@ def get_url_from_mirror_server(package_name, package_version):
     """Get the download address from the mirror server based on the package name."""
 
     try:
-        if isinstance(package_name, str):
+        if type(package_name) == bytes:
             if sys.version_info < (3, 0):
                 package_name = str(package_name)
             else:
-                package_name = str(package_name)[2:-1]
+                package_name = str(package_name, encoding='utf-8')
     except Exception as e:
         print('Error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
