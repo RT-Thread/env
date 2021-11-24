@@ -138,7 +138,7 @@ def need_using_mirror_download(config_file):
     """default using mirror url to download packages"""
 
     if not os.path.isfile(config_file):
-        return False
+        return True
     elif os.path.isfile(config_file) and find_macro_in_config(config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         return True
 
