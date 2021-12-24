@@ -14,26 +14,22 @@ if SYS_CREATE_MDK_IAR_PROJECT
         prompt "Project type"
         help 
             Select the project type mdk or iar
-
-        config SYS_CREATE_MDK4
-            bool "MDK4"
             
         config SYS_CREATE_MDK5
             bool "MDK5"
 
         config SYS_CREATE_IAR
             bool "IAR"
+
+        config SYS_CREATE_MDK4
+            bool "MDK4"
     endchoice
     
 endif
 
 config SYS_PKGS_DOWNLOAD_ACCELERATE
-    bool "pkgs download using mirror server"
+    bool "Use China Mainland server"
     default y
-    help
-        When you open it, you will use the mirror address to download the software,
-        which can improve the download speed.
-        The synchronous cycle of the mirror address is usually half an hour.
 
 endmenu
 
