@@ -84,7 +84,7 @@ def get_url_from_mirror_server(package_name, package_version):
     payload["packages"][0]['name'] = package_name
 
     try:
-        r = requests.post("http://packages.rt-thread.org/packages/queries", data=json.dumps(payload))
+        r = requests.post("https://api.rt-thread.org/packages/queries", data=json.dumps(payload))
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)
