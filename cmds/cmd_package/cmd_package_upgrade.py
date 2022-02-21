@@ -73,32 +73,40 @@ def upgrade_packages_index():
                 print("==============================>  Env %s update done \n" % filename)
 
 
-def upgrade_env_script():
+def upgrade_env_script(env_version):
     """Update env function scripts."""
 
-    print("Begin to upgrade env scripts.")
-    env_root = Import('env_root')
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
-
-    if need_using_mirror_download(env_config_file):
-        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
-
-        if get_package_url is not None:
-            env_scripts_repo = get_package_url
-        else:
-            print("Failed to get url from mirror server. Using default url.")
-            env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
+    if env_version == 'RT-Thread packages v1.2.1':
+        print('current version: '+env_version)
+        print('Due to the version compatibility between python2 and python3,'\
+            'the current version does not support automatic upgrade. Please '\
+            'go to the official website (https://www.rt-thread.org/page/downl'\
+            'oad.html) to download the latest version of env.')
+        return
     else:
-        env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+        print("Begin to upgrade env scripts.")
+        env_root = Import('env_root')
+        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
+        env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
-    git_pull_repo(env_scripts_root, env_scripts_repo)
-    print("==============================>  Env scripts upgrade done \n")
+        if need_using_mirror_download(env_config_file):
+            get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
+
+            if get_package_url is not None:
+                env_scripts_repo = get_package_url
+            else:
+                print("Failed to get url from mirror server. Using default url.")
+                env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
+        else:
+            env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+
+        env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
+        git_pull_repo(env_scripts_root, env_scripts_repo)
+        print("==============================>  Env scripts upgrade done \n")
 
 
-def package_upgrade():
+def package_upgrade(env_version):
     """Update the package repository directory and env function scripts."""
 
     upgrade_packages_index()
-    upgrade_env_script()
+    upgrade_env_script(env_version)

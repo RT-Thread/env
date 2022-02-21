@@ -25,7 +25,9 @@
 # 2019-01-07     SummerGift      The prompt supports utf-8 encoding
 # 2020-04-08     SummerGift      Optimize program structure
 #
-
+__version__ = 'RT-Thread packages v1.2.1'
+# This version number prepares for the subsequent suspension 
+# of the env script to upgrade the python2 version
 from .cmd_package_printenv import package_print_env, package_print_help
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
@@ -45,7 +47,7 @@ def run_env_cmd(args):
     elif args.list_packages:
         list_packages()
     elif args.package_upgrade:
-        package_upgrade()
+        package_upgrade(__version__)
     elif args.package_print_env:
         package_print_env()
     else:
