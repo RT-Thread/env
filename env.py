@@ -34,7 +34,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread packages v1.2.0'
+__version__ = 'RT-Thread packages v1.2.1'
 
 
 def init_argparse():
