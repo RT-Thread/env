@@ -47,7 +47,9 @@ def run_env_cmd(args):
     elif args.list_packages:
         list_packages()
     elif args.package_upgrade:
-        package_upgrade(__version__)
+        package_upgrade()
+    elif args.package_upgrade_force:
+        package_upgrade(force_upgrade=True)
     elif args.package_print_env:
         package_print_env()
     else:
@@ -71,6 +73,12 @@ def add_parser(sub):
                         default=False,
                         dest='package_update')
 
+    parser.add_argument('--force-upgrade',
+                        help='force upgrade packages, install or remove the packages by your settings in menuconfig',
+                        action='store_true',
+                        default=False,
+                        dest='package_upgrade_force')   
+                        
     parser.add_argument('--list',
                         help='list target packages',
                         action='store_true',

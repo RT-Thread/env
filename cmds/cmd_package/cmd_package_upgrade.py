@@ -29,7 +29,7 @@ from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_m
 from .cmd_package_update import need_using_mirror_download
 
 
-def upgrade_packages_index():
+def upgrade_packages_index(force_upgrade=False):
     """Update the package repository index."""
 
     env_root = Import('env_root')
@@ -50,6 +50,10 @@ def upgrade_packages_index():
 
     packages_root = pkgs_root
     pkgs_path = os.path.join(packages_root, 'packages')
+
+    if force_upgrade:
+        os.system('git fetch --all')
+        os.system('git reset --hard origin/master')
 
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path
@@ -105,8 +109,8 @@ def upgrade_env_script(env_version):
         print("==============================>  Env scripts upgrade done \n")
 
 
-def package_upgrade(env_version):
+def package_upgrade(env_version, force_upgrade=False):
     """Update the package repository directory and env function scripts."""
 
-    upgrade_packages_index()
+    upgrade_packages_index(force_upgrade=force_upgrade)
     upgrade_env_script(env_version)
