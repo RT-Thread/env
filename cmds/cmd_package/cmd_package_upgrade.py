@@ -24,9 +24,22 @@
 #
 
 import os
+import uuid
 from vars import Import
 from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_macro_in_config
 from .cmd_package_update import need_using_mirror_download
+
+try:
+    import requests
+except ImportError:
+    print("****************************************\n"
+          "* Import requests module error.\n"
+          "* Please install requests module first.\n"
+          "* pip install step:\n"
+          "* $ pip install requests\n"
+          "* command install step:\n"
+          "* $ sudo apt-get install python-requests\n"
+          "****************************************\n")
 
 
 def upgrade_packages_index(force_upgrade=False):
@@ -104,9 +117,33 @@ def upgrade_env_script():
     git_pull_repo(env_scripts_root, env_scripts_repo)
     print("==============================>  Env scripts upgrade done \n")
 
+def get_mac_address():
+    mac=uuid.UUID(int = uuid.getnode()).hex[-12:]
+    return ":".join([mac[e:e+2] for e in range(0,11,2)])
+
+
+def Information_statistics():
+    
+    env_root = Import('env_root')
+
+    # get the .config file from env
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+
+    mac_addr = get_mac_address()
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+    if find_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
+        print('start information statistics')
+        response = requests.get('https://www.rt-thread.org/studio/statistics/api/envuse?userid='+str(mac_addr)+'&username='+str(mac_addr)+'&envversion=1.0&studioversion=2.0&ip=127.0.0.1')
+        if response.status_code != 200:
+            print("Information statistics failed")
+            return
+    else:
+        return
 
 def package_upgrade(force_upgrade=False):
     """Update the package repository directory and env function scripts."""
 
+    Information_statistics()
     upgrade_packages_index(force_upgrade=force_upgrade)
     upgrade_env_script()
