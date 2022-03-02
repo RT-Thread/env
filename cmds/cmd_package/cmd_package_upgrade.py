@@ -133,10 +133,8 @@ def Information_statistics():
     mac_addr = get_mac_address()
     env_config_file = os.path.join(env_kconfig_path, '.config')
     if find_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
-        print('start information statistics')
         response = requests.get('https://www.rt-thread.org/studio/statistics/api/envuse?userid='+str(mac_addr)+'&username='+str(mac_addr)+'&envversion=1.0&studioversion=2.0&ip=127.0.0.1')
         if response.status_code != 200:
-            print("Information statistics failed")
             return
     else:
         return
