@@ -31,5 +31,12 @@ config SYS_PKGS_DOWNLOAD_ACCELERATE
     bool "Use China Mainland server"
     default y
 
+config SYS_PKGS_USING_STATISTICS
+    bool "Send usage data for improve product"
+    default y
+    help
+        Reads the user's mac address and returns it to the rt-thread official, 
+        which is used to count the number of users
+
 endmenu
 
