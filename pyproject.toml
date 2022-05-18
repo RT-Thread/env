@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "env"
+version = "1.2.3"
+description = "Python Scripts for RT-Thread/ENV"
+authors = ["RT-Thread"]
+license = "GPL-2.0"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
