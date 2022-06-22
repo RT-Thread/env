@@ -135,7 +135,7 @@ def mk_rtconfig(filename):
 
 def cmd(args):
     env_root = Import('env_root')
-    os_version = platform.platform(True)[10:13]
+    os_version = platform.platform(True).split('-')[2][:3]
     kconfig_win7_path = os.path.join(
         env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
