@@ -2,11 +2,11 @@ menu "Env config"
 
 config SYS_AUTO_UPDATE_PKGS
     bool "Auto update pkgs config"
-    default y
+    default n
 
 config SYS_CREATE_MDK_IAR_PROJECT
     bool "Auto create a mdk/iar project"
-    default y
+    default n
 
 if SYS_CREATE_MDK_IAR_PROJECT
 
