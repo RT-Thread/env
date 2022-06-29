@@ -138,9 +138,12 @@ def Information_statistics():
     else:
         return
 
+
 def package_upgrade(force_upgrade=False):
     """Update the package repository directory and env function scripts."""
 
-    Information_statistics()
+    if os.environ.get('RTTS_PLATFROM') != 'STUDIO':
+        Information_statistics()
+
     upgrade_packages_index(force_upgrade=force_upgrade)
     upgrade_env_script()
