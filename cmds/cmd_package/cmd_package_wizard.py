@@ -29,7 +29,6 @@ from package import Kconfig_file, Package_json_file
 from string import Template
 from .cmd_package_utils import user_input
 
-
 def package_wizard():
     """Packages creation wizard.
 
@@ -103,15 +102,15 @@ def package_wizard():
         author_email = user_input()
 
     # sixth step
-    print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 4, or input other license name :\033[0m')
-    print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]\033[0m")
-    license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0')
+    print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 5, or input other license name :\033[0m')
+    print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0][5:BSD-3-Clause]\033[0m")
+    license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0', 'BSD-3-Clause')
     license_class = user_input()
     while license_class == '':
         print('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
         license_class = user_input()
 
-    if license_class.isdigit() and 1 <= int(license_class) <= 4:
+    if license_class.isdigit() and 1 <= int(license_class) <= 5:
         license_choice = license_index[int(license_class) - 1]
     else:
         license_choice = license_class
@@ -152,4 +151,3 @@ def package_wizard():
     print('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
     print('Please \033[5;34;40mupdate\033[0m other information of this package '
           'based on Kconfig and package.json in directory ' + name + '.')
-
