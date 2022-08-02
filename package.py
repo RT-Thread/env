@@ -74,7 +74,7 @@ if PKG_USING_${name}
         config PKG_USING_${name}_LATEST_VERSION
             bool "latest"
     endchoice
-          
+
     config PKG_${name}_VER
        string
        default "v${version}"    if PKG_USING_${name}_V${version_standard}
@@ -87,8 +87,8 @@ endif
 Package_json_file = '''{
   "name": "${name}",
   "description": "${description}",
-  "description_zh": "${description_zh}",  
-  "enable": "PKG_USING_${pkgs_using_name}", 
+  "description_zh": "${description_zh}",
+  "enable": "PKG_USING_${pkgs_using_name}",
   "keywords": [
     "${keyword}"
   ],

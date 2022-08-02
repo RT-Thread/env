@@ -26,7 +26,7 @@
 # 2020-04-08     SummerGift      Optimize program structure
 #
 __version__ = 'RT-Thread packages v1.2.1'
-# This version number prepares for the subsequent suspension 
+# This version number prepares for the subsequent suspension
 # of the env script to upgrade the python2 version
 from .cmd_package_printenv import package_print_env, package_print_help
 from .cmd_package_list import list_packages
@@ -77,8 +77,8 @@ def add_parser(sub):
                         help='force upgrade packages, install or remove the packages by your settings in menuconfig',
                         action='store_true',
                         default=False,
-                        dest='package_upgrade_force')   
-                        
+                        dest='package_upgrade_force')
+
     parser.add_argument('--list',
                         help='list target packages',
                         action='store_true',
