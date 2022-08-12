@@ -112,7 +112,7 @@ Package_json_file = '''{
     {
       "version": "latest",
       "URL": "https://xxxxx.git",
-      "filename": "Null for git package",
+      "filename": "", # Null for git package
       "VER_SHA": "fill in latest version branch name, such as master"
     }
   ]
