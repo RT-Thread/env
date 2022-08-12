@@ -33,7 +33,7 @@ from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_upgrade import package_upgrade
 from .cmd_package_update import package_update
-
+from .cmd_package_upgrade import package_upgrade_modules
 
 def run_env_cmd(args):
     """Run packages command."""
@@ -50,6 +50,8 @@ def run_env_cmd(args):
         package_upgrade()
     elif args.package_upgrade_force:
         package_upgrade(force_upgrade=True)
+    elif args.package_upgrade_modules:
+        package_upgrade_modules()
     elif args.package_print_env:
         package_print_env()
     else:
@@ -73,12 +75,6 @@ def add_parser(sub):
                         default=False,
                         dest='package_update')
 
-    parser.add_argument('--force-upgrade',
-                        help='force upgrade packages, install or remove the packages by your settings in menuconfig',
-                        action='store_true',
-                        default=False,
-                        dest='package_upgrade_force')
-
     parser.add_argument('--list',
                         help='list target packages',
                         action='store_true',
@@ -96,6 +92,18 @@ def add_parser(sub):
                         action='store_true',
                         default=False,
                         dest='package_upgrade')
+
+    parser.add_argument('--force-upgrade',
+                        help='force upgrade packages, install or remove the packages by your settings in menuconfig',
+                        action='store_true',
+                        default=False,
+                        dest='package_upgrade_force')
+
+    parser.add_argument('--upgrade-modules',
+                        help='upgrade python modules, e.g. requests module',
+                        action='store_true',
+                        default=False,
+                        dest='package_upgrade_modules')
 
     parser.add_argument('--printenv',
                         help='print environmental variables to check',
