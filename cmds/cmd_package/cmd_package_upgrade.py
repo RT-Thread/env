@@ -154,4 +154,4 @@ from pip._internal.utils.misc import get_installed_distributions
 
 def package_upgrade_modules():
     for dist in get_installed_distributions():
-        call('pip install --upgrade '+dist.project_name,shell=True)
+        call('python -m pip install --upgrade '+dist.project_name,shell=True)
