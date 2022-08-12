@@ -147,3 +147,11 @@ def package_upgrade(force_upgrade=False):
 
     upgrade_packages_index(force_upgrade=force_upgrade)
     upgrade_env_script()
+
+import pip
+from subprocess import call
+from pip._internal.utils.misc import get_installed_distributions
+
+def package_upgrade_modules():
+    for dist in get_installed_distributions():
+        call('pip install --upgrade '+dist.project_name,shell=True)
