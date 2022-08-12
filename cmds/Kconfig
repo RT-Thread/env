@@ -29,7 +29,7 @@ endif
 
 config SYS_PKGS_DOWNLOAD_ACCELERATE
     bool "Use China Mainland server"
-    default y
+    default n
 
 config SYS_PKGS_USING_STATISTICS
     bool "Send usage data for improve product"
