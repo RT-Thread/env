@@ -1,5 +1,4 @@
-# env
-Python Scripts for RT-Thread/ENV
+# Python Scripts for RT-Thread Env
 
 ## Usage under Linux
 
