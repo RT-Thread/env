@@ -796,7 +796,7 @@ def install_packages(sys_value, force_update):
         for item in packages_download_fail_list:
             print(item)
 
-        print("You need to reuse the <pkgs -update> command to download again.")
+        print("You need to reuse the <pkgs --update> command to download again.")
 
     # Update pkgs.json and SConscript
     with open(package_filename, 'w') as f:

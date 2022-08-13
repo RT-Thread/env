@@ -63,17 +63,17 @@ def add_parser(sub):
 
     parser = sub.add_parser('package', help=__doc__, description=__doc__)
 
-    parser.add_argument('--force-update',
-                        help='force update and clean packages, install or remove packages by settings in menuconfig',
-                        action='store_true',
-                        default=False,
-                        dest='package_update_force')
-
     parser.add_argument('--update',
                         help='update packages, install or remove the packages by your settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update')
+
+    parser.add_argument('--force-update', '--update-force',
+                        help='force update and clean packages, install or remove packages by settings in menuconfig',
+                        action='store_true',
+                        default=False,
+                        dest='package_update_force')
 
     parser.add_argument('--list',
                         help='list target packages',
@@ -93,7 +93,7 @@ def add_parser(sub):
                         default=False,
                         dest='package_upgrade')
 
-    parser.add_argument('--force-upgrade',
+    parser.add_argument('--force-upgrade', '--upgrade-force',
                         help='force upgrade packages, install or remove the packages by your settings in menuconfig',
                         action='store_true',
                         default=False,
