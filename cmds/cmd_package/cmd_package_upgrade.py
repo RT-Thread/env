@@ -150,10 +150,12 @@ def package_upgrade(force_upgrade=False):
 
 def package_upgrade_modules():
     try:
-        import pip
         from subprocess import call
+        call('python -m pip install --upgrade pip', shell=True)
+
+        import pip
         from pip._internal.utils.misc import get_installed_distributions
         for dist in get_installed_distributions():
-            call('python -m pip install --upgrade '+dist.project_name,shell=True)
+            call('python -m pip install --upgrade ' + dist.project_name, shell=True)
     except:
         print('Fail to upgrade python modules!')
