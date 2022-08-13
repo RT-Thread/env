@@ -2,6 +2,10 @@
 
 ## Usage under Linux
 
+### Tutorial
+
+[How to install Env Tool with QEMU simulator in Ubuntu](https://github.com/RT-Thread/rt-thread/blob/master/documentation/quick-start/quick_start_qemu/quick_start_qemu_linux.md)
+
 ### Prepare Env
 
 run command under one of bsp:
