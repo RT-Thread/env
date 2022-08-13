@@ -29,8 +29,8 @@
 from .cmd_package_printenv import package_print_env, package_print_help
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
-from .cmd_package_upgrade import package_upgrade
 from .cmd_package_update import package_update
+from .cmd_package_upgrade import package_upgrade
 from .cmd_package_upgrade import package_upgrade_modules
 
 def run_env_cmd(args):
@@ -67,8 +67,8 @@ def add_parser(sub):
                         default=False,
                         dest='package_update')
 
-    parser.add_argument('--force-update', '--update-force',
-                        help='force update and clean packages, install or remove packages by settings in menuconfig',
+    parser.add_argument('--update-force', '--force-update',
+                        help='forcely update and clean packages, install or remove packages by settings in menuconfig',
                         action='store_true',
                         default=False,
                         dest='package_update_force')
@@ -86,13 +86,13 @@ def add_parser(sub):
                         dest='package_create')
 
     parser.add_argument('--upgrade',
-                        help='upgrade local packages list and ENV scripts from git repo',
+                        help='upgrade local packages index and Env scripts from git repository',
                         action='store_true',
                         default=False,
                         dest='package_upgrade')
 
-    parser.add_argument('--force-upgrade', '--upgrade-force',
-                        help='force upgrade packages, install or remove the packages by your settings in menuconfig',
+    parser.add_argument('--upgrade-force', '--force-upgrade',
+                        help='forcely upgrade local packages index and Env scripts from git repository',
                         action='store_true',
                         default=False,
                         dest='package_upgrade_force')
