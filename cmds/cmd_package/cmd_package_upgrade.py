@@ -64,8 +64,6 @@ def upgrade_packages_index(force_upgrade=False):
     packages_root = pkgs_root
     pkgs_path = os.path.join(packages_root, 'packages')
 
-
-
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path
         os.system(cmd)
@@ -90,14 +88,19 @@ def upgrade_packages_index(force_upgrade=False):
 
             if os.path.isdir(os.path.join(package_path, '.git')):
                 print("Begin to upgrade %s." % filename)
+                if force_upgrade:
+                    cwd = os.getcwd()
+                    os.chdir(package_path)
+                    os.system('git fetch --all')
+                    os.system('git reset --hard origin/master')
+                    os.chdir(cwd)
                 git_pull_repo(package_path)
                 print("==============================>  Env %s update done \n" % filename)
 
 
-def upgrade_env_script():
+def upgrade_env_script(force_upgrade=False):
     """Update env function scripts."""
 
-    print("Begin to upgrade env scripts.")
     env_root = Import('env_root')
     env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
@@ -114,6 +117,13 @@ def upgrade_env_script():
         env_scripts_repo = 'https://github.com/RT-Thread/env.git'
 
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
+    if force_upgrade:
+        cwd = os.getcwd()
+        os.chdir(env_scripts_root)
+        os.system('git fetch --all')
+        os.system('git reset --hard origin/master')
+        os.chdir(cwd)
+    print("Begin to upgrade env scripts.")
     git_pull_repo(env_scripts_root, env_scripts_repo)
     print("==============================>  Env scripts upgrade done \n")
 
@@ -146,7 +156,7 @@ def package_upgrade(force_upgrade=False):
         Information_statistics()
 
     upgrade_packages_index(force_upgrade=force_upgrade)
-    upgrade_env_script()
+    upgrade_env_script(force_upgrade=force_upgrade)
 
 def package_upgrade_modules():
     try:
