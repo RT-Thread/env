@@ -101,7 +101,7 @@ Package_json_file = '''{
   "license": "${license}",
   "repository": "${repository}",
   "icon": "unknown",
-  "homepage": "unknown",
+  "homepage": "${repository}#readme",
   "doc": "unknown",
   "site": [
     {
@@ -111,9 +111,9 @@ Package_json_file = '''{
     },
     {
       "version": "latest",
-      "URL": "https://xxxxx.git",
-      "filename": "", # Null for git package
-      "VER_SHA": "master" # fill in latest version branch name, such as master
+      "URL": "${repository}.git",
+      "filename": "",
+      "VER_SHA": "master"
     }
   ]
 }
