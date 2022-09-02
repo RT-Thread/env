@@ -73,19 +73,40 @@ def package_wizard():
     # third step
     package_class_list = ('iot', 'language', 'misc', 'multimedia',
                           'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
-    print('\033[5;33;40m\n3.Please choose a package category from 1 to 9 : \033[0m')
+
+    arduino_class_list = ('arduino/sensors', 'arduino/timing', 'arduino/communication', 'arduino/dataprocessing', 
+                            'arduino/datastorage', 'arduino/devicecontrol', 'arduino/display', 'arduino/other',
+                            'arduino/signalio', 'arduino/uncategorized', 'arduino/projects')
+
+    print('\033[5;33;40m\n3.Please choose a package category from 1 to 10 : \033[0m')
     print("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
-          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]\033[0m")
+          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:arduino]\033[0m")
 
     class_number = user_input()
-    while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 9:
+    while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 10:
         if class_number == '':
             print('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else:
-            print('\033[1;31;40mError: You must input an integer number from 1 to 9. Try again.\033[0m')
+            print('\033[1;31;40mError: You must input an integer number from 1 to 10. Try again.\033[0m')
         class_number = user_input()
 
-    package_class = package_class_list[int(class_number) - 1]
+    if int(class_number) == 10:
+        print('\033[5;33;40m\n3.Please choose an Arduino library category from 1 to 11 : \033[0m')
+        print("\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
+            "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m")
+
+        arduino_class_number = user_input()
+        while arduino_class_number == '' or arduino_class_number.isdigit() is False or int(arduino_class_number) < 1 or int(arduino_class_number) > 11:
+            if arduino_class_number == '':
+                print('\033[1;31;40mError: You must choose a category. Try again.\033[0m')
+            else:
+                print('\033[1;31;40mError: You must input an integer number from 1 to 11. Try again.\033[0m')
+            arduino_class_number = user_input()
+
+        package_class = arduino_class_list[int(arduino_class_number) - 1]
+
+    else:
+        package_class = package_class_list[int(class_number) - 1]
 
     # fourth step
     print("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")
@@ -103,7 +124,7 @@ def package_wizard():
 
     # sixth step
     print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 5, or input other license name :\033[0m')
-    print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0][5:BSD-3-Clause]\033[0m")
+    print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]|[5:BSD-3-Clause]\033[0m")
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0', 'BSD-3-Clause')
     license_class = user_input()
     while license_class == '':
