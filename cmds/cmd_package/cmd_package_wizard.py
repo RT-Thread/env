@@ -90,7 +90,7 @@ def package_wizard():
             print('\033[1;31;40mError: You must input an integer number from 1 to 10. Try again.\033[0m')
         class_number = user_input()
 
-    if int(class_number) == 10:
+    if int(class_number) == 10: # Arduino category
         print('\033[5;33;40m\n3.Please choose an Arduino library category from 1 to 11 : \033[0m')
         print("\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
             "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m")
@@ -105,7 +105,7 @@ def package_wizard():
 
         package_class = arduino_class_list[int(arduino_class_number) - 1]
 
-    else:
+    else: # other category
         package_class = package_class_list[int(class_number) - 1]
 
     # fourth step
