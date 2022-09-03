@@ -47,13 +47,13 @@ def package_wizard():
     print('\033[5;33;40m\n1.Please input a new package name :\033[0m')
 
     name = user_input()
-    regular_obj = re.compile('\W')
-    while name == '' or name.isspace() == True or regular_obj.search(name.strip()):
+    regular_obj = re.compile('^[\w\d_-]*$')
+    while name == '' or name.isspace() == True or regular_obj.search(name.strip()) == None:
         if name == '' or name.isspace():
             print('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
             name = user_input()
         else:
-            print('\033[1;31;40mError: package name is made of alphabet, number and underline. Try again.\033[0m')
+            print('\033[1;31;40mError: package name is made of alphabet, number, underline and dash. Try again.\033[0m')
             name = user_input()
 
     default_description = 'Please add description of ' + name + ' in English.'
@@ -155,6 +155,7 @@ def package_wizard():
 
     s = Template(Kconfig_file)
     upper_name = str.upper(name)
+    upper_name = upper_name.replace('-', '_')
     kconfig = s.substitute(name=upper_name, description=description, version=ver,
                            pkgs_class=package_class, lowercase_name=name, version_standard=ver_standard)
     f = open(os.path.join(pkg_path, 'Kconfig'), 'w')
