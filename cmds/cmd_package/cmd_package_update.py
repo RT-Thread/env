@@ -135,13 +135,10 @@ def is_user_mange_package(bsp_package_path, pkg):
 
 
 def need_using_mirror_download(config_file):
-    """default using mirror url to download packages"""
-
-    if not os.path.isfile(config_file):
+    if os.path.isfile(config_file) and find_macro_in_config(config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
         return True
-    elif os.path.isfile(config_file) and find_macro_in_config(config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
-        return True
-
+    else:
+        return False
 
 def is_git_url(package_url):
     return package_url.endswith('.git')
