@@ -72,25 +72,25 @@ def package_wizard():
 
     # third step
     package_class_list = ('iot', 'language', 'misc', 'multimedia',
-                          'peripherals', 'security', 'system', 'tools', 'peripherals/sensors')
+                          'peripherals', 'security', 'system', 'tools', 'peripherals/sensors', 'ai')
 
     arduino_class_list = ('arduino/sensors', 'arduino/timing', 'arduino/communication', 'arduino/dataprocessing', 
                             'arduino/datastorage', 'arduino/devicecontrol', 'arduino/display', 'arduino/other',
                             'arduino/signalio', 'arduino/uncategorized', 'arduino/projects')
 
-    print('\033[5;33;40m\n3.Please choose a package category from 1 to 10 : \033[0m')
+    print('\033[5;33;40m\n3.Please choose a package category from 1 to 11 : \033[0m')
     print("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
-          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:arduino]\033[0m")
+          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:ai]|[11:arduino]\033[0m") # arduino category must be the last one
 
     class_number = user_input()
-    while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 10:
+    while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 11:
         if class_number == '':
             print('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else:
-            print('\033[1;31;40mError: You must input an integer number from 1 to 10. Try again.\033[0m')
+            print('\033[1;31;40mError: You must input an integer number from 1 to 11. Try again.\033[0m')
         class_number = user_input()
 
-    if int(class_number) == 10: # Arduino category
+    if int(class_number) == 11: # Arduino category
         print('\033[5;33;40m\n3.Please choose an Arduino library category from 1 to 11 : \033[0m')
         print("\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
             "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m")
