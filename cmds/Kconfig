@@ -27,10 +27,6 @@ if SYS_CREATE_MDK_IAR_PROJECT
     
 endif
 
-config SYS_PKGS_DOWNLOAD_ACCELERATE
-    bool "Use China Mainland server"
-    default n
-
 config SYS_PKGS_USING_STATISTICS
     bool "Send usage data for improve product"
     default y
