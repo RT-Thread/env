@@ -132,7 +132,6 @@ def get_mac_address():
     return ":".join([mac[e:e+2] for e in range(0,11,2)])
 
 def Information_statistics():
-
     env_root = Import('env_root')
 
     # get the .config file from env
@@ -156,8 +155,9 @@ def package_upgrade(force_upgrade=False):
         Information_statistics()
 
     upgrade_packages_index(force_upgrade=force_upgrade)
-    upgrade_env_script(force_upgrade=force_upgrade)
+    # upgrade_env_script(force_upgrade=force_upgrade) # too dangerous to directly upgrade env script
 
+# upgrade python modules
 def package_upgrade_modules():
     try:
         from subprocess import call
