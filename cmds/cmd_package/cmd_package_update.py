@@ -134,7 +134,7 @@ def is_user_mange_package(bsp_package_path, pkg):
     return False
 
 
-def need_using_mirror_download():
+def need_using_mirror_download(config_file):
     try:
         ip = requests.get('http://ip.42.pl/raw').content.decode()
         url = 'http://www.ip-api.com/json/' + ip
@@ -144,16 +144,18 @@ def need_using_mirror_download():
         else:
             return False
     except:
-        print('Fail to get the ip location!')
-        return False
-
+        # use backup solution
+        if os.path.isfile(config_file) and find_macro_in_config(config_file, 'SYS_PKGS_DOWNLOAD_ACCELERATE'):
+            return True
+        else:
+            False
 
 def is_git_url(package_url):
     return package_url.endswith('.git')
 
 
 def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed,
-                        url_origin):
+                        url_origin, env_config_file):
     try:
         repo_path = os.path.join(bsp_package_path, package_name)
         repo_path = repo_path + '-' + package_info['ver']
@@ -179,13 +181,13 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
     submodule_path = os.path.join(repo_path, '.gitmodules')
     if os.path.isfile(submodule_path):
         print("Start to update submodule")
-        if need_using_mirror_download():
+        if need_using_mirror_download(env_config_file):
             replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
 
         cmd = 'git submodule update --init --recursive'
         execute_command(cmd, cwd=repo_path)
 
-        if need_using_mirror_download():
+        if need_using_mirror_download(env_config_file):
             if len(replace_list):
                 for item in replace_list:
                     submodule_path = os.path.join(repo_path, item[2])
@@ -193,7 +195,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
                         cmd = 'git remote set-url origin ' + item[0]
                         execute_command(cmd, cwd=submodule_path)
 
-    if need_using_mirror_download():
+    if need_using_mirror_download(env_config_file):
         if os.path.isfile(submodule_path):
             cmd = 'git checkout .gitmodules'
             execute_command(cmd, cwd=repo_path)
@@ -246,6 +248,9 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
         else:
             logging.info("NOT User managed package {0}, {1} need install. \n".format(bsp_package_path, package_info))
 
+    # get the .config file from env
+    env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
+
     package = PackageOperation()
     pkg_path = package_info['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\':
@@ -269,7 +274,7 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
 
     # noinspection PyBroadException
     try:
-        if need_using_mirror_download():
+        if need_using_mirror_download(env_config_file):
             get_package_url, get_ver_sha = get_url_from_mirror_server(pkgs_name_in_json, package_info['ver'])
 
             #  Check whether the package package url is valid
@@ -286,7 +291,7 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     if is_git_url(package_url):
         if not install_git_package(bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha,
                                    upstream_changed,
-                                   url_from_json):
+                                   url_from_json, env_config_file):
             result = False
     else:
         if not install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path,
@@ -362,6 +367,8 @@ def update_latest_packages(sys_value):
     env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
 
+    env_config_file = os.path.join(env_root, r'tools\scripts\cmds', '.config')
+
     with open(package_filename, 'r') as f:
         read_back_pkgs_json = json.load(f)
 
@@ -384,7 +391,7 @@ def update_latest_packages(sys_value):
             # noinspection PyBroadException
             try:
                 # If mirror acceleration is enabled, get the update address from the mirror server.
-                if need_using_mirror_download():
+                if need_using_mirror_download(env_config_file):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
                     # Change repo's upstream address.

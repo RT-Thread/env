@@ -27,6 +27,12 @@ if SYS_CREATE_MDK_IAR_PROJECT
     
 endif
 
+config SYS_PKGS_DOWNLOAD_ACCELERATE
+    bool "Use China Mainland server (mannually, backup solution)"
+    default n
+    help
+        This is a backup solution. Env will use this solution if cannot find the public IP location.
+
 config SYS_PKGS_USING_STATISTICS
     bool "Send usage data for improve product"
     default y
