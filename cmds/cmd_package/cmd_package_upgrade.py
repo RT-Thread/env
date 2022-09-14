@@ -143,14 +143,16 @@ def Information_statistics():
         return
 
 
-def package_upgrade(force_upgrade=False):
+def package_upgrade(force_upgrade=False, upgrade_script=False):
     """Update the package repository directory and env function scripts."""
 
-    if os.environ.get('RTTS_PLATFROM') != 'STUDIO':
+    if os.environ.get('RTTS_PLATFROM') != 'STUDIO': # not used in studio
         Information_statistics()
 
     upgrade_packages_index(force_upgrade=force_upgrade)
-    # upgrade_env_script(force_upgrade=force_upgrade) # too dangerous to directly upgrade env script
+
+    if upgrade_script:
+        upgrade_env_script(force_upgrade=force_upgrade)
 
 # upgrade python modules
 def package_upgrade_modules():

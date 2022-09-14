@@ -47,6 +47,8 @@ def run_env_cmd(args):
         package_upgrade()
     elif args.package_upgrade_force:
         package_upgrade(force_upgrade=True)
+    elif args.package_upgrade_script_force:
+        package_upgrade(force_upgrade=True, upgrade_script=True)
     elif args.package_upgrade_modules:
         package_upgrade_modules()
     elif args.package_print_env:
@@ -85,16 +87,22 @@ def add_parser(sub):
                         dest='package_create')
 
     parser.add_argument('--upgrade',
-                        help='upgrade local packages index and Env scripts from git repository',
+                        help='upgrade local packages index from git repository',
                         action='store_true',
                         default=False,
                         dest='package_upgrade')
 
     parser.add_argument('--upgrade-force', '--force-upgrade',
-                        help='forcely upgrade local packages index and Env scripts from git repository',
+                        help='forcely upgrade local packages index from git repository',
                         action='store_true',
                         default=False,
                         dest='package_upgrade_force')
+
+    parser.add_argument('--upgrade-script-force',
+                        help='forcely upgrade local packages index and Env script from git repository',
+                        action='store_true',
+                        default=False,
+                        dest='package_upgrade_script_force')
 
     parser.add_argument('--upgrade-modules',
                         help='upgrade python modules, e.g. requests module',
