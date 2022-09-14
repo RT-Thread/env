@@ -144,8 +144,10 @@ def need_using_mirror_download():
         else:
             return False
     except:
-        print('Fail to get the ip location!')
-        return False
+        if (-time.timezone)/3600 == 8:
+            return True
+        else:
+            False
 
 
 def is_git_url(package_url):

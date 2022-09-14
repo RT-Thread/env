@@ -45,13 +45,10 @@ except ImportError:
 def upgrade_packages_index(force_upgrade=False):
     """Update the package repository index."""
 
-    env_root = Import('env_root')
     pkgs_root = Import('pkgs_root')
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    if need_using_mirror_download(env_config_file):
-        get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
+    if need_using_mirror_download():
+        get_package_url = get_url_from_mirror_server('packages', 'latest')
 
         if get_package_url is not None:
             git_repo = get_package_url
@@ -102,11 +99,9 @@ def upgrade_env_script(force_upgrade=False):
     """Update env function scripts."""
 
     env_root = Import('env_root')
-    env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-    env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    if need_using_mirror_download(env_config_file):
-        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
+    if need_using_mirror_download():
+        get_package_url = get_url_from_mirror_server('env', 'latest')
 
         if get_package_url is not None:
             env_scripts_repo = get_package_url
