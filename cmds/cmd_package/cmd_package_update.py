@@ -139,7 +139,7 @@ class GeographyLocation():
 
     def __init__(self):
         try:
-            ip = requests.get('http://ip.42.pl/raw').content.decode()
+            ip = requests.get('https://ifconfig.me/ip').content.decode()
             url = 'http://www.ip-api.com/json/' + ip
             if requests.get(url).json()['country'] == 'China':
                 self._is_china = True
