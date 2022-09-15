@@ -5,7 +5,7 @@ config SYS_AUTO_UPDATE_PKGS
     default y
 
 config SYS_CREATE_MDK_IAR_PROJECT
-    bool "Auto create a mdk/iar project"
+    bool "Auto create a Keil-MDK or IAR project"
     default n
 
 if SYS_CREATE_MDK_IAR_PROJECT
@@ -24,7 +24,17 @@ if SYS_CREATE_MDK_IAR_PROJECT
         config SYS_CREATE_MDK4
             bool "MDK4"
     endchoice
-    
+
+    config SYS_CREATE_MDK_EXEC_PATH
+        string "MDK Path"
+        depends on SYS_CREATE_MDK5 || SYS_CREATE_MDK4
+        default "C:/Keil_v5"
+
+    config SYS_CREATE_IAR_EXEC_PATH
+        string "IAR Path"
+        depends on SYS_CREATE_IAR
+        default "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3"
+
 endif
 
 config SYS_PKGS_USING_STATISTICS
