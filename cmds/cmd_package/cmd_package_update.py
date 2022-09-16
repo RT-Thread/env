@@ -133,36 +133,30 @@ def is_user_mange_package(bsp_package_path, pkg):
         break
     return False
 
-
-class GeographyLocation():
-    _is_china = False
-
-    def __init__(self):
-        try:
-            ip = requests.get('https://ifconfig.me/ip').content.decode()
-            url = 'http://www.ip-api.com/json/' + ip
-            if requests.get(url).json()['country'] == 'China':
-                self._is_china = True
-            else:
-                self._is_china = False
-        except:
-            if (-time.timezone)/3600 == 8:
-                self._is_china = True
-            else:
-                self._is_china = False
-
-        if(self._is_china):
-            print("[Use Gitee server]")
-        else:
-            print("[Use Github server]")
-
-    def isChina (self):
-        return self._is_china
-
-iplocation = GeographyLocation()
+is_China_ip = None
 
 def need_using_mirror_download():
-    return iplocation.isChina()
+    global is_China_ip
+    if is_China_ip != None:
+        return is_China_ip
+    try:
+        ip = requests.get('https://ifconfig.me/ip').content.decode()
+        url = 'http://www.ip-api.com/json/' + ip
+        if requests.get(url).json()['country'] == 'China':
+            is_China_ip = True
+        else:
+            is_China_ip = False
+    except:
+        if (-time.timezone)/3600 == 8:
+            is_China_ip = True
+        else:
+            is_China_ip = False
+
+    if(is_China_ip):
+        print("[Use Gitee server]")
+    else:
+        print("[Use Github server]")
+
 
 def is_git_url(package_url):
     return package_url.endswith('.git')
