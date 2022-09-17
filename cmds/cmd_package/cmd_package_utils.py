@@ -32,6 +32,7 @@ import time
 import shutil
 import requests
 import logging
+from vars import Import
 
 def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
@@ -219,7 +220,7 @@ def find_string_macro_in_config(filename, macro_name):
 
 # return IAR execution path string or None for failure
 def find_IAR_EXEC_PATH():
-    env_root = os.getenv("ENV_ROOT")
+    env_root = Import('env_root')
     # get the .config file from env
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
@@ -229,7 +230,7 @@ def find_IAR_EXEC_PATH():
 
 # return Keil-MDK execution path string or None for failure
 def find_MDK_EXEC_PATH():
-    env_root = os.getenv("ENV_ROOT")
+    env_root = Import('env_root')
     # get the .config file from env
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')

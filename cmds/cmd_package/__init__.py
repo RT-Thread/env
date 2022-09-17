@@ -26,21 +26,11 @@
 # 2020-04-08     SummerGift      Optimize program structure
 #
 
-import os
 from .cmd_package_printenv import package_print_env, package_print_help
 from .cmd_package_list import list_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_update import package_update
 from .cmd_package_upgrade import package_upgrade, package_upgrade_modules
-from .cmd_package_utils import find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
-
-iar_exec_path = find_IAR_EXEC_PATH()
-if iar_exec_path:
-    os.environ['RTT_EXEC_PATH'] = iar_exec_path
-
-mdk_exec_path = find_MDK_EXEC_PATH()
-if mdk_exec_path:
-    os.environ['RTT_EXEC_PATH'] = mdk_exec_path
 
 def run_env_cmd(args):
     """Run packages command."""
