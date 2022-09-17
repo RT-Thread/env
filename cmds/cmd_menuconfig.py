@@ -29,7 +29,7 @@ import os
 import platform
 import re
 from vars import Import
-from .cmd_package.cmd_package_utils import find_macro_in_config
+from .cmd_package.cmd_package_utils import find_bool_macro_in_config
 
 
 def is_pkg_special_config(config_str):
@@ -222,18 +222,18 @@ def cmd(args):
         if not os.path.isfile(fn):
             return
 
-        if find_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
+        if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
             os.system('pkgs --update')
             print("==============================>The packages have been updated completely.")
 
-        if find_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
-            if find_macro_in_config(fn, 'SYS_CREATE_MDK4'):
+        if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
+            if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 os.system('scons --target=mdk4 -s')
                 print("Create mdk4 project done")
-            elif find_macro_in_config(fn, 'SYS_CREATE_MDK5'):
+            elif find_bool_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 os.system('scons --target=mdk5 -s')
                 print("Create mdk5 project done")
-            elif find_macro_in_config(fn, 'SYS_CREATE_IAR'):
+            elif find_bool_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 os.system('scons --target=iar -s')
                 print("Create iar project done")
 

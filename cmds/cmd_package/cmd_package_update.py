@@ -39,7 +39,7 @@ import pkgsdb
 from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
-    find_macro_in_config
+    find_bool_macro_in_config
 
 
 def determine_support_chinese(env_root):

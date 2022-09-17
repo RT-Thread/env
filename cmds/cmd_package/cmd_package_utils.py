@@ -32,7 +32,7 @@ import time
 import shutil
 import requests
 import logging
-
+from vars import Import
 
 def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
@@ -139,13 +139,17 @@ def user_input(msg=None):
     return value
 
 
-def find_macro_in_config(filename, macro_name):
+# Find the string after '='
+# e.g CONFIG_SYS_AUTO_UPDATE_PKGS=y
+# this function will return True and 'y'
+# True means this macro has been set and y is the string after '='
+def find_string_in_config(filename, macro_name):
     try:
         config = open(filename, "r")
     except Exception as e:
         print('Error message:%s' % e)
         print('open .config failed')
-        return False
+        return (False, None)
 
     empty_line = 1
 
@@ -179,12 +183,59 @@ def find_macro_in_config(filename, macro_name):
                 if setting[0].startswith('CONFIG_'):
                     setting[0] = setting[0][7:]
 
-                    if setting[0] == macro_name and setting[1] == 'y':
+                    if setting[0] == macro_name:
                         config.close()
-                        return True
+                        return (True, setting[1])
 
     config.close()
-    return False
+    return (False, None)
+
+
+# check if the bool macro is set or not
+# e.g CONFIG_SYS_AUTO_UPDATE_PKGS=y
+# will return True because this macro has been set
+# If this macro cannot find or the .config cannot find or the macro is not set (n),
+# the function will return False  
+def find_bool_macro_in_config(filename, macro_name):
+    rst, str = find_string_in_config(filename, macro_name)
+    if rst == True and str == 'y':
+        return True
+    else:
+        return False
+
+
+# find a string macro is defined or not
+# e.g. CONFIG_SYS_CREATE_IAR_EXEC_PATH="C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3"
+# will return "C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.3"
+# If this macro cannot find or .config cannot find
+# the function will return None
+def find_string_macro_in_config(filename, macro_name):
+    rst, str = find_string_in_config(filename, macro_name)
+    if rst == True:
+        str = str.strip('"')
+        return str
+    else:
+        return None
+
+
+# return the execution path string or None for failure
+def find_IAR_EXEC_PATH():
+    env_root = Import('env_root')
+    # get the .config file from env
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+
+    return find_string_macro_in_config(env_config_file, 'SYS_CREATE_IAR_EXEC_PATH')
+
+
+# return the execution path string or None for failure
+def find_MDK_EXEC_PATH():
+    env_root = Import('env_root')
+    # get the .config file from env
+    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_config_file = os.path.join(env_kconfig_path, '.config')
+
+    return find_string_macro_in_config(env_config_file, 'SYS_CREATE_MDK_EXEC_PATH')
 
 
 def remove_folder(folder_path):

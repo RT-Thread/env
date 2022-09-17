@@ -26,7 +26,7 @@
 import os
 import uuid
 from vars import Import
-from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_macro_in_config
+from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_bool_macro_in_config
 from .cmd_package_update import need_using_mirror_download
 
 try:
@@ -130,12 +130,11 @@ def get_mac_address():
 
 def Information_statistics():
     env_root = Import('env_root')
-
     # get the .config file from env
     env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    if find_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
+    if find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
         response = requests.get('https://www.rt-thread.org/studio/statistics/api/envuse?userid='+str(mac_addr)+'&username='+str(mac_addr)+'&envversion=1.0&studioversion=2.0&ip=127.0.0.1')
         if response.status_code != 200:
