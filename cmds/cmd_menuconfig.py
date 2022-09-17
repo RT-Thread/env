@@ -29,7 +29,7 @@ import os
 import platform
 import re
 from vars import Import
-from .cmd_package.cmd_package_utils import find_bool_macro_in_config
+from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
 
 def is_pkg_special_config(config_str):
@@ -227,15 +227,27 @@ def cmd(args):
             print("==============================>The packages have been updated completely.")
 
         if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
+            mdk_path = find_MDK_EXEC_PATH()
+            iar_path = find_IAR_EXEC_PATH()
+
             if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK4'):
-                os.system('scons --target=mdk4 -s')
-                print("Create mdk4 project done")
+                if mdk_path:
+                    os.system('scons --target=mdk4 -s --exec-path="' + mdk_path+'"')
+                else:
+                    os.system('scons --target=mdk4 -s')
+                print("Create Keil-MDK4 project done")
             elif find_bool_macro_in_config(fn, 'SYS_CREATE_MDK5'):
-                os.system('scons --target=mdk5 -s')
-                print("Create mdk5 project done")
+                if mdk_path:
+                    os.system('scons --target=mdk5 -s --exec-path="' + mdk_path+'"')
+                else:
+                     os.system('scons --target=mdk5 -s')
+                print("Create Keil-MDK5 project done")
             elif find_bool_macro_in_config(fn, 'SYS_CREATE_IAR'):
-                os.system('scons --target=iar -s')
-                print("Create iar project done")
+                if iar_path:
+                    os.system('scons --target=iar -s --exec-path="' + iar_path+'"')
+                else:
+                    os.system('scons --target=iar -s')
+                print("Create IAR project done")
 
 
 def add_parser(sub):
