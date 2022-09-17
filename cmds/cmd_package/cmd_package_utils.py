@@ -218,7 +218,7 @@ def find_string_macro_in_config(filename, macro_name):
         return None
 
 
-# return the execution path string or None for failure
+# return IAR execution path string or None for failure
 def find_IAR_EXEC_PATH():
     env_root = Import('env_root')
     # get the .config file from env
@@ -228,7 +228,7 @@ def find_IAR_EXEC_PATH():
     return find_string_macro_in_config(env_config_file, 'SYS_CREATE_IAR_EXEC_PATH')
 
 
-# return the execution path string or None for failure
+# return Keil-MDK execution path string or None for failure
 def find_MDK_EXEC_PATH():
     env_root = Import('env_root')
     # get the .config file from env
