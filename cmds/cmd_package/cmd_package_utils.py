@@ -180,6 +180,7 @@ def find_macro_in_config(filename, macro_name):
                     setting[0] = setting[0][7:]
 
                     if setting[0] == macro_name and setting[1] == 'y':
+                        config.close()
                         return True
 
     config.close()
