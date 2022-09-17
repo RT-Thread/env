@@ -48,9 +48,16 @@ def execute_command(cmd_string, cwd=None, shell=True):
     return stdout_str
 
 
+def is_windows():
+    if platform.system() == "Windows":
+        return True
+    else:
+        return False
+
+
 def git_pull_repo(repo_path, repo_url=''):
     try:
-        if platform.system() == "Windows":
+        if is_windows():
             cmd = r'git config --local core.autocrlf true'
             execute_command(cmd, cwd=repo_path)
         cmd = r'git pull ' + repo_url
@@ -138,7 +145,7 @@ def find_macro_in_config(filename, macro_name):
     except Exception as e:
         print('Error message:%s' % e)
         print('open .config failed')
-        return
+        return False
 
     empty_line = 1
 
@@ -177,13 +184,6 @@ def find_macro_in_config(filename, macro_name):
 
     config.close()
     return False
-
-
-def is_windows():
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
 
 
 def remove_folder(folder_path):
