@@ -52,7 +52,7 @@ def Information_statistics():
                 return
         except Exception as e:
             exit(0)
-    elif os.path.isfile(env_config_file) and cmd_package.find_macro_in_config(env_config_file, 'SYS_PKGS_NOT_USING_STATISTICS'):
+    elif os.path.isfile(env_config_file) and cmd_package.find_bool_macro_in_config(env_config_file, 'SYS_PKGS_NOT_USING_STATISTICS'):
         return True
 
 
