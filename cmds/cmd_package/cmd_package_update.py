@@ -156,6 +156,7 @@ def need_using_mirror_download():
         print("[Use Gitee server]")
     else:
         print("[Use Github server]")
+    return is_China_ip
 
 
 def is_git_url(package_url):
