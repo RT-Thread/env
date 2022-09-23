@@ -46,15 +46,15 @@ def package_wizard():
     # first step
     print('\033[5;33;40m\n1.Please input a new package name :\033[0m')
 
-    name = user_input()
+    name = user_input().strip()
     regular_obj = re.compile('^[\w\d_-]*$')
     while name == '' or name.isspace() == True or regular_obj.search(name.strip()) == None:
         if name == '' or name.isspace():
             print('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-            name = user_input()
+            name = user_input().strip()
         else:
             print('\033[1;31;40mError: package name is made of alphabet, number, underline and dash. Try again.\033[0m')
-            name = user_input()
+            name = user_input().strip()
 
     default_description = 'Please add description of ' + name + ' in English.'
     description = default_description
@@ -62,7 +62,7 @@ def package_wizard():
 
     # second step
     print("\033[5;33;40m\n2.Please input this package version, default : '1.0.0' \033[0m")
-    ver = user_input()
+    ver = user_input().strip()
     if ver == '':
         print("using default version 1.0.0")
         ver = '1.0.0'
@@ -82,13 +82,13 @@ def package_wizard():
     print("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
           "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:ai]|[11:arduino]\033[0m") # arduino category must be the last one
 
-    class_number = user_input()
+    class_number = user_input().strip()
     while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 11:
         if class_number == '':
             print('\033[1;31;40mError: You must choose a package category. Try again.\033[0m')
         else:
             print('\033[1;31;40mError: You must input an integer number from 1 to 11. Try again.\033[0m')
-        class_number = user_input()
+        class_number = user_input().strip()
 
     is_arduino_library = False
     if int(class_number) == 11: # Arduino category
@@ -96,13 +96,13 @@ def package_wizard():
         print("\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
             "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m")
 
-        arduino_class_number = user_input()
+        arduino_class_number = user_input().strip()
         while arduino_class_number == '' or arduino_class_number.isdigit() is False or int(arduino_class_number) < 1 or int(arduino_class_number) > 11:
             if arduino_class_number == '':
                 print('\033[1;31;40mError: You must choose a category. Try again.\033[0m')
             else:
                 print('\033[1;31;40mError: You must input an integer number from 1 to 11. Try again.\033[0m')
-            arduino_class_number = user_input()
+            arduino_class_number = user_input().strip()
 
         package_class = arduino_class_list[int(arduino_class_number) - 1]
         is_arduino_library = True
@@ -113,25 +113,25 @@ def package_wizard():
     # fourth step
     print("\033[5;33;40m\n4.Please input author's github ID of this package :\033[0m")
 
-    author_name = user_input()
+    author_name = user_input().strip()
     while author_name == '':
         print("\033[1;31;40mError: you must input author's github ID of this package. Try again.\033[0m")
-        author_name = user_input()
+        author_name = user_input().strip()
 
     # fifth step
     author_email = user_input('\033[5;33;40m\n5.Please input author email of this package :\n\033[0m')
     while author_email == '':
         print('\033[1;31;40mError: you must input author email of this package. Try again.\033[0m')
-        author_email = user_input()
+        author_email = user_input().strip()
 
     # sixth step
     print('\033[5;33;40m\n6.Please choose a license of this package from 1 to 5, or input other license name :\033[0m')
     print("\033[1;32;40m[1:Apache-2.0]|[2:MIT]|[3:LGPL-2.1]|[4:GPL-2.0]|[5:BSD-3-Clause]\033[0m")
     license_index = ('Apache-2.0', 'MIT', 'LGPL-2.1', 'GPL-2.0', 'BSD-3-Clause')
-    license_class = user_input()
+    license_class = user_input().strip()
     while license_class == '':
         print('\033[1;31;40mError: you must choose or input a license of this package. Try again.\033[0m')
-        license_class = user_input()
+        license_class = user_input().strip()
 
     if license_class.isdigit() and 1 <= int(license_class) <= 5:
         license_choice = license_index[int(license_class) - 1]
@@ -144,10 +144,10 @@ def package_wizard():
         "\033[1;32;40mFor example, hello package's repository url "
         "is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
 
-    repository = user_input()
+    repository = user_input().strip()
     while repository == '':
         print('\033[1;31;40mError: you must input a repository of this package. Try again.\033[0m')
-        repository = user_input()
+        repository = user_input().strip()
 
     pkg_path = name
     if not os.path.exists(pkg_path):
