@@ -59,28 +59,44 @@ def get_mirror_giturl(submodule_name):
     mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submodule_name + '.git'
     return mirror_url
 
+def get_esp_mirror_giturl(submodule_name):
+    if submodule_name == "cexception":
+        submodule_name = "CException"
+    elif submodule_name == "unity":
+        submodule_name = "Unity"
+    mirror_url = 'https://gitee.com/esp-submodules/' + submodule_name + '.git'
+    return mirror_url
 
-def modify_submod_file_to_mirror(submodule_path):
+
+def modify_submod_file_to_mirror(gitmodule_path, use_esp_mirror):
     """Modify the.gitmodules file based on the submodule to be updated"""
 
     replace_list = []
     try:
-        with open(submodule_path, 'r') as f:
-            for line in f:
+        with open(gitmodule_path, 'r') as f:
+            line = f.readline()
+            while line:
                 line = line.replace('\t', '').replace(' ', '').replace('\n', '').replace('\r', '')
-                if line.startswith('url'):
-                    submodule_git_url = line.split('=')[1]
-                    submodule_name = submodule_git_url.split('/')[-1].replace('.git', '')
-                    replace_url = get_mirror_giturl(submodule_name)
-                    query_submodule_name = 'submod_' + submodule_name
-                    get_package_url, get_ver_sha = get_url_from_mirror_server(
-                        query_submodule_name, 'latest')
+                if line.startswith('path'):
+                    submodule_path = line.split("=")[1]
+                    line = f.readline()
+                    line = line.replace('\t', '').replace(' ', '').replace('\n', '').replace('\r', '')
+                    if line.startswith('url'):
+                        submodule_git_url = line.split('=')[1]
+                        submodule_name = submodule_git_url.split('/')[-1].replace('.git', '')
+                        if not use_esp_mirror:
+                            query_submodule_name = 'submod_' + submodule_name
+                            get_package_url, get_ver_sha = get_url_from_mirror_server(
+                                query_submodule_name, 'latest')
+                        else:
+                            get_package_url = get_esp_mirror_giturl(submodule_name)
 
-                    if get_package_url is not None and determine_url_valid(get_package_url):
-                        replace_list.append(
-                            (submodule_git_url, replace_url, submodule_name))
+                        if get_package_url is not None and determine_url_valid(get_package_url):
+                            replace_list.append(
+                                (submodule_git_url, get_package_url, submodule_name, submodule_path))
+                line = f.readline()
 
-        with open(submodule_path, 'r+') as f:
+        with open(gitmodule_path, 'r+') as f:
             submod_file_count = f.read()
 
         write_content = submod_file_count
@@ -88,7 +104,7 @@ def modify_submod_file_to_mirror(submodule_path):
         for item in replace_list:
             write_content = write_content.replace(item[0], item[1])
 
-        with open(submodule_path, 'w') as f:
+        with open(gitmodule_path, 'w') as f:
             f.write(str(write_content))
 
         return replace_list
@@ -162,6 +178,27 @@ def need_using_mirror_download():
 def is_git_url(package_url):
     return package_url.endswith('.git')
 
+def update_submodule(repo_path, use_esp_mirror):
+    print(repo_path)
+    # If there is a .gitmodules file in the package, prepare to update submodule.
+    gitmodules_path = os.path.join(repo_path, '.gitmodules')
+    if os.path.isfile(gitmodules_path):
+        if need_using_mirror_download():
+            replace_list = modify_submod_file_to_mirror(gitmodules_path, use_esp_mirror)
+            cmd = 'git submodule update --init'
+            execute_command(cmd, cwd=repo_path)
+            for item in replace_list:
+                submodule_path = os.path.join(repo_path, item[3])
+                print(submodule_path)
+                if os.path.isdir(submodule_path):
+                    update_submodule(submodule_path, use_esp_mirror)
+            cmd = 'git checkout .gitmodules'
+            execute_command(cmd, cwd=repo_path)
+            cmd = 'git submodule sync'
+            execute_command(cmd, cwd=repo_path)
+        else:
+            cmd = 'git submodule update --init --recursive'
+            execute_command(cmd, cwd=repo_path)
 
 def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed,
                         url_origin):
@@ -187,27 +224,10 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         execute_command(cmd, cwd=repo_path)
 
     # If there is a .gitmodules file in the package, prepare to update submodule.
-    submodule_path = os.path.join(repo_path, '.gitmodules')
-    if os.path.isfile(submodule_path):
+    gitmodules_path = os.path.join(repo_path, '.gitmodules')
+    if os.path.isfile(gitmodules_path):
         print("Start to update submodule")
-        if need_using_mirror_download():
-            replace_list = modify_submod_file_to_mirror(submodule_path)  # Modify .gitmodules file
-
-        cmd = 'git submodule update --init --recursive'
-        execute_command(cmd, cwd=repo_path)
-
-        if need_using_mirror_download():
-            if len(replace_list):
-                for item in replace_list:
-                    submodule_path = os.path.join(repo_path, item[2])
-                    if os.path.isdir(submodule_path):
-                        cmd = 'git remote set-url origin ' + item[0]
-                        execute_command(cmd, cwd=submodule_path)
-
-    if need_using_mirror_download():
-        if os.path.isfile(submodule_path):
-            cmd = 'git checkout .gitmodules'
-            execute_command(cmd, cwd=repo_path)
+        update_submodule(repo_path, package_name == u"ESP-IDF")
 
     return True
 
@@ -325,22 +345,6 @@ def and_list(aList, bList):
             tmp.append(a)
     return tmp
 
-
-def update_submodule(repo_path):
-    """Update the submodules in the repository."""
-
-    try:
-        if os.path.isfile(os.path.join(repo_path, '.gitmodules')):
-            print("Please wait a few seconds in order to update the submodule.")
-            cmd = 'git submodule init -q'
-            execute_command(cmd, cwd=repo_path)
-            cmd = 'git submodule update'
-            execute_command(cmd, cwd=repo_path)
-            print("Submodule update successful")
-    except Exception as e:
-        logging.warning('Error message:%s' % e)
-
-
 def get_package_folder(origin_path, version):
     return origin_path + '-' + version
 
@@ -430,7 +434,7 @@ def update_latest_packages(sys_value):
             git_pull_repo(repo_path)
 
             # If the package has submodules, update the submodules.
-            update_submodule(repo_path)
+            update_submodule(repo_path, pkgs_name_in_json == u"ESP-IDF")
 
             # recover origin url to the path which get from packages.json file
             if package.get_url(pkg['ver']):
@@ -523,9 +527,6 @@ def pre_package_update():
     fn = '.config'
     pkgs = kconfig.parse(fn)
     newpkgs = pkgs
-
-    if not os.path.exists(bsp_packages_path):
-        os.mkdir(bsp_packages_path)
 
     # regenerate file : packages/pkgs.json
     package_json_filename = os.path.join(bsp_packages_path, 'pkgs.json')
