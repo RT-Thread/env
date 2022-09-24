@@ -48,13 +48,12 @@ def package_wizard():
 
     name = user_input().strip()
     regular_obj = re.compile('^[\w\d_-]*$')
-    while name == '' or name.isspace() == True or regular_obj.search(name.strip()) == None:
+    while name == '' or name.isspace() == True or regular_obj.search(name) == None:
         if name == '' or name.isspace():
             print('\033[1;31;40mError: you must input a package name. Try again.\033[0m')
-            name = user_input().strip()
         else:
             print('\033[1;31;40mError: package name is made of alphabet, number, underline and dash. Try again.\033[0m')
-            name = user_input().strip()
+        name = user_input().strip()
 
     default_description = 'Please add description of ' + name + ' in English.'
     description = default_description
