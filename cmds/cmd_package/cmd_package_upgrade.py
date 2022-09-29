@@ -48,7 +48,7 @@ def upgrade_packages_index(force_upgrade=False):
     pkgs_root = Import('pkgs_root')
 
     if need_using_mirror_download():
-        get_package_url = get_url_from_mirror_server('packages', 'latest')
+        get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
 
         if get_package_url is not None:
             git_repo = get_package_url
@@ -101,7 +101,7 @@ def upgrade_env_script(force_upgrade=False):
     env_root = Import('env_root')
 
     if need_using_mirror_download():
-        get_package_url = get_url_from_mirror_server('env', 'latest')
+        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
 
         if get_package_url is not None:
             env_scripts_repo = get_package_url
