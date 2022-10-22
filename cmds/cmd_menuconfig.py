@@ -31,6 +31,9 @@ import re
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
+def build_kconfig_frontends(rtt_root):
+    kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
+    os.system('scons -C ' + kconfig_dir)
 
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
@@ -135,7 +138,10 @@ def mk_rtconfig(filename):
 
 def cmd(args):
     env_root = Import('env_root')
-    os_version = platform.platform(True).split('-')[2][:3]
+    os.environ['PKGS_ROOT'] = Import("pkgs_root")
+    rtt_root = Import('rtt_root')
+    if platform.system() == "Windows":
+        os_version = platform.platform(True).split('-')[2][:3]
     kconfig_win7_path = os.path.join(
         env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
@@ -172,40 +178,55 @@ def cmd(args):
     elif args.menuconfig_g:
         mk_rtconfig(fn)
     elif args.menuconfig_silent:
-        if float(os_version) >= 6.2:
-            os.system('kconfig-mconf Kconfig -n')
-            mk_rtconfig(fn)
-        else:
-            if os.path.isfile(kconfig_win7_path):
-                os.system('kconfig-mconf_win7 Kconfig -n')
-            else:
+        if platform.system() == "Windows":
+            if float(os_version) >= 6.2:
                 os.system('kconfig-mconf Kconfig -n')
+                mk_rtconfig(fn)
+            else:
+                if os.path.isfile(kconfig_win7_path):
+                    os.system('kconfig-mconf_win7 Kconfig -n')
+                else:
+                    os.system('kconfig-mconf Kconfig -n')
+        else:
+            build_kconfig_frontends(rtt_root)
+            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
+            os.system(kconfig_cmd + ' Kconfig -n')
 
     elif args.menuconfig_setting:
-        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
+        env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
 
-        if float(os_version) >= 6.2:
-            os.system('kconfig-mconf Kconfig')
-        else:
-            if os.path.isfile(kconfig_win7_path):
-                os.system('kconfig-mconf_win7 Kconfig')
-            else:
+        if platform.system() == "Windows":
+            if float(os_version) >= 6.2:
                 os.system('kconfig-mconf Kconfig')
+            else:
+                if os.path.isfile(kconfig_win7_path):
+                    os.system('kconfig-mconf_win7 Kconfig')
+                else:
+                    os.system('kconfig-mconf Kconfig')
+        else:
+            build_kconfig_frontends(rtt_root)
+            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
+            os.system(kconfig_cmd + ' Kconfig')
 
         os.chdir(beforepath)
 
         return
 
     else:
-        if float(os_version) >= 6.2:
-            os.system('kconfig-mconf Kconfig')
-        else:
-            if os.path.isfile(kconfig_win7_path):
-                os.system('kconfig-mconf_win7 Kconfig')
-            else:
+        if platform.system() == "Windows":
+            if float(os_version) >= 6.2:
                 os.system('kconfig-mconf Kconfig')
+            else:
+                if os.path.isfile(kconfig_win7_path):
+                    os.system('kconfig-mconf_win7 Kconfig')
+                else:
+                    os.system('kconfig-mconf Kconfig')
+        else:
+            build_kconfig_frontends(rtt_root)
+            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
+            os.system(kconfig_cmd + ' Kconfig')
 
     if os.path.isfile(fn):
         mtime2 = os.path.getmtime(fn)
@@ -215,17 +236,17 @@ def cmd(args):
     if mtime != mtime2:
         mk_rtconfig(fn)
 
+    env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
+    fn = os.path.join(env_kconfig_path, '.config')
+
+    if not os.path.isfile(fn):
+        return
+
+    if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
+        os.system('pkgs --update')
+        print("==============================>The packages have been updated completely.")
+    
     if platform.system() == "Windows":
-        env_kconfig_path = os.path.join(env_root, r'tools\scripts\cmds')
-        fn = os.path.join(env_kconfig_path, '.config')
-
-        if not os.path.isfile(fn):
-            return
-
-        if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
-            os.system('pkgs --update')
-            print("==============================>The packages have been updated completely.")
-
         if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             mdk_path = find_MDK_EXEC_PATH()
             iar_path = find_IAR_EXEC_PATH()
