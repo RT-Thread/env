@@ -100,16 +100,24 @@ def get_bsp_root():
 
     return bsp_root
 
+def get_rtt_root(bsp_root):
+    rtt_root = os.getenv("RTT_ROOT")
+    if rtt_root is None:
+        rtt_root = os.path.join(bsp_root, '..', '..')
+    return rtt_root
+
 
 def export_environment_variable():
     script_root = os.path.split(os.path.realpath(__file__))[0]
     sys.path = sys.path + [os.path.join(script_root)]
     bsp_root = get_bsp_root()
+    rtt_root = get_rtt_root(bsp_root)
     env_root = get_env_root()
     pkgs_root = get_package_root(env_root)
 
     Export('env_root')
     Export('bsp_root')
+    Export('rtt_root')
     Export('pkgs_root')
 
 
