@@ -34,7 +34,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread Env Tool v1.3.0'
+__version__ = 'RT-Thread Env Tool v1.4.0'
 
 
 def init_argparse():
