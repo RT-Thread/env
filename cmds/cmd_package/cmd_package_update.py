@@ -264,7 +264,11 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     pkg_path = os.path.join(pkgs_root, pkg_path, 'package.json')
     package.parse(pkg_path)
 
-    url_from_json = package.get_url(package_info['ver'])
+    try:
+        url_from_json = package.get_url(package_info['ver'])
+    except:
+        print("Warning: cannot find the corresponding version. Please check {}'s Kconfig file".format(package_info['name'].capitalize()))
+        return False
 
     if not url_from_json:
         return False
