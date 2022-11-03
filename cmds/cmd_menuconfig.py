@@ -35,6 +35,20 @@ def build_kconfig_frontends(rtt_root):
     kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
     os.system('scons -C ' + kconfig_dir)
 
+def get_rtt_root():
+    rtt_root = os.getenv("RTT_ROOT")
+    if rtt_root is None:
+        bsp_root = Import("bsp_root")
+        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
+            lines = kconfig.readlines()
+        for i in range(len(lines)):
+            if "config RTT_DIR" in lines[i]:
+                break
+        rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
+        if not os.path.isabs(rtt_root):
+            rtt_root = os.path.join(bsp_root, rtt_root)
+    return rtt_root
+
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
@@ -139,7 +153,6 @@ def mk_rtconfig(filename):
 def cmd(args):
     env_root = Import('env_root')
     os.environ['PKGS_ROOT'] = Import("pkgs_root")
-    rtt_root = Import('rtt_root')
     if platform.system() == "Windows":
         os_version = platform.platform(True).split('-')[2][:3]
     kconfig_win7_path = os.path.join(
@@ -160,6 +173,9 @@ def cmd(args):
             os.system('chcp 437  > nul')
 
         return False
+
+    if platform.system() != "Windows":
+        rtt_root = get_rtt_root()
 
     fn = '.config'
 
