@@ -18,6 +18,9 @@ if ! [ -x "$(command -v brew)" ]; then
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 
+brew update
+brew upgrade
+
 if ! [ -x "$(command -v git)" ]; then
     echo "Installing git."
     brew install git
