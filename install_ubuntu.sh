@@ -13,6 +13,9 @@ $RTT_PYTHON --version 2 > /dev/null || {
     exit 1
 }
 
+sudo apt update
+sudo apt upgrade
+
 if ! [ -x "$(command -v gcc)" ]; then
     echo "Installing gcc."
     sudo apt install gcc
@@ -30,7 +33,7 @@ fi
 
 $RTT_PYTHON -m pip list > /dev/null || {
     echo "Installing pip."
-    sudo apt install python3-pip
+    sudo apt install $RTT_PYTHON-pip
 }
 
 if ! [ -x "$(command -v scons)" ]; then
