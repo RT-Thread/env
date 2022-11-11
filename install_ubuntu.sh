@@ -23,6 +23,8 @@ sudo apt upgrade -y
 
 sudo apt install gcc git libncurses5-dev scons gcc-arm-none-eabi binutils-arm-none-eabi qemu qemu-system-arm -y
 
+export RTT_EXEC_PATH=/usr/bin # set the default tool chain path
+
 wget https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh -O touch_env.sh
 chmod 777 touch_env.sh
 ./touch_env.sh
