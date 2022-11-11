@@ -14,7 +14,7 @@ $RTT_PYTHON --version 2 > /dev/null || {
 }
 
 sudo apt update
-sudo apt upgrade
+sudo apt upgrade -y
 
 if ! [ -x "$(command -v gcc)" ]; then
     echo "Installing gcc."
