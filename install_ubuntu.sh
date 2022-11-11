@@ -13,32 +13,16 @@ $RTT_PYTHON --version 2 > /dev/null || {
     exit 1
 }
 
+$RTT_PYTHON -m pip list > /dev/null || {
+    echo "Installing pip."
+    sudo apt install $RTT_PYTHON-pip -y
+}
+
 sudo apt update
 sudo apt upgrade -y
 
-if ! [ -x "$(command -v gcc)" ]; then
-    echo "Installing gcc."
-    sudo apt install gcc
-fi
+sudo apt install gcc git libncurses5-dev scons gcc-arm-none-eabi binutils-arm-none-eabi qemu qemu-system-arm -y
 
-if ! [ -x "$(command -v git)" ]; then
-    echo "Installing git."
-    sudo apt install git
-fi
-
-if [ $(dpkg-query -W -f='${Status}' libncurses5-dev 2>/dev/null | grep -c "ok installed") -eq 0 ]; then
-    echo "Installing ncurses."
-    sudo apt install libncurses5-dev
-fi
-
-$RTT_PYTHON -m pip list > /dev/null || {
-    echo "Installing pip."
-    sudo apt install $RTT_PYTHON-pip
-}
-
-if ! [ -x "$(command -v scons)" ]; then
-    echo "Installing scons."
-    sudo apt install scons
-fi
-
+wget https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh -O touch_env.sh
+chmod 777 touch_env.sh
 ./touch_env.sh
