@@ -21,10 +21,13 @@ $RTT_PYTHON -m pip list > /dev/null || {
 sudo apt update
 sudo apt upgrade -y
 
-sudo apt install gcc git libncurses5-dev scons gcc-arm-none-eabi binutils-arm-none-eabi qemu qemu-system-arm -y
+sudo apt install gcc git libncurses5-dev scons gcc-arm-none-eabi binutils-arm-none-eabi gdb-multiarch qemu qemu-system-arm -y
 
 export RTT_EXEC_PATH=/usr/bin # set the default tool chain path
-
-wget https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh -O touch_env.sh
+url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
+if [ $1 ] && [ $1 = --gitee ]; then
+    url=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
+fi
+wget $url -O touch_env.sh
 chmod 777 touch_env.sh
-./touch_env.sh
+./touch_env.sh $@
