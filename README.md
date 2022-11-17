@@ -11,14 +11,14 @@
 ```
 wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
-./install_ubuntu.sh
+source ./install_ubuntu.sh
 ```
 
 对于中国大陆用户，请使用以下命令
 ```
 wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
-./install_ubuntu.sh --gitee
+source ./install_ubuntu.sh --gitee
 ```
 
 ### Prepare Env
