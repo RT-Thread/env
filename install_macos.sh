@@ -41,12 +41,16 @@ if ! [ -x "$(command -v scons)" ]; then
     $RTT_PYTHON -m pip install scons
 fi
 
+if ! [[ `$RTT_PYTHON -m pip list | grep requests` ]]; then
+    echo "Installing requests."
+    $RTT_PYTHON -m pip install requests
+fi
+
 if ! [ -x "$(command -v arm-none-eabi-gcc)" ]; then
     echo "Installing GNU Arm Embedded Toolchain."
     brew install gnu-arm-embedded
 fi
 
-export RTT_EXEC_PATH=/usr/bin # set the default tool chain path
 url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
 if [ $1 ] && [ $1 = --gitee ]; then
     url=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh

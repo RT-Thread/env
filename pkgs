@@ -1,1 +1,1 @@
-python ~/.env/tools/scripts/env.py package $*
+python3 ~/.env/tools/scripts/env.py package $*
