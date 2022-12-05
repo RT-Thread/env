@@ -23,20 +23,9 @@ chmod 777 install_ubuntu.sh
 
 ### Prepare Env
 
-run command under one of bsp:
-```
-scons --menuconfig
-```
-If the env is not initialized in your machine, above command will intialize env script under your `~/.env` folder.
+PLAN A: Whenever start the ubuntu system, you need to type command `source ~/.env/env.sh` to activate the environment variables.
 
+or PLAN B: open `~/.bashrc` file, and attach the command `source ~/.env/env.sh` at the end of the file. It will be automatically executed when you log in the ubuntu, and you don't need to execute that command any more.
 ### Use Env
 
-There is one `pkgs` shell script under `~/.env/tools/scripts` folder. In order to use it more conveniently, your can run following command to set environment:
-```
-source ~/.env/env.sh
-```
-Then when you use `scons --menuconfig` to config online packages, you can use:
-```
-pkgs --update
-```
-to update local packages under your local bsp project.
+Please see: https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig
