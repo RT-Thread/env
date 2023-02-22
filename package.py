@@ -64,7 +64,6 @@ if PKG_USING_${name}
 
     choice
         prompt "Version"
-        default PKG_USING_${name}_LATEST_VERSION
         help
             Select the package version
 
