@@ -28,11 +28,22 @@ if (!$?) {
     exit
 }
 
-
+$git_url = "https://github.com/git-for-windows/git/releases/download/v2.39.2.windows.1/Git-2.39.2-64-bit.exe"
+if ($args[0] -eq "--gitee") {
+    $git_url = "https://registry.npmmirror.com/-/binary/git-for-windows/v2.39.2.windows.1/Git-2.39.2-64-bit.exe"
+}
 if (!(Test-Command git)) {
     echo "Git not installed. Will install Git."
     echo "Installing git."
     winget install --id Git.Git -e --source winget
+    if (!$?) {
+        echo "Can't find winget cmd, Will install git 2.39.2."
+        echo "downloading git."
+        wget -O Git64.exe $git_url
+        echo "Please install git. when install done, close the current terminal and run this script again."
+        cmd /c Git64.exe /quiet PrependPath=1
+        exit
+    }
 }
 
 $PIP_SOURCE = "https://pypi.org/simple"
