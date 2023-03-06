@@ -5,14 +5,15 @@ function Test-Command( [string] $CommandName ) {
     (Get-Command $CommandName -ErrorAction SilentlyContinue) -ne $null
 }
 
-foreach ($p_cmd in ("python3","python")) {
-    cmd /c $p_cmd --version | Out-Null
+foreach ($p_cmd in ("python3", "python", "py")) {
+    cmd /c $p_cmd --version | findstr "Python" | Out-Null
     if (!$?)  { continue }
     $RTT_PYTHON = $p_cmd
     break
 }
 
-if (!(Test-Command $RTT_PYTHON)) {
+cmd /c $RTT_PYTHON --version | findstr "Python" | Out-Null
+if (!$?) {
     echo "Python not installed. Will install python 3.11.2."
     echo "Downloading Python."
     wget -O Python_setup.exe https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe
@@ -21,9 +22,12 @@ if (!(Test-Command $RTT_PYTHON)) {
         cmd /c Python_setup.exe /quiet TargetDir=D:\Progrem\Python311 InstallAllUsers=1 PrependPath=1 Include_test=0
     }
     else {
-        cmd /c Python_setup.exe /quiet InstallAllUsers=1 PrependPath=1 Include_test=0
+        cmd /c Python_setup.exe /quiet PrependPath=1 Include_test=0
     }
+    echo "Install Python done. please close the current terminal and run this script again."
+    exit
 }
+
 
 if (!(Test-Command git)) {
     echo "Git not installed. Will install Git."
@@ -31,23 +35,30 @@ if (!(Test-Command git)) {
     winget install --id Git.Git -e --source winget
 }
 
-cmd /c $RTT_PYTHON -m pip list | Out-Null
+$PIP_SOURCE = "https://pypi.org/simple"
+$PIP_HOST = "pypi.org"
+if ($args[0] -eq "--gitee") {
+    $PIP_SOURCE = "http://mirrors.aliyun.com/pypi/simple"
+    $PIP_HOST = "mirrors.aliyun.com"
+}
+
+cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | Out-Null
 if (!$?) {
     echo "Installing pip."
     cmd /c $RTT_PYTHON -m ensurepip --upgrade
 }
 
-cmd /c $RTT_PYTHON -m pip install --upgrade pip | Out-Null
+cmd /c $RTT_PYTHON -m pip install --upgrade pip -i $PIP_SOURCE --trusted-host $PIP_HOST | Out-Null
 
 if (!(Test-Command scons)) {
     echo "Installing scons."
-    cmd /c $RTT_PYTHON -m pip install scons
+    cmd /c $RTT_PYTHON -m pip install scons -i $PIP_SOURCE --trusted-host $PIP_HOST
 }
 
-cmd /c $RTT_PYTHON -m pip list | findstr "requests"  | Out-Null
+cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | findstr "requests"  | Out-Null
 if (!$?) {
     echo "Installing requests."
-    cmd /c $RTT_PYTHON -m pip install requests
+    cmd /c $RTT_PYTHON -m pip install requests -i $PIP_SOURCE --trusted-host $PIP_HOST
 }
 
 $url="https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
