@@ -130,12 +130,12 @@ group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
 Return('group')
 '''
 
-
+import codecs 
 class PackageOperation:
     pkg = None
 
     def parse(self, filename):
-        with open(filename, "r") as f:
+        with codecs.open(filename, "r", encoding='utf-8') as f:
             json_str = f.read()
 
         if json_str:
