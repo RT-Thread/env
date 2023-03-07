@@ -13,6 +13,7 @@ if ($args[0] -eq "--gitee") {
 
 $env_dir = "$HOME\.env"
 if (!(Test-Path -Path $env_dir)) {
+    echo "creating .env folder!"
     $package_url=$DEFAULT_RTT_PACKAGE_URL
     mkdir $env_dir | Out-Null
     mkdir $env_dir\local_pkgs | Out-Null
@@ -23,4 +24,6 @@ if (!(Test-Path -Path $env_dir)) {
     git clone $ENV_URL $env_dir/tools/scripts
     echo '$env:path="$HOME\.env\tools\scripts;$env:path"' > $env_dir/env.ps1
     echo '$env:pathext=".PS1;$env:pathext"' >> $env_dir/env.ps1
+} else {
+    echo ".env folder has exsited. Jump this step."
 }
