@@ -71,7 +71,7 @@ cmd /c $RTT_PYTHON -m pip install --upgrade pip -i $PIP_SOURCE --trusted-host $P
 
 if (!(Test-Command scons)) {
     echo "Installing scons."
-    cmd /c $RTT_PYTHON -m pip install scons -i $PIP_SOURCE --trusted-host $PIP_HOST
+    cmd /c $RTT_PYTHON -m pip install scons==4.4.0 -i $PIP_SOURCE --trusted-host $PIP_HOST
 } else {
     echo "Scons has installed. Jump this step."
 }
