@@ -14,6 +14,13 @@ if [ $1 ] && [ $1 = --gitee ]; then
 fi
 
 env_dir=$HOME/.env
+if [ -d $env_dir ]; then
+    read -p '.env directory already exists. Would you like to remove and recreate .env directory? (Y/N) ' option
+    if [[ "$option" =~ [Yy*] ]]; then
+        rm -rf $env_dir
+    fi
+fi
+
 if ! [ -d $env_dir ]; then
     package_url=${RTT_PACKAGE_URL:-$DEFAULT_RTT_PACKAGE_URL}
     mkdir $env_dir
