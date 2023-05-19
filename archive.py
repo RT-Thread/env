@@ -99,7 +99,7 @@ def handle_zip_package(archive_filename, bsp_package_path, package_name, package
 
                 # Gets the folder name and changed folder name only once
                 if flag:
-                    package_folder_name = os.path.split(right_path)[0]
+                    package_folder_name = right_path.split('\\')[0]
                     package_name_with_version = package_name + '-' + package_version
                     flag = False
 
