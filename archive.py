@@ -92,16 +92,15 @@ def handle_zip_package(archive_filename, bsp_package_path, package_name, package
         for item in arch.namelist():
             arch.extract(item, package_temp_path)
             if not os.path.isdir(os.path.join(package_temp_path, item)):
+                # Gets the folder name and changed folder name only once
+                if flag:
+                    package_folder_name = item.split('/')[0]
+                    package_name_with_version = package_name + '-' + package_version
+                    flag = False
                 if is_windows():
                     right_path = item.replace('/', '\\')
                 else:
                     right_path = item
-
-                # Gets the folder name and changed folder name only once
-                if flag:
-                    package_folder_name = right_path.split('\\')[0]
-                    package_name_with_version = package_name + '-' + package_version
-                    flag = False
 
                 right_name_to_db = right_path.replace(package_folder_name, package_name_with_version, 1)
                 right_path = os.path.join("package_temp", right_path)
