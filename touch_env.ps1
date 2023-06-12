@@ -12,6 +12,14 @@ if ($args[0] -eq "--gitee") {
 }
 
 $env_dir = "$HOME\.env"
+
+if (Test-Path -Path $env_dir) {
+    $option = Read-Host ".env directory already exists. Would you like to remove and recreate .env directory? (Y/N) " option
+} if (( $option -eq 'Y' ) -or ($option -eq 'y')) {
+    Get-ChildItem $env_dir -Recurse | Remove-Item -Force -Recurse
+    rm -r $env_dir
+}
+
 if (!(Test-Path -Path $env_dir)) {
     echo "creating .env folder!"
     $package_url=$DEFAULT_RTT_PACKAGE_URL
