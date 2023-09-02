@@ -4,6 +4,18 @@ config SYS_AUTO_UPDATE_PKGS
     bool "Auto update pkgs config"
     default y
 
+choice
+    prompt "Select download server"
+    config SYS_DOWNLOAD_SERVER_AUTO
+        bool "Auto"
+
+    config SYS_DOWNLOAD_SERVER_GITHUB
+        bool "Github"
+
+    config SYS_DOWNLOAD_SERVER_GITEE
+        bool "Gitee"
+endchoice
+
 config SYS_CREATE_MDK_IAR_PROJECT
     bool "Auto create a Keil-MDK or IAR project"
     default n
