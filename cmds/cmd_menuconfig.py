@@ -28,8 +28,18 @@
 import os
 import platform
 import re
+import psutil
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
+
+def is_in_powershell():
+    rst = False
+    try:
+        rst = bool(re.fullmatch('pwsh|pwsh.exe|powershell.exe', psutil.Process(os.getppid()).name()))
+    except:
+        pass
+
+    return rst
 
 def build_kconfig_frontends(rtt_root):
     kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
@@ -259,9 +269,12 @@ def cmd(args):
         return
 
     if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
-        os.system('pkgs --update')
+        if (is_in_powershell()):
+            os.system('powershell pkgs.ps1 --update')
+        else:
+            os.system('pkgs --update')
         print("==============================>The packages have been updated completely.")
-    
+
     if platform.system() == "Windows":
         if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK_IAR_PROJECT'):
             mdk_path = find_MDK_EXEC_PATH()
