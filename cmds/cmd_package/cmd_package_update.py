@@ -153,27 +153,36 @@ is_China_ip = None
 
 def need_using_mirror_download():
     global is_China_ip
+
     if is_China_ip != None:
         return is_China_ip
-    try:
-        ip = requests.get('https://ifconfig.me/ip').content.decode()
-        url = 'http://www.ip-api.com/json/' + ip
-        if requests.get(url).json()['country'] == 'China':
-            is_China_ip = True
-        else:
-            is_China_ip = False
-    except:
-        if (-time.timezone)/3600 == 8:
-            is_China_ip = True
-        else:
-            is_China_ip = False
 
-    if(is_China_ip):
-        print("[Use Gitee server]")
+    server_decision = ""
+    config_file = os.path.join(Import('env_root'), r'tools\scripts\cmds', '.config')
+    if os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITHUB'):
+        is_China_ip = False # Github which means not China IP
+        server_decision = "manually decision"
+    elif os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITEE'):
+        is_China_ip = True # Gitee which means China IP
+        server_decision = "manually decision"
     else:
-        print("[Use Github server]")
-    return is_China_ip
+        try:
+            ip = requests.get('https://ifconfig.me/ip').content.decode()
+            url = 'http://www.ip-api.com/json/' + ip
+            if requests.get(url).json()['country'] == 'China':
+                is_China_ip = True
+            else:
+                is_China_ip = False
+            server_decision = "auto decision based on IP location"
+        except:
+            if (-time.timezone)/3600 == 8:
+                is_China_ip = True
+            else:
+                is_China_ip = False
+            server_decision = "auto decision based on timezone"
 
+    print("[Use {} server - {}]".format(("Gitee" if is_China_ip else "Github"), server_decision))
+    return is_China_ip
 
 def is_git_url(package_url):
     return package_url.endswith('.git')
