@@ -259,7 +259,10 @@ def cmd(args):
         return
 
     if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
-        os.system('pkgs --update')
+        if platform.system() == "Windows":
+            os.system('powershell pkgs.ps1 --update')
+        else :
+            os.system('pkgs --update')
         print("==============================>The packages have been updated completely.")
     
     if platform.system() == "Windows":
