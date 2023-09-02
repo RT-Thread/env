@@ -73,7 +73,14 @@ if (!(Test-Command scons)) {
     echo "Installing scons."
     cmd /c $RTT_PYTHON -m pip install scons==4.4.0 -i $PIP_SOURCE --trusted-host $PIP_HOST
 } else {
-    echo "Scons has installed. Jump this step."
+    echo "scons has installed. Jump this step."
+}
+
+if (!(Test-Command pyocd)) {
+    echo "Installing pyocd."
+    cmd /c $RTT_PYTHON -m pip install -U pyocd -i $PIP_SOURCE --trusted-host $PIP_HOST
+} else {
+    echo "pyocd has installed. Jump this step."
 }
 
 cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | findstr "requests"  | Out-Null

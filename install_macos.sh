@@ -41,6 +41,11 @@ if ! [ -x "$(command -v scons)" ]; then
     $RTT_PYTHON -m pip install scons==4.4.0
 fi
 
+if ! [ -x "$(command -v pyocd)" ]; then
+    echo "Installing pyocd."
+    $RTT_PYTHON -m pip install -U pyocd
+fi
+
 if ! [[ `$RTT_PYTHON -m pip list | grep requests` ]]; then
     echo "Installing requests."
     $RTT_PYTHON -m pip install requests
