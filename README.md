@@ -66,7 +66,7 @@ set-executionpolicy remotesigned
 
 方案 A：每次重启 PowerShell 时，都需要输入命令 `~/.env/env.ps1`，以激活环境变量。（PLAN A: Each time you restart PowerShell, you need to enter the command `~/.env/env.ps1` to activate the environment variable.）
 
-方案 B：打开 `C:\Users\user\Documents\WindowsPowerShell`，如果没有`WindowsPowerShell`则新建该文件夹。新建文件 `Microsoft.PowerShell_profile.ps1`，然后写入 `~/.env/env.ps1` 内容即可，它将在你重启 PowerShell 时自动执行，无需再执行方案 A 中的命令。（or PLAN B: Open `C:\Users\user\Documents\WindowsPowerShell` and create a new file `Microsoft.PowerShell_profile.ps1`. Then write `~/.env/env.ps1` to the file. It will be executed automatically when you restart PowerShell, without having to execute the command in scenario A.）
+方案 B (推荐)：打开 `C:\Users\user\Documents\WindowsPowerShell`，如果没有`WindowsPowerShell`则新建该文件夹。新建文件 `Microsoft.PowerShell_profile.ps1`，然后写入 `~/.env/env.ps1` 内容即可，它将在你重启 PowerShell 时自动执行，无需再执行方案 A 中的命令。（or PLAN B (recommended): Open `C:\Users\user\Documents\WindowsPowerShell` and create a new file `Microsoft.PowerShell_profile.ps1`. Then write `~/.env/env.ps1` to the file. It will be executed automatically when you restart PowerShell, without having to execute the command in scenario A.）
 
 如果还需要使 scons 命令有效以及能使用 QEMU，则需要再添加工具链路径和 QEMU 路径。（If you also need the scons command to work and to use QEMU, you need to add the following two commands to add your toolchain path and the QEMU path.）
 
