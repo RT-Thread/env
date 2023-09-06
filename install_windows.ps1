@@ -91,6 +91,14 @@ if (!$?) {
     echo "requests module has installed. Jump this step."
 }
 
+cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | findstr "psutil"  | Out-Null
+if (!$?) {
+    echo "Installing psutil module."
+    cmd /c $RTT_PYTHON -m pip install psutil -i $PIP_SOURCE --trusted-host $PIP_HOST
+} else {
+    echo "psutil module has installed. Jump this step."
+}
+
 $url="https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
 if ($args[0] -eq "--gitee") {
     $url="https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"

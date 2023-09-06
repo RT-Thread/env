@@ -51,6 +51,11 @@ if ! [[ `$RTT_PYTHON -m pip list | grep requests` ]]; then
     $RTT_PYTHON -m pip install requests
 fi
 
+if ! [[ `$RTT_PYTHON -m pip list | grep psutil` ]]; then
+    echo "Installing psutil."
+    $RTT_PYTHON -m pip install psutil
+fi
+
 if ! [ -x "$(command -v arm-none-eabi-gcc)" ]; then
     echo "Installing GNU Arm Embedded Toolchain."
     brew install gnu-arm-embedded
