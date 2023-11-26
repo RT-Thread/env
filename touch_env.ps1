@@ -27,9 +27,9 @@ if (!(Test-Path -Path $env_dir)) {
     mkdir $env_dir\local_pkgs | Out-Null
     mkdir $env_dir\packages | Out-Null
     mkdir $env_dir\tools | Out-Null
-    git clone $package_url $env_dir/packages/packages
+    git clone $package_url $env_dir/packages/packages --depth=1
     echo 'source "$PKGS_DIR/packages/Kconfig"' | Out-File -FilePath $env_dir/packages/Kconfig -Encoding ASCII
-    git clone $ENV_URL $env_dir/tools/scripts
+    git clone $ENV_URL $env_dir/tools/scripts --depth=1
     echo '$env:path="$HOME\.env\tools\scripts;$env:path"' > $env_dir/env.ps1
     echo '$env:pathext=".PS1;$env:pathext"' >> $env_dir/env.ps1
 } else {

@@ -216,7 +216,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         repo_path = repo_path + '-' + package_info['ver']
         repo_name_with_version = '"' + repo_path + '"'
 
-        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version
+        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version + ' --depth=1'
         logging.info(clone_cmd)
         execute_command(clone_cmd, cwd=bsp_package_path)
 
