@@ -222,7 +222,7 @@ def find_string_macro_in_config(filename, macro_name):
 def find_IAR_EXEC_PATH():
     env_root = Import('env_root')
     # get the .config file from env
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     return find_string_macro_in_config(env_config_file, 'SYS_CREATE_IAR_EXEC_PATH')
@@ -232,7 +232,7 @@ def find_IAR_EXEC_PATH():
 def find_MDK_EXEC_PATH():
     env_root = Import('env_root')
     # get the .config file from env
-    env_kconfig_path = os.path.join(env_root, 'tools\scripts\cmds')
+    env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     return find_string_macro_in_config(env_config_file, 'SYS_CREATE_MDK_EXEC_PATH')

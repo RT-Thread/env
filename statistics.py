@@ -39,7 +39,7 @@ def get_mac_address():
 
 def Information_statistics():
     # get the .config file from env
-    env_kconfig_path = os.path.join(os.getcwd(), 'tools\\scripts\\cmdscmds')
+    env_kconfig_path = os.path.join(os.getcwd(), 'tools', 'scripts', 'cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
     mac_addr = get_mac_address()
