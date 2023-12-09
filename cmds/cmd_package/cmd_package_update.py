@@ -158,7 +158,7 @@ def need_using_mirror_download():
         return is_China_ip
 
     server_decision = ""
-    config_file = os.path.join(Import('env_root'), r'tools\scripts\cmds', '.config')
+    config_file = os.path.join(Import('env_root'), 'tools', 'scripts', 'cmds', '.config')
     if os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITHUB'):
         is_China_ip = False # Github which means not China IP
         server_decision = "manually decision"
