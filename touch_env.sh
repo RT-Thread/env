@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
 DEFAULT_RTT_PACKAGE_URL=https://github.com/RT-Thread/packages.git
-# you can change the package url by defining RTT_PACKAGE_URL, ex:
-#    export RTT_PACKAGE_URL=https://github.com/Varanda-Labs/packages.git
-RTT_URL=https://github.com/RT-Thread/rt-thread.git
 ENV_URL=https://github.com/RT-Thread/env.git
 
 if [ $1 ] && [ $1 = --gitee ]; then
     gitee=1
     DEFAULT_RTT_PACKAGE_URL=https://gitee.com/RT-Thread-Mirror/packages.git
-    RTT_URL=https://gitee.com/rtthread/rt-thread.git
     ENV_URL=https://gitee.com/RT-Thread-Mirror/env.git
 fi
 
@@ -31,14 +27,4 @@ if ! [ -d $env_dir ]; then
     echo 'source "$PKGS_DIR/packages/Kconfig"' > $env_dir/packages/Kconfig
     git clone $ENV_URL $env_dir/tools/scripts --depth=1
     echo -e 'export PATH=`python3 -m site --user-base`/bin:$HOME/.env/tools/scripts:$PATH\nexport RTT_EXEC_PATH=/usr/bin' > $env_dir/env.sh
-fi
-
-RTT_ROOT=$HOME/rt-thread
-# you can download rt-thread to another directory by changing RTT_ROOT
-if ! [ -d $RTT_ROOT ]; then
-    git clone $RTT_URL $RTT_ROOT --depth=1
-    if [ $gitee ]; then
-        cd $RTT_ROOT
-        git checkout master
-    fi
 fi

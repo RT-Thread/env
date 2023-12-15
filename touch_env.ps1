@@ -1,13 +1,9 @@
 $DEFAULT_RTT_PACKAGE_URL="https://github.com/RT-Thread/packages.git"
-# you can change the package url by defining RTT_PACKAGE_URL, ex:
-#    export RTT_PACKAGE_URL=https://github.com/Varanda-Labs/packages.git
-$RTT_URL="https://github.com/RT-Thread/rt-thread.git"
 $ENV_URL="https://github.com/RT-Thread/env.git"
 
 if ($args[0] -eq "--gitee") {
     echo "Using gitee service."
     $DEFAULT_RTT_PACKAGE_URL="https://gitee.com/RT-Thread-Mirror/packages.git"
-    $RTT_URL="https://gitee.com/rtthread/rt-thread.git"
     $ENV_URL="https://gitee.com/RT-Thread-Mirror/env.git"
 }
 
