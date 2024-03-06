@@ -3,7 +3,7 @@
 sudo zypper update -y
 
 sudo zypper install python3 python3-pip gcc git ncurses-devel cross-arm-none-gcc11-bootstrap cross-arm-binutils qemu qemu-arm qemu-extra -y
-python3 -m pip install scons==4.4.0 requests psutil
+python3 -m pip install scons==4.4.0 requests
 python3 -m pip install -U pyocd
 
 url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
