@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-sudo apt update
-sudo apt upgrade -y
+sudo apt-get update
+sudo apt-get upgrade -y
 
-sudo apt install python3 python3-pip gcc git libncurses5-dev gcc-arm-none-eabi binutils-arm-none-eabi gdb-multiarch qemu qemu-system-arm -y
+sudo apt-get install python3 python3-pip gcc git libncurses5-dev gcc-arm-none-eabi binutils-arm-none-eabi gdb-multiarch qemu qemu-system-arm -y
 python3 -m pip install scons==4.4.0 requests
 python3 -m pip install -U pyocd
 
