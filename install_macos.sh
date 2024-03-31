@@ -38,7 +38,7 @@ $RTT_PYTHON -m pip list > /dev/null || {
 
 if ! [ -x "$(command -v scons)" ]; then
     echo "Installing scons."
-    $RTT_PYTHON -m pip install scons==4.4.0
+    $RTT_PYTHON -m pip install scons
 fi
 
 if ! [ -x "$(command -v pyocd)" ]; then
