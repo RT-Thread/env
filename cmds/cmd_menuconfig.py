@@ -28,13 +28,13 @@
 import os
 import platform
 import re
-import psutil
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
 def is_in_powershell():
     rst = False
     try:
+        import psutil
         rst = bool(re.fullmatch('pwsh|pwsh.exe|powershell.exe', psutil.Process(os.getppid()).name()))
     except:
         pass

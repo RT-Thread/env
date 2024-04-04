@@ -62,7 +62,7 @@ def upgrade_packages_index(force_upgrade=False):
     pkgs_path = os.path.join(packages_root, 'packages')
 
     if not os.path.isdir(pkgs_path):
-        cmd = 'git clone ' + git_repo + ' ' + pkgs_path
+        cmd = 'git clone ' + git_repo + ' ' + pkgs_path + ' --depth=1'
         os.system(cmd)
         print("upgrade from :%s" % (git_repo.encode("utf-8")))
     else:

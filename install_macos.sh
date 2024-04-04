@@ -38,7 +38,7 @@ $RTT_PYTHON -m pip list > /dev/null || {
 
 if ! [ -x "$(command -v scons)" ]; then
     echo "Installing scons."
-    $RTT_PYTHON -m pip install scons==4.4.0
+    $RTT_PYTHON -m pip install scons
 fi
 
 if ! [ -x "$(command -v pyocd)" ]; then
@@ -49,11 +49,6 @@ fi
 if ! [[ `$RTT_PYTHON -m pip list | grep requests` ]]; then
     echo "Installing requests."
     $RTT_PYTHON -m pip install requests
-fi
-
-if ! [[ `$RTT_PYTHON -m pip list | grep psutil` ]]; then
-    echo "Installing psutil."
-    $RTT_PYTHON -m pip install psutil
 fi
 
 if ! [ -x "$(command -v arm-none-eabi-gcc)" ]; then

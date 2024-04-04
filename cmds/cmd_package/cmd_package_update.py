@@ -158,7 +158,7 @@ def need_using_mirror_download():
         return is_China_ip
 
     server_decision = ""
-    config_file = os.path.join(Import('env_root'), r'tools\scripts\cmds', '.config')
+    config_file = os.path.join(Import('env_root'), 'tools', 'scripts', 'cmds', '.config')
     if os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITHUB'):
         is_China_ip = False # Github which means not China IP
         server_decision = "manually decision"
@@ -216,7 +216,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         repo_path = repo_path + '-' + package_info['ver']
         repo_name_with_version = '"' + repo_path + '"'
 
-        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version
+        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version + ' --depth=1'
         logging.info(clone_cmd)
         execute_command(clone_cmd, cwd=bsp_package_path)
 
