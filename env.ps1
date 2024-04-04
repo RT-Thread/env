@@ -40,7 +40,7 @@ if (Test-Path "$HOME\.env\tools\sdk_list.json")
     }
 
     # set RTT_CC, RTT_EXEC_PATH
-    if ('gcc' -in $RTT_CC_NAME)
+    if ($RTT_CC_NAME -match 'gcc')
     {
         $env:RTT_CC="gcc"
     }
@@ -53,6 +53,6 @@ if (Test-Path "$HOME\.env\tools\sdk_list.json")
     $env:RTT_EXEC_PATH=$RTT_CC_PATH
 }
 
-$env:HOSTOS_WINDOWS="y"
+$env:HOSTOS="Windows"
 $env:path="$HOME\.env\tools\bin;$RTT_CC_PATH;$env:path"
 $env:pathext=".PS1;$env:pathext"
