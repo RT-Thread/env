@@ -1,1 +1,0 @@
-python $HOME/.env/tools/scripts/env.py package $args

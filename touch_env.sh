@@ -5,12 +5,14 @@ DEFAULT_RTT_PACKAGE_URL=https://github.com/RT-Thread/packages.git
 #    export RTT_PACKAGE_URL=https://github.com/Varanda-Labs/packages.git
 RTT_URL=https://github.com/RT-Thread/rt-thread.git
 ENV_URL=https://github.com/RT-Thread/env.git
+SDK_URL="https://github.com/RT-Thread/sdk.git"
 
 if [ $1 ] && [ $1 = --gitee ]; then
     gitee=1
     DEFAULT_RTT_PACKAGE_URL=https://gitee.com/RT-Thread-Mirror/packages.git
     RTT_URL=https://gitee.com/rtthread/rt-thread.git
     ENV_URL=https://gitee.com/RT-Thread-Mirror/env.git
+    SDK_URL="https://github.com/RT-Thread-Mirror/sdk.git"
 fi
 
 env_dir=$HOME/.env
@@ -29,6 +31,7 @@ if ! [ -d $env_dir ]; then
     mkdir $env_dir/tools
     git clone $package_url $env_dir/packages/packages
     echo 'source "$PKGS_DIR/packages/Kconfig"' > $env_dir/packages/Kconfig
+    git clone $SDK_URL $env_dir/packages/sdk
     git clone $ENV_URL $env_dir/tools/scripts
     echo -e 'export PATH=`python3 -m site --user-base`/bin:$HOME/.env/tools/scripts:$PATH\nexport RTT_EXEC_PATH=/usr/bin' > $env_dir/env.sh
 fi

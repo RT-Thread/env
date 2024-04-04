@@ -3,12 +3,14 @@ $DEFAULT_RTT_PACKAGE_URL="https://github.com/RT-Thread/packages.git"
 #    export RTT_PACKAGE_URL=https://github.com/Varanda-Labs/packages.git
 $RTT_URL="https://github.com/RT-Thread/rt-thread.git"
 $ENV_URL="https://github.com/RT-Thread/env.git"
+$SDK_URL="https://github.com/RT-Thread/sdk.git"
 
 if ($args[0] -eq "--gitee") {
     echo "Using gitee service."
     $DEFAULT_RTT_PACKAGE_URL="https://gitee.com/RT-Thread-Mirror/packages.git"
     $RTT_URL="https://gitee.com/rtthread/rt-thread.git"
     $ENV_URL="https://gitee.com/RT-Thread-Mirror/env.git"
+    $SDK_URL="https://github.com/RT-Thread-Mirror/sdk.git"
 }
 
 $env_dir = "$HOME\.env"
@@ -29,9 +31,9 @@ if (!(Test-Path -Path $env_dir)) {
     mkdir $env_dir\tools | Out-Null
     git clone $package_url $env_dir/packages/packages
     echo 'source "$PKGS_DIR/packages/Kconfig"' | Out-File -FilePath $env_dir/packages/Kconfig -Encoding ASCII
+    git clone $SDK_URL $PKGS_DIR/packages/sdk
     git clone $ENV_URL $env_dir/tools/scripts
-    echo '$env:path="$HOME\.env\tools\scripts;$env:path"' > $env_dir/env.ps1
-    echo '$env:pathext=".PS1;$env:pathext"' >> $env_dir/env.ps1
+    copy $env_dir/tools/scripts/env.ps1 $env_dir/env.ps1
 } else {
     echo ".env folder has exsited. Jump this step."
 }
