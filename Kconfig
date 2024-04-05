@@ -9,7 +9,7 @@ config TARGET_FILE
 
 config HOSTOS
     string
-    option env="Windows"
+    option env="HOSTOS"
     default "Linux"
 
 source "$PKGS_DIR/sdk/$HOSTOS/Kconfig"
