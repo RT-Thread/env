@@ -27,7 +27,7 @@
 #
 
 from .cmd_package_printenv import package_print_env, package_print_help
-from .cmd_package_list import list_packages
+from .cmd_package_list import list_packages, get_packages
 from .cmd_package_wizard import package_wizard
 from .cmd_package_update import package_update
 from .cmd_package_upgrade import package_upgrade, package_upgrade_modules

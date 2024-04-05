@@ -31,10 +31,15 @@ import argparse
 import logging
 import platform
 
+script_path = os.path.abspath(__file__)
+mpath = os.path.dirname(script_path)
+sys.path.insert(0, mpath)
+
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread Env Script v1.5.0'
+__version__ = 'RT-Thread Env Tool v1.5.0'
+
 
 def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -45,6 +50,7 @@ def init_argparse():
     cmd_system.add_parser(subs)
     cmd_menuconfig.add_parser(subs)
     cmd_package.add_parser(subs)
+    cmd_sdk.add_parser(subs)
 
     return parser
 
@@ -110,6 +116,15 @@ def export_environment_variable():
     Export('bsp_root')
     Export('pkgs_root')
 
+def exec_arg(arg):
+    export_environment_variable()
+    init_logger(get_env_root())
+
+    sys.argv.insert(1, arg)
+
+    parser = init_argparse()
+    args = parser.parse_args()
+    args.func(args)
 
 def main():
     export_environment_variable()
@@ -119,6 +134,26 @@ def main():
     args = parser.parse_args()
     args.func(args)
 
+def menuconfig():
+    exec_arg('menuconfig')
+
+def pkgs():
+    exec_arg('package')
+
+def sdk():
+    # change directory to tools
+    tools_kconfig_path = os.path.join(get_env_root(), 'tools')
+
+    beforepath = os.getcwd()
+    os.chdir(tools_kconfig_path)
+
+    exec_arg('sdk')
+
+    # restore the old directory
+    os.chdir(beforepath)
+
+def system():
+    exec_arg('system')
 
 if __name__ == '__main__':
     main()

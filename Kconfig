@@ -1,0 +1,15 @@
+config PKGS_DIR
+    string
+    option env="PKGS_ROOT"
+    default "packages"
+
+config TARGET_FILE
+    string
+    default ""
+
+config HOSTOS
+    string
+    option env="HOSTOS"
+    default "Linux"
+
+source "$PKGS_DIR/sdk/$HOSTOS/Kconfig"

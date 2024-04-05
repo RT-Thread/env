@@ -108,7 +108,7 @@ def mk_rtconfig(filename):
     if target_fn == None:
         return
 
-    rtconfig = open('rtconfig.h', 'w')
+    rtconfig = open(target_fn, 'w')
     rtconfig.write('#ifndef RT_CONFIG_H__\n')
     rtconfig.write('#define RT_CONFIG_H__\n\n')
 
