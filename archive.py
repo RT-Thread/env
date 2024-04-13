@@ -34,41 +34,65 @@ from cmds.cmd_package.cmd_package_utils import is_windows, remove_folder
 
 
 def unpack(archive_filename, bsp_package_path, package_info, package_name):
-    if ".tar.bz2" in archive_filename:
-        arch = tarfile.open(archive_filename, "r:bz2")
-        for tarinfo in arch:
-            arch.extract(tarinfo, bsp_package_path)
-            a = tarinfo.name
-            if not os.path.isdir(os.path.join(bsp_package_path, a)):
-                if is_windows():
-                    right_path = a.replace('/', '\\')
-                else:
-                    right_path = a
-                a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
+    if archive_filename.endswith(".zip"):
+        return handle_zip_package(archive_filename, bsp_package_path, package_name, package_info)
 
-                pkgsdb.save_to_database(a, archive_filename)
-        arch.close()
-
-    if ".tar.gz" in archive_filename:
-        arch = tarfile.open(archive_filename, "r:gz")
-        for tarinfo in arch:
-            arch.extract(tarinfo, bsp_package_path)
-            a = tarinfo.name
-            if not os.path.isdir(os.path.join(bsp_package_path, a)):
-                if is_windows():
-                    right_path = a.replace('/', '\\')
-                else:
-                    right_path = a
-                a = os.path.join(os.path.split(right_path)[0], os.path.split(right_path)[1])
-                pkgsdb.save_to_database(a, archive_filename)
-        arch.close()
-
-    if ".zip" in archive_filename:
-        if not handle_zip_package(archive_filename, bsp_package_path, package_name, package_info):
-            return False
+    if ".tar." in archive_filename:
+        return handle_tar_package(archive_filename, bsp_package_path, package_name, package_info)
 
     return True
 
+def handle_tar_package(archive_filename, bsp_package_path, package_name, package_info):
+    package_version = package_info['ver']
+    package_temp_path = os.path.join(bsp_package_path, "package_temp")
+
+    try:
+        if remove_folder(package_temp_path):
+            os.makedirs(package_temp_path)
+    except Exception as e:
+        logging.warning('Error message : {0}'.format(e))
+
+    logging.info("BSP packages path {0}".format(bsp_package_path))
+    logging.info("BSP package temp path: {0}".format(package_temp_path))
+    logging.info("archive filename : {0}".format(archive_filename))
+
+    try:
+        flag = True
+        package_folder_name = ""
+        package_name_with_version = ""
+        arch = tarfile.open(archive_filename, "r")
+        for item in arch.getnames():
+            arch.extract(item, package_temp_path)
+            if not os.path.isdir(os.path.join(package_temp_path, item)):
+                # Gets the folder name and changed folder name only once
+                if flag:
+                    package_folder_name = item.split('/')[0]
+                    package_name_with_version = package_name + '-' + package_version
+                    flag = False
+
+                if is_windows():
+                    right_path = item.replace('/', '\\')
+                else:
+                    right_path = item
+
+                right_name_to_db = right_path.replace(package_folder_name, package_name_with_version, 1)
+                right_path = os.path.join("package_temp", right_path)
+                pkgsdb.save_to_database(right_name_to_db, archive_filename, right_path)
+        arch.close()
+
+        if not move_package_to_bsp_packages(package_folder_name, package_name, package_temp_path, package_version,
+                                            bsp_package_path):
+            return False
+
+    except Exception as e:
+        logging.warning('unpack error message : {0}'.format(e))
+        logging.warning('unpack {0} failed'.format(os.path.basename(archive_filename)))
+        # remove temp folder and archive file
+        remove_folder(package_temp_path)
+        os.remove(archive_filename)
+        return False
+    
+    return True
 
 def handle_zip_package(archive_filename, bsp_package_path, package_name, package_info):
     package_version = package_info['ver']
@@ -153,7 +177,7 @@ def move_package_to_bsp_packages(package_folder_name, package_name, package_temp
 def package_integrity_test(path):
     ret = True
 
-    if path.find(".zip") != -1:
+    if path.endswith(".zip"):
         try:
             if zipfile.is_zipfile(path):
                 # Test zip again to make sure it's a right zip file.
@@ -170,17 +194,8 @@ def package_integrity_test(path):
             arch.close()
             ret = False
 
-    # if ".tar.bz2" in path:.
-    if path.find(".tar.bz2") != -1:
-        try:
-            if not tarfile.is_tarfile(path):
-                ret = False
-        except Exception as e:
-            print('Error message:%s' % e)
-            ret = False
-
-    # if ".tar.gz" in path:
-    if path.find(".tar.gz") != -1:
+    # if ".tar.*" in path:.
+    if path.endswith(".tar.bz2") or path.endswith(".tar.gz") or path.endswith(".tar.xz"):
         try:
             if not tarfile.is_tarfile(path):
                 ret = False
