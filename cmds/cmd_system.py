@@ -30,7 +30,7 @@ from vars import Import
 
 
 def cmd(args):
-    packages_root = os.path.join(Import('env_root'), 'packages')
+    packages_root = Import('pkgs_root')
 
     if args.system_update:
         dir_list = os.listdir(packages_root)

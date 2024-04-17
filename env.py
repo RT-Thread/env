@@ -153,25 +153,20 @@ def main():
 
     parser = init_argparse()
     args = parser.parse_args()
-    args.func(args)
+
+    if not vars(args):
+        parser.print_help()
+    else:
+        args.func(args)
 
 def menuconfig():
     exec_arg('menuconfig')
 
 def pkgs():
-    exec_arg('package')
+    exec_arg('pkg')
 
 def sdk():
-    # change directory to tools
-    tools_kconfig_path = os.path.join(get_env_root(), 'tools')
-
-    beforepath = os.getcwd()
-    os.chdir(tools_kconfig_path)
-
     exec_arg('sdk')
-
-    # restore the old directory
-    os.chdir(beforepath)
 
 def system():
     exec_arg('system')

@@ -36,6 +36,8 @@ class MenuConfigArgs:
 
 def cmd(args):
     tools_kconfig_path = os.path.join(Import('env_root'), 'tools')
+    beforepath = os.getcwd()
+    os.chdir(tools_kconfig_path)
 
     from cmds import cmd_menuconfig
     from cmds.cmd_package import list_packages
@@ -64,6 +66,9 @@ def cmd(args):
     with open(os.path.join(tools_kconfig_path, 'sdk_list.json'), 'w', encoding='utf-8') as f:
         json.dump(sdk_packages, f, ensure_ascii=False, indent=4)
 
+    # restore the old directory
+    os.chdir(beforepath)
+    
 def add_parser(sub):
     parser = sub.add_parser('sdk', help=__doc__, description=__doc__)
 
