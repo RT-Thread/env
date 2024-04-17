@@ -71,7 +71,6 @@ def get_env_root():
             env_root = os.path.join(os.getenv('HOME'), '.env')
         else:
             env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
-
     return env_root
 
 
@@ -104,10 +103,13 @@ def get_bsp_root():
 
     return bsp_root
 
+
 def get_rtt_root():
     rtt_root = os.getenv("RTT_ROOT")
     if rtt_root is None:
         bsp_root = get_bsp_root()
+        if not os.path.exists(os.path.join(bsp_root, 'Kconfig')):
+            return ""
         with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
             lines = kconfig.readlines()
         for i in range(len(lines)):
@@ -137,6 +139,7 @@ def export_environment_variable():
     Export('bsp_root')
     Export('rtt_root')
 
+
 def exec_arg(arg):
     export_environment_variable()
     init_logger(get_env_root())
@@ -146,6 +149,7 @@ def exec_arg(arg):
     parser = init_argparse()
     args = parser.parse_args()
     args.func(args)
+
 
 def main():
     export_environment_variable()
@@ -159,17 +163,22 @@ def main():
     else:
         args.func(args)
 
+
 def menuconfig():
     exec_arg('menuconfig')
+
 
 def pkgs():
     exec_arg('pkg')
 
+
 def sdk():
     exec_arg('sdk')
 
+
 def system():
     exec_arg('system')
+
 
 if __name__ == '__main__':
     main()

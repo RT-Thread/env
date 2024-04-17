@@ -45,10 +45,10 @@ setup(
     entry_points={
         'console_scripts': [
             'env=env.env:main',
-            # 'menuconfig=env.env:menuconfig',
-            # 'pkgs=env.env:pkgs',
-            # 'sdk=env.env:sdk',
-            # 'system=env.env:system',
+            'menuconfig=env.env:menuconfig',
+            'pkgs=env.env:pkgs',
+            'sdk=env.env:sdk',
+            'system=env.env:system',
         ]
     }
 )
