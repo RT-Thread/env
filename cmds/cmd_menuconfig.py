@@ -28,6 +28,8 @@
 import os
 import platform
 import re
+import sys
+
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
@@ -44,20 +46,6 @@ def is_in_powershell():
 def build_kconfig_frontends(rtt_root):
     kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
     os.system('scons -C ' + kconfig_dir)
-
-def get_rtt_root():
-    rtt_root = os.getenv("RTT_ROOT")
-    if rtt_root is None:
-        bsp_root = Import("bsp_root")
-        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
-            lines = kconfig.readlines()
-        for i in range(len(lines)):
-            if "config RTT_DIR" in lines[i]:
-                break
-        rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
-        if not os.path.isabs(rtt_root):
-            rtt_root = os.path.join(bsp_root, rtt_root)
-    return rtt_root
 
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
@@ -161,12 +149,10 @@ def mk_rtconfig(filename):
 
 
 def cmd(args):
+    import menuconfig
+    import defconfig
+
     env_root = Import('env_root')
-    os.environ['PKGS_ROOT'] = Import("pkgs_root")
-    if platform.system() == "Windows":
-        os_version = platform.platform(True).split('-')[2][:3]
-    kconfig_win7_path = os.path.join(
-        env_root, 'tools', 'bin', 'kconfig-mconf_win7.exe')
 
     if not os.path.exists('Kconfig'):
         if platform.system() == "Windows":
@@ -184,84 +170,54 @@ def cmd(args):
 
         return False
 
-    if platform.system() != "Windows":
-        rtt_root = get_rtt_root()
-
-    fn = '.config'
-
-    if os.path.isfile(fn):
-        mtime = os.path.getmtime(fn)
-    else:
-        mtime = -1
-
     if platform.system() == "Windows":
         os.system('chcp 437  > nul')
 
-    if args.menuconfig_fn:
-        print('use', args.menuconfig_fn)
-        import shutil
-        shutil.copy(args.menuconfig_fn, fn)
-    elif args.menuconfig_g:
-        mk_rtconfig(fn)
-    elif args.menuconfig_silent:
-        if platform.system() == "Windows":
-            if float(os_version) >= 6.2:
-                os.system('kconfig-mconf Kconfig -n')
-                mk_rtconfig(fn)
-            else:
-                if os.path.isfile(kconfig_win7_path):
-                    os.system('kconfig-mconf_win7 Kconfig -n')
-                else:
-                    os.system('kconfig-mconf Kconfig -n')
-        else:
-            build_kconfig_frontends(rtt_root)
-            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
-            os.system(kconfig_cmd + ' Kconfig -n')
-
-    elif args.menuconfig_setting:
+    # Env config, auto update packages and create mdk/iar project
+    if args.menuconfig_setting:
         env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
-
-        if platform.system() == "Windows":
-            if float(os_version) >= 6.2:
-                os.system('kconfig-mconf Kconfig')
-            else:
-                if os.path.isfile(kconfig_win7_path):
-                    os.system('kconfig-mconf_win7 Kconfig')
-                else:
-                    os.system('kconfig-mconf Kconfig')
-        else:
-            build_kconfig_frontends(rtt_root)
-            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
-            os.system(kconfig_cmd + ' Kconfig')
-
+        sys.argv = ['menuconfig', 'Kconfig']
+        menuconfig._main()
         os.chdir(beforepath)
-
         return
 
-    else:
-        if platform.system() == "Windows":
-            if float(os_version) >= 6.2:
-                os.system('kconfig-mconf Kconfig')
-            else:
-                if os.path.isfile(kconfig_win7_path):
-                    os.system('kconfig-mconf_win7 Kconfig')
-                else:
-                    os.system('kconfig-mconf Kconfig')
-        else:
-            build_kconfig_frontends(rtt_root)
-            kconfig_cmd = os.path.join(rtt_root, 'tools', 'kconfig-frontends', 'kconfig-mconf')
-            os.system(kconfig_cmd + ' Kconfig')
+    # generate rtconfig.h by .config.
+    if args.menuconfig_g:
+        print('generate rtconfig.h from .config')
+        mk_rtconfig(".config")
+        return
 
-    if os.path.isfile(fn):
-        mtime2 = os.path.getmtime(fn)
+
+    if os.path.isfile(".config"):
+        mtime = os.path.getmtime(".config")
+    else:
+        mtime = -1
+
+    # Using the user specified configuration file
+    if args.menuconfig_fn:
+        print('use', args.menuconfig_fn)
+        import shutil
+        shutil.copy(args.menuconfig_fn, ".config")
+
+    if args.menuconfig_silent:
+        sys.argv = ['defconfig', '--kconfig=Kconfig', '.config']
+        defconfig._main()
+    else:
+        sys.argv = ['menuconfig', 'Kconfig']
+        menuconfig._main()
+
+    if os.path.isfile(".config"):
+        mtime2 = os.path.getmtime(".config")
     else:
         mtime2 = -1
 
+    # generate rtconfig.h by .config.
     if mtime != mtime2:
-        mk_rtconfig(fn)
+        mk_rtconfig(".config")
 
+    # update pkgs
     env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
     fn = os.path.join(env_kconfig_path, '.config')
 
@@ -325,10 +281,10 @@ def add_parser(sub):
                         default=False,
                         dest='menuconfig_setting')
 
-    parser.add_argument('--easy',
-                        help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',
-                        action='store_true',
-                        default=False,
-                        dest='menuconfig_easy')
+    # parser.add_argument('--easy',
+    #                     help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',
+    #                     action='store_true',
+    #                     default=False,
+    #                     dest='menuconfig_easy')
 
     parser.set_defaults(func=cmd)

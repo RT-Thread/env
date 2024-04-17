@@ -64,7 +64,6 @@ def init_logger(env_root):
                         # filename=log_name
                         )
 
-
 def get_env_root():
     env_root = os.getenv("ENV_ROOT")
     if env_root is None:
@@ -76,10 +75,10 @@ def get_env_root():
     return env_root
 
 
-def get_package_root(env_root):
+def get_package_root():
     package_root = os.getenv("PKGS_ROOT")
     if package_root is None:
-        package_root = os.path.join(env_root, 'packages')
+        package_root = os.path.join(get_env_root(), 'packages')
     return package_root
 
 
@@ -105,16 +104,38 @@ def get_bsp_root():
 
     return bsp_root
 
+def get_rtt_root():
+    rtt_root = os.getenv("RTT_ROOT")
+    if rtt_root is None:
+        bsp_root = get_bsp_root()
+        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
+            lines = kconfig.readlines()
+        for i in range(len(lines)):
+            if "config RTT_DIR" in lines[i]:
+                break
+        rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
+        if not os.path.isabs(rtt_root):
+            rtt_root = os.path.join(bsp_root, rtt_root)
+    return rtt_root
+
 def export_environment_variable():
     script_root = os.path.split(os.path.realpath(__file__))[0]
     sys.path = sys.path + [os.path.join(script_root)]
-    bsp_root = get_bsp_root()
     env_root = get_env_root()
-    pkgs_root = get_package_root(env_root)
+    pkgs_root = get_package_root()
+    bsp_root = get_bsp_root()
+    rtt_root = get_rtt_root()
+
+    os.environ["ENV_ROOT"] = env_root
+    os.environ['PKGS_ROOT'] = pkgs_root
+    os.environ['PKGS_DIR'] = pkgs_root
+    os.environ['BSP_DIR'] = bsp_root
+    os.environ['RTT_DIR'] = rtt_root
 
     Export('env_root')
-    Export('bsp_root')
     Export('pkgs_root')
+    Export('bsp_root')
+    Export('rtt_root')
 
 def exec_arg(arg):
     export_environment_variable()
