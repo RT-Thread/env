@@ -44,4 +44,4 @@ def package_print_env():
 
 
 def package_print_help():
-    os.system('pkgs -h')
+    os.system('env pkg -h')

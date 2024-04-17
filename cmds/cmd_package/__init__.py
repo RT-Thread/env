@@ -60,7 +60,7 @@ def run_env_cmd(args):
 def add_parser(sub):
     """The packages command parser for env."""
 
-    parser = sub.add_parser('package', help=__doc__, description=__doc__)
+    parser = sub.add_parser('pkg', aliases=['pkgs', 'package'], help=__doc__, description=__doc__)
 
     parser.add_argument('--update',
                         help='update packages, install or remove the packages by your settings in menuconfig',

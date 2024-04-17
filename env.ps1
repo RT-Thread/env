@@ -1,4 +1,4 @@
-$VENV_ROOT = "$HOME\.env\tools\rt-env"
+$VENV_ROOT = "$PSScriptRoot\tools\rt-env"
 # rt-env目录是否存在
 if (-not (Test-Path -Path $VENV_ROOT)) {
     Write-Host "Create Python venv for RT-Thread..."
@@ -6,7 +6,7 @@ if (-not (Test-Path -Path $VENV_ROOT)) {
     # 激活python venv
     & "$VENV_ROOT\Scripts\Activate.ps1"
     # 安装env-script
-    pip install "$HOME/.env/tools/scripts"
+    pip install "$PSScriptRoot\tools\scripts"
 }
 else 
 {
@@ -27,9 +27,9 @@ if (Test-Path ".vscode\env.json")
 }
 
 Write-Host "set CC to $RTT_CC_NAME"
-if (Test-Path "$HOME\.env\tools\sdk_list.json")
+if (Test-Path "$PSScriptRoot\tools\sdk_list.json")
 {
-    $sdk_json = Get-Content -Raw -Path "$HOME\.env\tools\sdk_list.json" | ConvertFrom-Json
+    $sdk_json = Get-Content -Raw -Path "$PSScriptRoot\tools\sdk_list.json" | ConvertFrom-Json
     foreach ($sdk in $sdk_json)
     {
         if ($sdk.name -eq $RTT_CC_NAME)
@@ -49,10 +49,10 @@ if (Test-Path "$HOME\.env\tools\sdk_list.json")
         $env:RTT_CC=$RTT_CC_NAME
     }
 
-    $RTT_CC_PATH="$HOME\.env\tools\packages\$RTT_CC_PATH\bin"
+    $RTT_CC_PATH="$PSScriptRoot\tools\packages\$RTT_CC_PATH\bin"
     $env:RTT_EXEC_PATH=$RTT_CC_PATH
 }
 
 $env:HOSTOS="Windows"
-$env:path="$HOME\.env\tools\bin;$RTT_CC_PATH;$env:path"
+$env:path="$PSScriptRoot\tools\bin;$RTT_CC_PATH;$env:path"
 $env:pathext=".PS1;$env:pathext"

@@ -64,7 +64,6 @@ def init_logger(env_root):
                         # filename=log_name
                         )
 
-
 def get_env_root():
     env_root = os.getenv("ENV_ROOT")
     if env_root is None:
@@ -72,14 +71,13 @@ def get_env_root():
             env_root = os.path.join(os.getenv('HOME'), '.env')
         else:
             env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
-
     return env_root
 
 
-def get_package_root(env_root):
+def get_package_root():
     package_root = os.getenv("PKGS_ROOT")
     if package_root is None:
-        package_root = os.path.join(env_root, 'packages')
+        package_root = os.path.join(get_env_root(), 'packages')
     return package_root
 
 
@@ -105,16 +103,42 @@ def get_bsp_root():
 
     return bsp_root
 
+
+def get_rtt_root():
+    rtt_root = os.getenv("RTT_ROOT")
+    if rtt_root is None:
+        bsp_root = get_bsp_root()
+        if not os.path.exists(os.path.join(bsp_root, 'Kconfig')):
+            return ""
+        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
+            lines = kconfig.readlines()
+        for i in range(len(lines)):
+            if "config RTT_DIR" in lines[i]:
+                break
+        rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
+        if not os.path.isabs(rtt_root):
+            rtt_root = os.path.join(bsp_root, rtt_root)
+    return rtt_root
+
 def export_environment_variable():
     script_root = os.path.split(os.path.realpath(__file__))[0]
     sys.path = sys.path + [os.path.join(script_root)]
-    bsp_root = get_bsp_root()
     env_root = get_env_root()
-    pkgs_root = get_package_root(env_root)
+    pkgs_root = get_package_root()
+    bsp_root = get_bsp_root()
+    rtt_root = get_rtt_root()
+
+    os.environ["ENV_ROOT"] = env_root
+    os.environ['PKGS_ROOT'] = pkgs_root
+    os.environ['PKGS_DIR'] = pkgs_root
+    os.environ['BSP_DIR'] = bsp_root
+    os.environ['RTT_DIR'] = rtt_root
 
     Export('env_root')
-    Export('bsp_root')
     Export('pkgs_root')
+    Export('bsp_root')
+    Export('rtt_root')
+
 
 def exec_arg(arg):
     export_environment_variable()
@@ -126,34 +150,35 @@ def exec_arg(arg):
     args = parser.parse_args()
     args.func(args)
 
+
 def main():
     export_environment_variable()
     init_logger(get_env_root())
 
     parser = init_argparse()
     args = parser.parse_args()
-    args.func(args)
+
+    if not vars(args):
+        parser.print_help()
+    else:
+        args.func(args)
+
 
 def menuconfig():
     exec_arg('menuconfig')
 
+
 def pkgs():
-    exec_arg('package')
+    exec_arg('pkg')
+
 
 def sdk():
-    # change directory to tools
-    tools_kconfig_path = os.path.join(get_env_root(), 'tools')
-
-    beforepath = os.getcwd()
-    os.chdir(tools_kconfig_path)
-
     exec_arg('sdk')
 
-    # restore the old directory
-    os.chdir(beforepath)
 
 def system():
     exec_arg('system')
+
 
 if __name__ == '__main__':
     main()
