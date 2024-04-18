@@ -24,6 +24,7 @@
 
 import os
 import json
+import platform
 from vars import Import, Export
 
 '''RT-Thread environment sdk setting'''
@@ -44,6 +45,9 @@ def cmd(args):
     tools_kconfig_path = os.path.join(Import('env_root'), 'tools')
     beforepath = os.getcwd()
     os.chdir(tools_kconfig_path)
+
+    # set HOSTOS
+    os.environ['HOSTOS'] = platform.system()
 
     # change bsp root to sdk root
     bsp_root = tools_kconfig_path
