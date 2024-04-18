@@ -24,7 +24,7 @@
 
 import os
 import json
-from vars import Import
+from vars import Import, Export
 
 '''RT-Thread environment sdk setting'''
 
@@ -35,14 +35,20 @@ class MenuConfigArgs:
     menuconfig_setting = False
 
 def cmd(args):
-    tools_kconfig_path = os.path.join(Import('env_root'), 'tools')
-    beforepath = os.getcwd()
-    os.chdir(tools_kconfig_path)
-
     from cmds import cmd_menuconfig
     from cmds.cmd_package import list_packages
     from cmds.cmd_package import get_packages
     from cmds.cmd_package import package_update
+
+    # change to sdk root directory
+    tools_kconfig_path = os.path.join(Import('env_root'), 'tools')
+    beforepath = os.getcwd()
+    os.chdir(tools_kconfig_path)
+
+    # change bsp root to sdk root
+    bsp_root = tools_kconfig_path
+    before_bsp_root = Import('bsp_root')
+    Export('bsp_root')
 
     args = MenuConfigArgs()
     # do menuconfig
@@ -68,7 +74,12 @@ def cmd(args):
 
     # restore the old directory
     os.chdir(beforepath)
-    
+
+    # restore the old bsp_root
+    bsp_root = before_bsp_root
+    Export('bsp_root')
+
+
 def add_parser(sub):
     parser = sub.add_parser('sdk', help=__doc__, description=__doc__)
 

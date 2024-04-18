@@ -47,6 +47,22 @@ def build_kconfig_frontends(rtt_root):
     kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
     os.system('scons -C ' + kconfig_dir)
 
+def get_rtt_root():
+    rtt_root = os.getenv("RTT_ROOT")
+    if rtt_root is None:
+        bsp_root = Import("bsp_root")
+        if not os.path.exists(os.path.join(bsp_root, 'Kconfig')):
+            return rtt_root
+        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
+            lines = kconfig.readlines()
+        for i in range(len(lines)):
+            if "config RTT_DIR" in lines[i]:
+                rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
+                if not os.path.isabs(rtt_root):
+                    rtt_root = os.path.join(bsp_root, rtt_root)
+                break
+    return rtt_root
+
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
@@ -151,8 +167,11 @@ def mk_rtconfig(filename):
 def cmd(args):
     import menuconfig
     import defconfig
-
     env_root = Import('env_root')
+
+    # get RTT_DIR from environment or Kconfig file
+    if get_rtt_root():
+        os.environ['RTT_DIR'] = get_rtt_root()
 
     if not os.path.exists('Kconfig'):
         if platform.system() == "Windows":
