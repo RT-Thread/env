@@ -31,12 +31,13 @@ import tarfile
 import zipfile
 import pkgsdb
 from cmds.cmd_package.cmd_package_utils import is_windows, remove_folder
-
+from tqdm import tqdm
 
 def unpack(archive_filename, bsp_package_path, package_info, package_name):
+    print('unpacking ' + package_name + ' ...')
     if ".tar.bz2" in archive_filename:
         arch = tarfile.open(archive_filename, "r:bz2")
-        for tarinfo in arch:
+        for tarinfo in tqdm(arch):
             arch.extract(tarinfo, bsp_package_path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(bsp_package_path, a)):
@@ -51,7 +52,7 @@ def unpack(archive_filename, bsp_package_path, package_info, package_name):
 
     if ".tar.gz" in archive_filename:
         arch = tarfile.open(archive_filename, "r:gz")
-        for tarinfo in arch:
+        for tarinfo in tqdm(arch):
             arch.extract(tarinfo, bsp_package_path)
             a = tarinfo.name
             if not os.path.isdir(os.path.join(bsp_package_path, a)):
@@ -89,7 +90,7 @@ def handle_zip_package(archive_filename, bsp_package_path, package_name, package
         package_folder_name = ""
         package_name_with_version = ""
         arch = zipfile.ZipFile(archive_filename, "r")
-        for item in arch.namelist():
+        for item in tqdm(arch.namelist()):
             arch.extract(item, package_temp_path)
             if not os.path.isdir(os.path.join(package_temp_path, item)):
                 # Gets the folder name and changed folder name only once
