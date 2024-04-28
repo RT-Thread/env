@@ -117,18 +117,6 @@ Package_json_file = '''{
 }
 '''
 
-Sconscript_file = '''
-from building import *
-
-cwd     = GetCurrentDir()
-src     = Glob('*.c') + Glob('*.cpp')
-CPPPATH = [cwd]
-
-group = DefineGroup('${name}', src, depend = [''], CPPPATH = CPPPATH)
-
-Return('group')
-'''
-
 import codecs 
 class PackageOperation:
     pkg = None
