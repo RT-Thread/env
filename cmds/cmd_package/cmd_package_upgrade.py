@@ -101,7 +101,7 @@ def upgrade_env_script(force_upgrade=False):
     env_root = Import('env_root')
 
     if need_using_mirror_download():
-        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
+        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'v1.5.x')
 
         if get_package_url is not None:
             env_scripts_repo = get_package_url

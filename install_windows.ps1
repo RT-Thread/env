@@ -99,9 +99,9 @@ if (!$?) {
     echo "psutil module has installed. Jump this step."
 }
 
-$url="https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
+$url="https://raw.githubusercontent.com/RT-Thread/env/v1.5.x/touch_env.ps1"
 if ($args[0] -eq "--gitee") {
-    $url="https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"
+    $url="https://gitee.com/RT-Thread-Mirror/env/raw/v1.5.x/touch_env.ps1"
 }
 
 wget $url -O touch_env.ps1
