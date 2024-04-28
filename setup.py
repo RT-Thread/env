@@ -2,9 +2,9 @@ import platform
 from setuptools import setup, find_packages
 
 if platform.system() == "Windows":
-    need_windows_curses = ["windows-curses"]
+    windows_modules = ['windows-curses', 'psutil']
 else:
-    need_windows_curses = []
+    windows_modules = []
 
 
 setup(
@@ -17,7 +17,7 @@ setup(
     license='Apache License 2.0',
     keywords='rt-thread',
     consoles=[{'env': 'env.py'}],
-    install_requires=['SCons>=4.0.0', 'requests', 'psutil', 'kconfiglib'] + need_windows_curses,
+    install_requires=['SCons>=4.0.0', 'requests', 'tqdm', 'kconfiglib'] + windows_modules,
     packages=find_packages(include=[], exclude=['cmds', 'sdk', 'test', '__pycache__']),
     data_files= [('Lib/site-packages/env', ['env.py',
                                             'package.py',
