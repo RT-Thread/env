@@ -34,7 +34,7 @@ import platform
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread Env Script v1.5.0'
+__version__ = 'RT-Thread Env Script v1.5.2'
 
 def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
