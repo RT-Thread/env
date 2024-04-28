@@ -29,10 +29,9 @@ import json
 import logging
 import os
 import sys
-
 import requests
-
 import archive
+from tqdm import tqdm
 
 """Template for creating a new file"""
 
@@ -208,20 +207,17 @@ class PackageOperation:
         print('Start to download package : %s ' % filename.encode("utf-8"))
 
         while True:
-            # print("retry_count : %d"%retry_count)
             try:
                 r = requests.get(url_from_srv, stream=True, headers=headers)
-
+                total_size = int(r.headers.get('content-length', 0))
                 flush_count = 0
 
                 with open(path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=1024):
+                    for chunk in tqdm(r.iter_content(chunk_size=1024), total=total_size//1024, unit='KB'):
                         if chunk:
                             f.write(chunk)
                             f.flush()
                         flush_count += 1
-                        sys.stdout.write("\rDownloding %d KB" % flush_count)
-                        sys.stdout.flush()
 
                 retry_count = retry_count + 1
 
@@ -234,8 +230,7 @@ class PackageOperation:
                     if os.path.isfile(path):
                         os.remove(path)
                     if retry_count > 5:
-                        print(
-                            "error: Have tried downloading 5 times.\nstop Downloading file :%s" % path)
+                        print("error: Have tried downloading 5 times.\nstop Downloading file :%s" % path)
                         if os.path.isfile(path):
                             os.remove(path)
                         ret = False
@@ -250,5 +245,3 @@ class PackageOperation:
                         os.remove(path)
                     return False
         return ret
-
-
