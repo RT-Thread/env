@@ -179,7 +179,6 @@ class PackageOperation:
                 os.remove(path)
             else:
                 if archive.package_integrity_test(path):
-                    # print "The file is rigit."
                     return True
                 else:
                     os.remove(path)
@@ -191,7 +190,7 @@ class PackageOperation:
                    'Accept': '*/*',
                    'User-Agent': 'curl/7.54.0'}
 
-        print('Start to download package : %s ' % filename.encode("utf-8"))
+        print('downloading ' + filename + ' ...')
 
         while True:
             try:
@@ -209,8 +208,6 @@ class PackageOperation:
 
                 if archive.package_integrity_test(path):  # make sure the file is right
                     ret = True
-                    print("\rDownloded %d KB  " % flush_count)
-                    print('Start to unpack. Please wait...')
                     break
                 else:
                     if os.path.isfile(path):

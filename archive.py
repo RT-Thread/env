@@ -31,7 +31,7 @@ import tarfile
 import zipfile
 import pkgsdb
 from cmds.cmd_package.cmd_package_utils import is_windows, remove_folder
-
+from tqdm import tqdm
 
 def unpack(archive_filename, bsp_package_path, package_info, package_name):
     if archive_filename.endswith(".zip"):
@@ -61,7 +61,7 @@ def handle_tar_package(archive_filename, bsp_package_path, package_name, package
         package_folder_name = ""
         package_name_with_version = ""
         arch = tarfile.open(archive_filename, "r")
-        for item in arch.getnames():
+        for item in tqdm(arch.getnames()):
             arch.extract(item, package_temp_path)
             if not os.path.isdir(os.path.join(package_temp_path, item)):
                 # Gets the folder name and changed folder name only once
@@ -113,7 +113,7 @@ def handle_zip_package(archive_filename, bsp_package_path, package_name, package
         package_folder_name = ""
         package_name_with_version = ""
         arch = zipfile.ZipFile(archive_filename, "r")
-        for item in arch.namelist():
+        for item in tqdm(arch.namelist()):
             arch.extract(item, package_temp_path)
             if not os.path.isdir(os.path.join(package_temp_path, item)):
                 # Gets the folder name and changed folder name only once
