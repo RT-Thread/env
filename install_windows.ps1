@@ -83,6 +83,14 @@ if (!(Test-Command pyocd)) {
     echo "pyocd has installed. Jump this step."
 }
 
+cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | findstr "tqdm"  | Out-Null
+if (!$?) {
+    echo "Installing tqdm module."
+    cmd /c $RTT_PYTHON -m pip install tqdm -i $PIP_SOURCE --trusted-host $PIP_HOST
+} else {
+    echo "tqdm module has installed. Jump this step."
+}
+
 cmd /c $RTT_PYTHON -m pip list -i $PIP_SOURCE --trusted-host $PIP_HOST | findstr "requests"  | Out-Null
 if (!$?) {
     echo "Installing requests module."

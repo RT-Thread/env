@@ -41,6 +41,11 @@ if ! [ -x "$(command -v scons)" ]; then
     $RTT_PYTHON -m pip install scons
 fi
 
+if ! [ -x "$(command -v tqdm)" ]; then
+    echo "Installing tqdm."
+    $RTT_PYTHON -m pip install tqdm
+fi
+
 if ! [ -x "$(command -v pyocd)" ]; then
     echo "Installing pyocd."
     $RTT_PYTHON -m pip install -U pyocd
