@@ -9,14 +9,14 @@
 ### Install Env
 
 ```
-wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.sh
+wget https://raw.githubusercontent.com/RT-Thread/env/v1.5.x/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
 ./install_ubuntu.sh
 ```
 
 对于中国大陆用户，请使用以下命令
 ```
-wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
+wget https://gitee.com/RT-Thread-Mirror/env/raw/v1.5.x/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
 ./install_ubuntu.sh --gitee
 ```
@@ -44,7 +44,7 @@ Tested on the following version of PowerShell:
 在 PowerShell 中执行（Execute the command in PowerShell）：
 
 ```powershell
-wget https://raw.githubusercontent.com/RT-Thread/env/master/install_windows.ps1 -O install_windows.ps1
+wget https://raw.githubusercontent.com/RT-Thread/env/v1.5.x/install_windows.ps1 -O install_windows.ps1
 set-executionpolicy remotesigned
 .\install_windows.ps1
 ```
@@ -52,7 +52,7 @@ set-executionpolicy remotesigned
 对于中国大陆用户，请使用以下命令：
 
 ```powershell
-wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_windows.ps1 -O install_windows.ps1
+wget https://gitee.com/RT-Thread-Mirror/env/raw/v1.5.x/install_windows.ps1 -O install_windows.ps1
 set-executionpolicy remotesigned
 .\install_windows.ps1 --gitee
 ```
