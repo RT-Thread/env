@@ -197,14 +197,13 @@ class PackageOperation:
             try:
                 r = requests.get(url_from_srv, stream=True, headers=headers)
                 total_size = int(r.headers.get('content-length', 0))
-                flush_count = 0
 
-                with open(path, 'wb') as f:
-                    for chunk in tqdm(r.iter_content(chunk_size=1024), total=total_size//1024, unit='KB'):
+                with open(path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True) as bar:
+                    # if the chunk_size is too large, the progress bar will not display
+                    for chunk in r.iter_content(chunk_size=1024):
                         if chunk:
                             f.write(chunk)
-                            f.flush()
-                        flush_count += 1
+                            bar.update(len(chunk))
 
                 retry_count = retry_count + 1
 
