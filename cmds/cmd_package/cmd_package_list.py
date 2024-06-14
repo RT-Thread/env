@@ -29,6 +29,7 @@ import kconfig
 from package import PackageOperation
 from vars import Import
 
+
 def get_packages():
     """Get the packages list in env.
 
@@ -40,8 +41,10 @@ def get_packages():
     pkgs_root = Import('pkgs_root')
     packages = []
     if not os.path.isfile(config_file):
-        print("\033[1;31;40mWarning: Can't find .config.\033[0m"
-                '\033[1;31;40mYou should use <menuconfig> command to config bsp first.\033[0m')
+        print(
+            "\033[1;31;40mWarning: Can't find .config.\033[0m"
+            '\033[1;31;40mYou should use <menuconfig> command to config bsp first.\033[0m'
+        )
 
         return packages
 
@@ -62,6 +65,7 @@ def get_packages():
         pkg['name'] = package_name_in_json
 
     return packages
+
 
 def list_packages():
     """Print the packages list in env.

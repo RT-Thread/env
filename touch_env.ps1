@@ -1,12 +1,12 @@
-$DEFAULT_RTT_PACKAGE_URL="https://github.com/RT-Thread/packages.git"
-$ENV_URL="https://github.com/RT-Thread/env.git"
-$SDK_URL="https://github.com/RT-Thread/sdk.git"
+$DEFAULT_RTT_PACKAGE_URL = "https://github.com/RT-Thread/packages.git"
+$ENV_URL = "https://github.com/RT-Thread/env.git"
+$SDK_URL = "https://github.com/RT-Thread/sdk.git"
 
 if ($args[0] -eq "--gitee") {
     echo "Using gitee service."
-    $DEFAULT_RTT_PACKAGE_URL="https://gitee.com/RT-Thread-Mirror/packages.git"
-    $ENV_URL="https://gitee.com/RT-Thread-Mirror/env.git"
-    $SDK_URL="https://github.com/RT-Thread-Mirror/sdk.git"
+    $DEFAULT_RTT_PACKAGE_URL = "https://gitee.com/RT-Thread-Mirror/packages.git"
+    $ENV_URL = "https://gitee.com/RT-Thread-Mirror/env.git"
+    $SDK_URL = "https://github.com/RT-Thread-Mirror/sdk.git"
 }
 
 $env_dir = "$HOME\.env"
@@ -20,7 +20,7 @@ if (Test-Path -Path $env_dir) {
 
 if (!(Test-Path -Path $env_dir)) {
     echo "creating .env folder!"
-    $package_url=$DEFAULT_RTT_PACKAGE_URL
+    $package_url = $DEFAULT_RTT_PACKAGE_URL
     mkdir $env_dir | Out-Null
     mkdir $env_dir\local_pkgs | Out-Null
     mkdir $env_dir\packages | Out-Null

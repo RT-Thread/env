@@ -32,6 +32,7 @@ from .cmd_package_wizard import package_wizard
 from .cmd_package_update import package_update
 from .cmd_package_upgrade import package_upgrade, package_upgrade_modules
 
+
 def run_env_cmd(args):
     """Run packages command."""
 
@@ -60,60 +61,85 @@ def run_env_cmd(args):
 def add_parser(sub):
     """The packages command parser for env."""
 
-    parser = sub.add_parser('pkg', aliases=['pkgs', 'package'], help=__doc__, description=__doc__)
+    parser = sub.add_parser(
+        'pkg',
+        aliases=['pkgs', 'package'],
+        help=__doc__,
+        description=__doc__,
+    )
 
-    parser.add_argument('--update',
-                        help='update packages, install or remove the packages by your settings in menuconfig',
-                        action='store_true',
-                        default=False,
-                        dest='package_update')
+    parser.add_argument(
+        '--update',
+        help='update packages, install or remove the packages by your settings in menuconfig',
+        action='store_true',
+        default=False,
+        dest='package_update',
+    )
 
-    parser.add_argument('--update-force', '--force-update',
-                        help='forcely update and clean packages, install or remove packages by settings in menuconfig',
-                        action='store_true',
-                        default=False,
-                        dest='package_update_force')
+    parser.add_argument(
+        '--update-force',
+        '--force-update',
+        help='forcely update and clean packages, install or remove packages by settings in menuconfig',
+        action='store_true',
+        default=False,
+        dest='package_update_force',
+    )
 
-    parser.add_argument('--list',
-                        help='list target packages',
-                        action='store_true',
-                        default=False,
-                        dest='list_packages')
+    parser.add_argument(
+        '--list',
+        help='list target packages',
+        action='store_true',
+        default=False,
+        dest='list_packages',
+    )
 
-    parser.add_argument('--wizard',
-                        help='create a new package with wizard',
-                        action='store_true',
-                        default=False,
-                        dest='package_create')
+    parser.add_argument(
+        '--wizard',
+        help='create a new package with wizard',
+        action='store_true',
+        default=False,
+        dest='package_create',
+    )
 
-    parser.add_argument('--upgrade',
-                        help='upgrade local packages index from git repository',
-                        action='store_true',
-                        default=False,
-                        dest='package_upgrade')
+    parser.add_argument(
+        '--upgrade',
+        help='upgrade local packages index from git repository',
+        action='store_true',
+        default=False,
+        dest='package_upgrade',
+    )
 
-    parser.add_argument('--upgrade-force', '--force-upgrade',
-                        help='forcely upgrade local packages index from git repository',
-                        action='store_true',
-                        default=False,
-                        dest='package_upgrade_force')
+    parser.add_argument(
+        '--upgrade-force',
+        '--force-upgrade',
+        help='forcely upgrade local packages index from git repository',
+        action='store_true',
+        default=False,
+        dest='package_upgrade_force',
+    )
 
-    parser.add_argument('--upgrade-script-force',
-                        help='forcely upgrade local packages index and Env script from git repository',
-                        action='store_true',
-                        default=False,
-                        dest='package_upgrade_script_force')
+    parser.add_argument(
+        '--upgrade-script-force',
+        help='forcely upgrade local packages index and Env script from git repository',
+        action='store_true',
+        default=False,
+        dest='package_upgrade_script_force',
+    )
 
-    parser.add_argument('--upgrade-modules',
-                        help='upgrade python modules, e.g. requests module',
-                        action='store_true',
-                        default=False,
-                        dest='package_upgrade_modules')
+    parser.add_argument(
+        '--upgrade-modules',
+        help='upgrade python modules, e.g. requests module',
+        action='store_true',
+        default=False,
+        dest='package_upgrade_modules',
+    )
 
-    parser.add_argument('--printenv',
-                        help='print environmental variables to check',
-                        action='store_true',
-                        default=False,
-                        dest='package_print_env')
+    parser.add_argument(
+        '--printenv',
+        help='print environmental variables to check',
+        action='store_true',
+        default=False,
+        dest='package_print_env',
+    )
 
     parser.set_defaults(func=run_env_cmd)

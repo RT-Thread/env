@@ -15,6 +15,7 @@ chmod 777 install_ubuntu.sh
 ```
 
 对于中国大陆用户，请使用以下命令
+
 ```
 wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
@@ -26,9 +27,10 @@ chmod 777 install_ubuntu.sh
 PLAN A: Whenever start the ubuntu system, you need to type command `source ~/.env/env.sh` to activate the environment variables.
 
 or PLAN B: open `~/.bashrc` file, and attach the command `source ~/.env/env.sh` at the end of the file. It will be automatically executed when you log in the ubuntu, and you don't need to execute that command any more.
+
 ### Use Env
 
-Please see: https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig
+Please see: <https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig>
 
 ## Usage under Windows
 
@@ -58,6 +60,7 @@ set-executionpolicy remotesigned
 ```
 
 注意：
+
 1. Powershell要以管理员身份运行。
 2. 将其设置为 remotesigned 后，您可以作为普通用户运行 PowerShell。（ After setting it to remotesigned, you can run PowerShell as a normal user.）
 3. 一定要关闭杀毒软件，否则安装过程可能会被杀毒软件强退

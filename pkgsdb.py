@@ -165,10 +165,11 @@ def remove_unchanged_file(pathname, dbfilename, dbsqlname):
         os.remove(pathname)
     else:
         print("%s has been changed." % pathname)
-        print('Are you sure you want to permanently delete the file: %s?' %
-              os.path.basename(pathname))
-        print('If you choose to keep the changed file,you should copy the file to another folder. '
-              '\nbecaues it may be covered by the next update.')
+        print('Are you sure you want to permanently delete the file: %s?' % os.path.basename(pathname))
+        print(
+            'If you choose to keep the changed file,you should copy the file to another folder. '
+            '\nbecaues it may be covered by the next update.'
+        )
 
         rc = user_input('Press the Y Key to delete the folder or just press Enter to keep it : ')
         if rc == 'y' or rc == 'Y':

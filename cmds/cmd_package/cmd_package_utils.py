@@ -34,11 +34,11 @@ import requests
 import logging
 from vars import Import
 
+
 def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
 
-    sub = subprocess.Popen(cmd_string, cwd=cwd, stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE, shell=shell, bufsize=4096)
+    sub = subprocess.Popen(cmd_string, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=shell, bufsize=4096)
 
     stdout_str = ''
     while sub.poll() is None:
@@ -86,7 +86,7 @@ def get_url_from_mirror_server(package_name, package_version):
             {
                 "name": "NULL",
             }
-        ]
+        ],
     }
     payload["packages"][0]['name'] = package_name
 
@@ -195,7 +195,7 @@ def find_string_in_config(filename, macro_name):
 # e.g CONFIG_SYS_AUTO_UPDATE_PKGS=y
 # will return True because this macro has been set
 # If this macro cannot find or the .config cannot find or the macro is not set (n),
-# the function will return False  
+# the function will return False
 def find_bool_macro_in_config(filename, macro_name):
     rst, str = find_string_in_config(filename, macro_name)
     if rst == True and str == 'y':

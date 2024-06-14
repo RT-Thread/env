@@ -32,14 +32,16 @@ from .cmd_package_update import need_using_mirror_download
 try:
     import requests
 except ImportError:
-    print("****************************************\n"
-          "* Import requests module error.\n"
-          "* Please install requests module first.\n"
-          "* pip install step:\n"
-          "* $ pip install requests\n"
-          "* command install step:\n"
-          "* $ sudo apt-get install python-requests\n"
-          "****************************************\n")
+    print(
+        "****************************************\n"
+        "* Import requests module error.\n"
+        "* Please install requests module first.\n"
+        "* pip install step:\n"
+        "* $ pip install requests\n"
+        "* command install step:\n"
+        "* $ sudo apt-get install python-requests\n"
+        "****************************************\n"
+    )
 
 
 def upgrade_packages_index(force_upgrade=False):
@@ -124,8 +126,8 @@ def upgrade_env_script(force_upgrade=False):
 
 
 def get_mac_address():
-    mac=uuid.UUID(int = uuid.getnode()).hex[-12:]
-    return ":".join([mac[e:e+2] for e in range(0,11,2)])
+    mac = uuid.UUID(int=uuid.getnode()).hex[-12:]
+    return ":".join([mac[e : e + 2] for e in range(0, 11, 2)])
 
 
 def Information_statistics():
@@ -136,7 +138,13 @@ def Information_statistics():
 
     if find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
-        response = requests.get('https://www.rt-thread.org/studio/statistics/api/envuse?userid='+str(mac_addr)+'&username='+str(mac_addr)+'&envversion=1.0&studioversion=2.0&ip=127.0.0.1')
+        response = requests.get(
+            'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
+            + str(mac_addr)
+            + '&username='
+            + str(mac_addr)
+            + '&envversion=1.0&studioversion=2.0&ip=127.0.0.1'
+        )
         if response.status_code != 200:
             return
     else:
@@ -146,7 +154,7 @@ def Information_statistics():
 def package_upgrade(force_upgrade=False, upgrade_script=False):
     """Update the package repository directory and env function scripts."""
 
-    if os.environ.get('RTTS_PLATFROM') != 'STUDIO': # not used in studio
+    if os.environ.get('RTTS_PLATFROM') != 'STUDIO':  # not used in studio
         Information_statistics()
 
     upgrade_packages_index(force_upgrade=force_upgrade)
@@ -154,14 +162,17 @@ def package_upgrade(force_upgrade=False, upgrade_script=False):
     if upgrade_script:
         upgrade_env_script(force_upgrade=force_upgrade)
 
+
 # upgrade python modules
 def package_upgrade_modules():
     try:
         from subprocess import call
+
         call('python -m pip install --upgrade pip', shell=True)
 
         import pip
         from pip._internal.utils.misc import get_installed_distributions
+
         for dist in get_installed_distributions():
             call('python -m pip install --upgrade ' + dist.project_name, shell=True)
     except:

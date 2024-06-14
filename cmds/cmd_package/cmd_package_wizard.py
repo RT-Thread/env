@@ -29,6 +29,7 @@ from package import Kconfig_file, Package_json_file
 from string import Template
 from .cmd_package_utils import user_input
 
+
 def package_wizard():
     """Packages creation wizard.
 
@@ -70,16 +71,38 @@ def package_wizard():
     keyword = name
 
     # third step
-    package_class_list = ('iot', 'language', 'misc', 'multimedia',
-                          'peripherals', 'security', 'system', 'tools', 'peripherals/sensors', 'ai')
+    package_class_list = (
+        'iot',
+        'language',
+        'misc',
+        'multimedia',
+        'peripherals',
+        'security',
+        'system',
+        'tools',
+        'peripherals/sensors',
+        'ai',
+    )
 
-    arduino_class_list = ('arduino/sensors', 'arduino/timing', 'arduino/communication', 'arduino/dataprocessing', 
-                            'arduino/datastorage', 'arduino/devicecontrol', 'arduino/display', 'arduino/other',
-                            'arduino/signalio', 'arduino/uncategorized', 'arduino/projects')
+    arduino_class_list = (
+        'arduino/sensors',
+        'arduino/timing',
+        'arduino/communication',
+        'arduino/dataprocessing',
+        'arduino/datastorage',
+        'arduino/devicecontrol',
+        'arduino/display',
+        'arduino/other',
+        'arduino/signalio',
+        'arduino/uncategorized',
+        'arduino/projects',
+    )
 
     print('\033[5;33;40m\n3.Please choose a package category from 1 to 11 : \033[0m')
-    print("\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
-          "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:ai]|[11:arduino]\033[0m") # arduino category must be the last one
+    print(
+        "\033[1;32;40m[1:iot]|[2:language]|[3:misc]|[4:multimedia]|"
+        "[5:peripherals]|[6:security]|[7:system]|[8:tools]|[9:sensors]|[10:ai]|[11:arduino]\033[0m"
+    )  # arduino category must be the last one
 
     class_number = user_input().strip()
     while class_number == '' or class_number.isdigit() is False or int(class_number) < 1 or int(class_number) > 11:
@@ -90,13 +113,20 @@ def package_wizard():
         class_number = user_input().strip()
 
     is_arduino_library = False
-    if int(class_number) == 11: # Arduino category
+    if int(class_number) == 11:  # Arduino category
         print('\033[5;33;40m\n3.Please choose an Arduino library category from 1 to 11 : \033[0m')
-        print("\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
-            "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m")
+        print(
+            "\033[1;32;40m[1:Sensors]|[2:Timing]|[3:Communication]|[4:Data Processing]|"
+            "[5:Data Storage]|[6:Device Control]|[7:Display]|[8:Other]|[9:Signal Input/Output]|[10:Uncategorized]|[11:Project]\033[0m"
+        )
 
         arduino_class_number = user_input().strip()
-        while arduino_class_number == '' or arduino_class_number.isdigit() is False or int(arduino_class_number) < 1 or int(arduino_class_number) > 11:
+        while (
+            arduino_class_number == ''
+            or arduino_class_number.isdigit() is False
+            or int(arduino_class_number) < 1
+            or int(arduino_class_number) > 11
+        ):
             if arduino_class_number == '':
                 print('\033[1;31;40mError: You must choose a category. Try again.\033[0m')
             else:
@@ -106,7 +136,7 @@ def package_wizard():
         package_class = arduino_class_list[int(arduino_class_number) - 1]
         is_arduino_library = True
 
-    else: # other category
+    else:  # other category
         package_class = package_class_list[int(class_number) - 1]
 
     # fourth step
@@ -140,8 +170,8 @@ def package_wizard():
     # seventh step
     print('\033[5;33;40m\n7.Please input the repository of this package :\033[0m')
     print(
-        "\033[1;32;40mFor example, hello package's repository url "
-        "is 'https://github.com/RT-Thread-packages/hello'.\033[0m")
+        "\033[1;32;40mFor example, hello package's repository url " "is 'https://github.com/RT-Thread-packages/hello'.\033[0m"
+    )
 
     repository = user_input().strip()
     while repository == '':
@@ -159,20 +189,38 @@ def package_wizard():
     upper_name = upper_name.replace('-', '_')
     if is_arduino_library:
         upper_name = 'ARDUINO_' + upper_name
-    kconfig = s.substitute(name=upper_name, description=description, version=ver,
-                           pkgs_class=package_class, lowercase_name=name, version_standard=ver_standard)
+    kconfig = s.substitute(
+        name=upper_name,
+        description=description,
+        version=ver,
+        pkgs_class=package_class,
+        lowercase_name=name,
+        version_standard=ver_standard,
+    )
     f = open(os.path.join(pkg_path, 'Kconfig'), 'w')
     f.write(kconfig)
     f.close()
 
     s = Template(Package_json_file)
-    package = s.substitute(name=name, pkgsclass=package_class, authorname=author_name, authoremail=author_email,
-                           description=description, description_zh=description_zh, version=ver, keyword=keyword,
-                           license=license_choice, repository=repository, pkgs_using_name=upper_name)
+    package = s.substitute(
+        name=name,
+        pkgsclass=package_class,
+        authorname=author_name,
+        authoremail=author_email,
+        description=description,
+        description_zh=description_zh,
+        version=ver,
+        keyword=keyword,
+        license=license_choice,
+        repository=repository,
+        pkgs_using_name=upper_name,
+    )
     f = open(os.path.join(pkg_path, 'package.json'), 'w')
     f.write(package)
     f.close()
 
     print('\nThe package index has been created \033[1;32;40msuccessfully\033[0m.')
-    print('Please \033[5;34;40mupdate\033[0m other information of this package '
-          'based on Kconfig and package.json in directory ' + name + '.')
+    print(
+        'Please \033[5;34;40mupdate\033[0m other information of this package '
+        'based on Kconfig and package.json in directory ' + name + '.'
+    )

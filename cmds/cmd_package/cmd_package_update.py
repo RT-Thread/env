@@ -38,8 +38,7 @@ import kconfig
 import pkgsdb
 from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
-from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
-    find_bool_macro_in_config
+from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, find_bool_macro_in_config
 
 
 def determine_support_chinese(env_root):
@@ -58,6 +57,7 @@ def get_mirror_giturl(submodule_name):
 
     mirror_url = 'https://gitee.com/RT-Thread-Mirror/submod_' + submodule_name + '.git'
     return mirror_url
+
 
 def get_esp_mirror_giturl(submodule_name):
     if submodule_name == "cexception":
@@ -86,14 +86,12 @@ def modify_submod_file_to_mirror(gitmodule_path, use_esp_mirror):
                         submodule_name = submodule_git_url.split('/')[-1].replace('.git', '')
                         if not use_esp_mirror:
                             query_submodule_name = 'submod_' + submodule_name
-                            get_package_url, get_ver_sha = get_url_from_mirror_server(
-                                query_submodule_name, 'latest')
+                            get_package_url, get_ver_sha = get_url_from_mirror_server(query_submodule_name, 'latest')
                         else:
                             get_package_url = get_esp_mirror_giturl(submodule_name)
 
                         if get_package_url is not None and determine_url_valid(get_package_url):
-                            replace_list.append(
-                                (submodule_git_url, get_package_url, submodule_name, submodule_path))
+                            replace_list.append((submodule_git_url, get_package_url, submodule_name, submodule_path))
                 line = f.readline()
 
         with open(gitmodule_path, 'r+') as f:
@@ -114,10 +112,12 @@ def modify_submod_file_to_mirror(gitmodule_path, use_esp_mirror):
 
 
 def determine_url_valid(url_from_srv):
-    headers = {'Connection': 'keep-alive',
-               'Accept-Encoding': 'gzip, deflate',
-               'Accept': '*/*',
-               'User-Agent': 'curl/7.54.0'}
+    headers = {
+        'Connection': 'keep-alive',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept': '*/*',
+        'User-Agent': 'curl/7.54.0',
+    }
 
     # noinspection PyBroadException
     try:
@@ -149,7 +149,9 @@ def is_user_mange_package(bsp_package_path, pkg):
         break
     return False
 
+
 is_China_ip = None
+
 
 def need_using_mirror_download():
     global is_China_ip
@@ -160,10 +162,10 @@ def need_using_mirror_download():
     server_decision = ""
     config_file = os.path.join(Import('env_root'), 'tools', 'scripts', 'cmds', '.config')
     if os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITHUB'):
-        is_China_ip = False # Github which means not China IP
+        is_China_ip = False  # Github which means not China IP
         server_decision = "manually decision"
     elif os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITEE'):
-        is_China_ip = True # Gitee which means China IP
+        is_China_ip = True  # Gitee which means China IP
         server_decision = "manually decision"
     else:
         try:
@@ -175,7 +177,7 @@ def need_using_mirror_download():
                 is_China_ip = False
             server_decision = "auto decision based on IP location"
         except:
-            if (-time.timezone)/3600 == 8:
+            if (-time.timezone) / 3600 == 8:
                 is_China_ip = True
             else:
                 is_China_ip = False
@@ -184,8 +186,10 @@ def need_using_mirror_download():
     print("[Use {} server - {}]".format(("Gitee" if is_China_ip else "Github"), server_decision))
     return is_China_ip
 
+
 def is_git_url(package_url):
     return package_url.endswith('.git')
+
 
 def update_submodule(repo_path, use_esp_mirror):
     print(repo_path)
@@ -209,8 +213,8 @@ def update_submodule(repo_path, use_esp_mirror):
             cmd = 'git submodule update --init --recursive'
             execute_command(cmd, cwd=repo_path)
 
-def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed,
-                        url_origin):
+
+def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed, url_origin):
     try:
         repo_path = os.path.join(bsp_package_path, package_name)
         repo_path = repo_path + '-' + package_info['ver']
@@ -278,8 +282,7 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
     if not force_update:
-        logging.info(
-            "Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
+        logging.info("Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
         if is_user_mange_package(bsp_package_path, package_info):
             logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
             return result
@@ -296,7 +299,11 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     try:
         url_from_json = package.get_url(package_info['ver'])
     except:
-        print("Warning: cannot find the corresponding version. Please check {}'s Kconfig file".format(package_info['name'].capitalize()))
+        print(
+            "Warning: cannot find the corresponding version. Please check {}'s Kconfig file".format(
+                package_info['name'].capitalize()
+            )
+        )
         return False
 
     if not url_from_json:
@@ -328,13 +335,14 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
         logging.warning("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     if is_git_url(package_url):
-        if not install_git_package(bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha,
-                                   upstream_changed,
-                                   url_from_json):
+        if not install_git_package(
+            bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha, upstream_changed, url_from_json
+        ):
             result = False
     else:
-        if not install_not_git_package(package, package_info, local_pkgs_path, package_url, bsp_package_path,
-                                       pkgs_name_in_json):
+        if not install_not_git_package(
+            package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json
+        ):
             result = False
     return result
 
@@ -358,6 +366,7 @@ def and_list(aList, bList):
             tmp.append(a)
     return tmp
 
+
 def get_package_folder(origin_path, version):
     return origin_path + '-' + version
 
@@ -371,7 +380,7 @@ def git_cmd_exec(cmd, cwd):
 
 
 def update_latest_packages(sys_value):
-    """ update the packages that are latest version.
+    """update the packages that are latest version.
 
     If the selected package is the latest version,
     check to see if it is the latest version after the update command,
@@ -416,8 +425,7 @@ def update_latest_packages(sys_value):
                     payload_pkgs_name_in_json = pkgs_name_in_json.encode("utf-8")
 
                     # Change repo's upstream address.
-                    mirror_url = get_url_from_mirror_server(
-                        payload_pkgs_name_in_json, pkg['ver'])
+                    mirror_url = get_url_from_mirror_server(payload_pkgs_name_in_json, pkg['ver'])
 
                     # if git root is same as repo path, then change the upstream
                     get_git_root = get_git_root_path(repo_path)
@@ -451,12 +459,10 @@ def update_latest_packages(sys_value):
 
             # recover origin url to the path which get from packages.json file
             if package.get_url(pkg['ver']):
-                cmd = 'git remote set-url origin ' + \
-                      package.get_url(pkg['ver'])
+                cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
                 git_cmd_exec(cmd, repo_path)
             else:
-                print("Can't find the package : %s's url in file : %s" %
-                      (payload_pkgs_name_in_json, pkg_path))
+                print("Can't find the package : %s's url in file : %s" % (payload_pkgs_name_in_json, pkg_path))
 
             print("==============================>  %s update done\n" % pkgs_name_in_json)
 
@@ -485,7 +491,7 @@ def get_git_root_path(repo_path):
 
 
 def pre_package_update():
-    """ Make preparations before updating the software package. """
+    """Make preparations before updating the software package."""
 
     logging.info("Begin prepare package update")
     bsp_root = Import('bsp_root')
@@ -573,8 +579,7 @@ def pre_package_update():
         with open(os.path.join(bsp_packages_path, 'SConscript'), 'w') as f:
             f.write(str(Bridge_SConscript))
 
-    return [oldpkgs, newpkgs, package_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path,
-            dbsqlite_pathname]
+    return [oldpkgs, newpkgs, package_error, package_json_filename, pkgs_error_list_fn, bsp_packages_path, dbsqlite_pathname]
 
 
 def error_packages_handle(error_packages_list, read_back_pkgs_json, package_filename, force_update):
@@ -596,8 +601,10 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
         # re-download the packages in error_packages_list
         for package in error_packages_list:
             if install_package(env_root, pkgs_root, bsp_root, package, force_update):
-                print("\n==============================> %s %s update done \n"
-                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
+                print(
+                    "\n==============================> %s %s update done \n"
+                    % (package['name'].encode("utf-8"), package['ver'].encode("utf-8"))
+                )
             else:
                 download_error.append(package)
                 print(package, 'download failed.')
@@ -607,8 +614,10 @@ def error_packages_handle(error_packages_list, read_back_pkgs_json, package_file
             print("%s" % download_error)
 
             for package in download_error:
-                print("Packages:%s, %s re-download error, you can use <pkgs --update> command to re-download them."
-                      % (package['name'].encode("utf-8"), package['ver'].encode("utf-8")))
+                print(
+                    "Packages:%s, %s re-download error, you can use <pkgs --update> command to re-download them."
+                    % (package['name'].encode("utf-8"), package['ver'].encode("utf-8"))
+                )
 
             error_write_back = sub_list(read_back_pkgs_json, download_error)
             with open(package_filename, 'w') as f:
@@ -661,7 +670,7 @@ def get_package_remove_path(pkg, bsp_packages_path):
 
 
 def handle_download_error_packages(sys_value, force_update):
-    """ handle download error packages.
+    """handle download error packages.
 
     Check to see if the packages stored in the Json file list actually exist,
     and then download the packages if they don't exist.
@@ -700,12 +709,13 @@ def delete_useless_packages(sys_value):
         for error_package in package_delete_error_list:
             remove_path_with_version = get_package_remove_path(error_package, bsp_packages_path)
             if os.path.isdir(remove_path_with_version):
-                print("\nError: %s package delete failed, begin to remove it." %
-                      error_package['name'].encode("utf-8"))
+                print("\nError: %s package delete failed, begin to remove it." % error_package['name'].encode("utf-8"))
 
                 if not rm_package(remove_path_with_version):
-                    print("Error: Delete package %s failed! Please delete the folder manually.\n" %
-                          error_package['name'].encode("utf-8"))
+                    print(
+                        "Error: Delete package %s failed! Please delete the folder manually.\n"
+                        % error_package['name'].encode("utf-8")
+                    )
                     return False
     return True
 
@@ -734,8 +744,10 @@ def delete_git_package(pkg, remove_path_with_version, force_update, package_dele
                     package_delete_fail_list.append(pkg)
                     print("Error: Please delete the folder manually.")
             except Exception as e:
-                logging.warning('Error message:%s%s. error.message: %s\n\t' %
-                                ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e))
+                logging.warning(
+                    'Error message:%s%s. error.message: %s\n\t'
+                    % ("Delete folder failed: ", git_folder_to_remove.encode("utf-8"), e)
+                )
 
 
 def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname):
@@ -745,9 +757,10 @@ def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, 
             pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
         except Exception as e:
             package_delete_fail_list.append(pkg)
-            logging.warning('Error message:\n%s %s. %s \n\t' % (
-                "Delete folder failed, please delete the folder manually",
-                remove_path_with_version.encode("utf-8"), e))
+            logging.warning(
+                'Error message:\n%s %s. %s \n\t'
+                % ("Delete folder failed, please delete the folder manually", remove_path_with_version.encode("utf-8"), e)
+            )
 
 
 def remove_packages(sys_value, force_update):
@@ -804,8 +817,7 @@ def install_packages(sys_value, force_update):
 
     for package in case_download:
         if install_package(env_root, pkgs_root, bsp_root, package, force_update):
-            print("==============================>  %s %s is downloaded successfully. \n" % (
-                package['name'], package['ver']))
+            print("==============================>  %s %s is downloaded successfully. \n" % (package['name'], package['ver']))
         else:
             # if package download fails, record it in the packages_download_fail_list
             packages_download_fail_list.append(package)

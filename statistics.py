@@ -33,8 +33,8 @@ from cmds import *
 
 
 def get_mac_address():
-    mac=uuid.UUID(int = uuid.getnode()).hex[-12:]
-    return ":".join([mac[e:e+2] for e in range(0,11,2)])
+    mac = uuid.UUID(int=uuid.getnode()).hex[-12:]
+    return ":".join([mac[e : e + 2] for e in range(0, 11, 2)])
 
 
 def Information_statistics():
@@ -47,12 +47,20 @@ def Information_statistics():
 
     if not os.path.isfile(env_config_file):
         try:
-            response = requests.get('https://www.rt-thread.org/studio/statistics/api/envuse?userid='+str(mac_addr)+'&username='+str(mac_addr)+'&envversion=1.0&studioversion=2.0&ip=127.0.0.1')
+            response = requests.get(
+                'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
+                + str(mac_addr)
+                + '&username='
+                + str(mac_addr)
+                + '&envversion=1.0&studioversion=2.0&ip=127.0.0.1'
+            )
             if response.status_code != 200:
                 return
         except Exception as e:
             exit(0)
-    elif os.path.isfile(env_config_file) and cmd_package.find_bool_macro_in_config(env_config_file, 'SYS_PKGS_NOT_USING_STATISTICS'):
+    elif os.path.isfile(env_config_file) and cmd_package.find_bool_macro_in_config(
+        env_config_file, 'SYS_PKGS_NOT_USING_STATISTICS'
+    ):
         return True
 
 

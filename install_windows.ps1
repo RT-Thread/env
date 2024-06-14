@@ -7,7 +7,7 @@ function Test-Command( [string] $CommandName ) {
 
 foreach ($p_cmd in ("python3", "python", "py")) {
     cmd /c $p_cmd --version | findstr "Python" | Out-Null
-    if (!$?)  { continue }
+    if (!$?) { continue }
     $RTT_PYTHON = $p_cmd
     break
 }
@@ -20,8 +20,7 @@ if (!$?) {
     echo "Installing Python."
     if (Test-Path -Path "D:\") {
         cmd /c Python_setup.exe /quiet TargetDir=D:\Progrem\Python311 InstallAllUsers=1 PrependPath=1 Include_test=0
-    }
-    else {
+    } else {
         cmd /c Python_setup.exe /quiet PrependPath=1 Include_test=0
     }
     echo "Install Python done. please close the current terminal and run this script again."
@@ -107,9 +106,9 @@ if (!$?) {
     echo "psutil module has installed. Jump this step."
 }
 
-$url="https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
+$url = "https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
 if ($args[0] -eq "--gitee") {
-    $url="https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"
+    $url = "https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"
 }
 
 wget $url -O touch_env.ps1

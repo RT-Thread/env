@@ -43,12 +43,18 @@ def cmd(args):
 
 
 def add_parser(sub):
-    parser = sub.add_parser('system', help=__doc__, description=__doc__)
+    parser = sub.add_parser(
+        'system',
+        help=__doc__,
+        description=__doc__,
+    )
 
-    parser.add_argument('--update',
-                        help='update system menuconfig\'s online package options ',
-                        action='store_true',
-                        default=False,
-                        dest='system_update')
+    parser.add_argument(
+        '--update',
+        help='update system menuconfig\'s online package options ',
+        action='store_true',
+        default=False,
+        dest='system_update',
+    )
 
     parser.set_defaults(func=cmd)
