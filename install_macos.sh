@@ -8,7 +8,7 @@ for p_cmd in python3 python; do
     break
 done
 
-$RTT_PYTHON --version 2 > /dev/null || {
+$RTT_PYTHON --version 2 >/dev/null || {
     echo "Python not installed. Please install Python before running the installation script."
     exit 1
 }
@@ -26,12 +26,12 @@ if ! [ -x "$(command -v git)" ]; then
     brew install git
 fi
 
-brew list ncurses > /dev/null || {
+brew list ncurses >/dev/null || {
     echo "Installing ncurses."
     brew install ncurses
 }
 
-$RTT_PYTHON -m pip list > /dev/null || {
+$RTT_PYTHON -m pip list >/dev/null || {
     echo "Installing pip."
     $RTT_PYTHON -m ensurepip --upgrade
 }
@@ -51,7 +51,7 @@ if ! [ -x "$(command -v pyocd)" ]; then
     $RTT_PYTHON -m pip install -U pyocd
 fi
 
-if ! [[ `$RTT_PYTHON -m pip list | grep requests` ]]; then
+if ! [[ $($RTT_PYTHON -m pip list | grep requests) ]]; then
     echo "Installing requests."
     $RTT_PYTHON -m pip install requests
 fi

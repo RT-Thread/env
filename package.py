@@ -117,7 +117,9 @@ Package_json_file = '''{
 }
 '''
 
-import codecs 
+import codecs
+
+
 class PackageOperation:
     pkg = None
 
@@ -185,10 +187,7 @@ class PackageOperation:
 
         retry_count = 0
 
-        headers = {'Connection': 'keep-alive',
-                   'Accept-Encoding': 'gzip, deflate',
-                   'Accept': '*/*',
-                   'User-Agent': 'curl/7.54.0'}
+        headers = {'Connection': 'keep-alive', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'User-Agent': 'curl/7.54.0'}
 
         print('downloading ' + filename + ' ...')
 

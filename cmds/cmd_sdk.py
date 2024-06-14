@@ -29,11 +29,13 @@ from vars import Import, Export
 
 '''RT-Thread environment sdk setting'''
 
+
 class MenuConfigArgs:
     menuconfig_fn = False
     menuconfig_g = False
     menuconfig_silent = False
     menuconfig_setting = False
+
 
 def cmd(args):
     from cmds import cmd_menuconfig

@@ -33,19 +33,23 @@ import sys
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
+
 def is_in_powershell():
     rst = False
     try:
         import psutil
+
         rst = bool(re.fullmatch('pwsh|pwsh.exe|powershell.exe', psutil.Process(os.getppid()).name()))
     except:
         pass
 
     return rst
 
+
 def build_kconfig_frontends(rtt_root):
     kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
     os.system('scons -C ' + kconfig_dir)
+
 
 def get_rtt_root():
     rtt_root = os.getenv("RTT_ROOT")
@@ -63,6 +67,7 @@ def get_rtt_root():
                 break
     return rtt_root
 
+
 def is_pkg_special_config(config_str):
     """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
 
@@ -70,6 +75,7 @@ def is_pkg_special_config(config_str):
         if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
             return True
     return False
+
 
 def get_target_file(filename):
     try:
@@ -81,7 +87,8 @@ def get_target_file(filename):
     for line in config:
         line = line.lstrip(' ').replace('\n', '').replace('\r', '')
 
-        if len(line) == 0: continue
+        if len(line) == 0:
+            continue
 
         if line[0] == '#':
             continue
@@ -89,7 +96,7 @@ def get_target_file(filename):
             setting = line.split('=')
             if len(setting) >= 2:
                 if setting[0].startswith('CONFIG_TARGET_FILE'):
-                    target_fn = re.findall(r"^.*?=(.*)$",line)[0]
+                    target_fn = re.findall(r"^.*?=(.*)$", line)[0]
                     if target_fn.startswith('"'):
                         target_fn = target_fn.replace('"', '')
 
@@ -99,6 +106,7 @@ def get_target_file(filename):
                         return target_fn
 
     return 'rtconfig.h'
+
 
 def mk_rtconfig(filename):
     try:
@@ -167,6 +175,7 @@ def mk_rtconfig(filename):
 def cmd(args):
     import menuconfig
     import defconfig
+
     env_root = Import('env_root')
 
     # get RTT_DIR from environment or Kconfig file
@@ -177,7 +186,9 @@ def cmd(args):
         if platform.system() == "Windows":
             os.system('chcp 65001  > nul')
 
-        print("\n\033[1;31;40m<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"\033[0m")
+        print(
+            "\n\033[1;31;40m<menuconfig> 命令应当在某一特定 BSP 目录下执行，例如：\"rt-thread/bsp/stm32/stm32f091-st-nucleo\"\033[0m"
+        )
         print("\033[1;31;40m请确保当前目录为 BSP 根目录，并且该目录中有 Kconfig 文件。\033[0m\n")
 
         print("<menuconfig> command should be used in a bsp root path with a Kconfig file.")
@@ -208,7 +219,6 @@ def cmd(args):
         mk_rtconfig(".config")
         return
 
-
     if os.path.isfile(".config"):
         mtime = os.path.getmtime(".config")
     else:
@@ -218,6 +228,7 @@ def cmd(args):
     if args.menuconfig_fn:
         print('use', args.menuconfig_fn)
         import shutil
+
         shutil.copy(args.menuconfig_fn, ".config")
 
     if args.menuconfig_silent:
@@ -244,7 +255,7 @@ def cmd(args):
         return
 
     if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
-        if (is_in_powershell()):
+        if is_in_powershell():
             os.system('powershell pkgs.ps1 --update')
         else:
             os.system('pkgs --update')
@@ -257,48 +268,61 @@ def cmd(args):
 
             if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK4'):
                 if mdk_path:
-                    os.system('scons --target=mdk4 -s --exec-path="' + mdk_path+'"')
+                    os.system('scons --target=mdk4 -s --exec-path="' + mdk_path + '"')
                 else:
                     os.system('scons --target=mdk4 -s')
                 print("Create Keil-MDK4 project done")
             elif find_bool_macro_in_config(fn, 'SYS_CREATE_MDK5'):
                 if mdk_path:
-                    os.system('scons --target=mdk5 -s --exec-path="' + mdk_path+'"')
+                    os.system('scons --target=mdk5 -s --exec-path="' + mdk_path + '"')
                 else:
-                     os.system('scons --target=mdk5 -s')
+                    os.system('scons --target=mdk5 -s')
                 print("Create Keil-MDK5 project done")
             elif find_bool_macro_in_config(fn, 'SYS_CREATE_IAR'):
                 if iar_path:
-                    os.system('scons --target=iar -s --exec-path="' + iar_path+'"')
+                    os.system('scons --target=iar -s --exec-path="' + iar_path + '"')
                 else:
                     os.system('scons --target=iar -s')
                 print("Create IAR project done")
 
 
 def add_parser(sub):
-    parser = sub.add_parser('menuconfig', help=__doc__, description=__doc__)
+    parser = sub.add_parser(
+        'menuconfig',
+        help=__doc__,
+        description=__doc__,
+    )
 
-    parser.add_argument('--config',
-                        help='Using the user specified configuration file.',
-                        dest='menuconfig_fn')
+    parser.add_argument(
+        '--config',
+        help='Using the user specified configuration file.',
+        dest='menuconfig_fn',
+    )
 
-    parser.add_argument('--generate',
-                        help='generate rtconfig.h by .config.',
-                        action='store_true',
-                        default=False,
-                        dest='menuconfig_g')
+    parser.add_argument(
+        '--generate',
+        help='generate rtconfig.h by .config.',
+        action='store_true',
+        default=False,
+        dest='menuconfig_g',
+    )
 
-    parser.add_argument('--silent',
-                        help='Silent mode,don\'t display menuconfig window.',
-                        action='store_true',
-                        default=False,
-                        dest='menuconfig_silent')
+    parser.add_argument(
+        '--silent',
+        help='Silent mode,don\'t display menuconfig window.',
+        action='store_true',
+        default=False,
+        dest='menuconfig_silent',
+    )
 
-    parser.add_argument('-s', '--setting',
-                        help='Env config,auto update packages and create mdk/iar project',
-                        action='store_true',
-                        default=False,
-                        dest='menuconfig_setting')
+    parser.add_argument(
+        '-s',
+        '--setting',
+        help='Env config,auto update packages and create mdk/iar project',
+        action='store_true',
+        default=False,
+        dest='menuconfig_setting',
+    )
 
     # parser.add_argument('--easy',
     #                     help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',

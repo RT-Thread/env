@@ -58,11 +58,13 @@ def init_argparse():
 def init_logger(env_root):
     log_format = "%(module)s %(lineno)d %(levelname)s %(message)s \n"
     date_format = '%Y-%m-%d  %H:%M:%S %a '
-    logging.basicConfig(level=logging.WARNING,
-                        format=log_format,
-                        datefmt=date_format,
-                        # filename=log_name
-                        )
+    logging.basicConfig(
+        level=logging.WARNING,
+        format=log_format,
+        datefmt=date_format,
+        # filename=log_name
+    )
+
 
 def get_env_root():
     env_root = os.getenv("ENV_ROOT")
