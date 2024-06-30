@@ -46,6 +46,11 @@ if ! [ -x "$(command -v tqdm)" ]; then
     $RTT_PYTHON -m pip install tqdm
 fi
 
+if ! [ -x "$(command -v kconfiglib)" ]; then
+    echo "Installing kconfiglib."
+    $RTT_PYTHON -m pip install kconfiglib
+fi
+
 if ! [ -x "$(command -v pyocd)" ]; then
     echo "Installing pyocd."
     $RTT_PYTHON -m pip install -U pyocd

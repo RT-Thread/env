@@ -4,7 +4,7 @@ sudo apt-get update
 sudo apt-get upgrade -y
 
 sudo apt-get -qq install python3 python3-pip gcc git libncurses5-dev gcc-arm-none-eabi binutils-arm-none-eabi gdb-multiarch qemu qemu-system-arm -y
-python3 -m pip install scons requests tqdm
+python3 -m pip install scons requests tqdm kconfiglib
 python3 -m pip install -U pyocd
 
 url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
