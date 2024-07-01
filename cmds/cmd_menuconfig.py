@@ -233,7 +233,7 @@ def cmd(args):
 
     if args.menuconfig_silent:
         sys.argv = ['defconfig', '--kconfig=Kconfig', '.config']
-        defconfig._main()
+        defconfig.main()
     else:
         sys.argv = ['menuconfig', 'Kconfig']
         menuconfig._main()
