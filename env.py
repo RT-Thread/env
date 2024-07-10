@@ -134,6 +134,7 @@ def export_environment_variable():
 
 
 def main():
+    show_version_warning()
     export_environment_variable()
     init_logger(get_env_root())
 
