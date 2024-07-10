@@ -73,3 +73,4 @@ fi
 curl $url -o touch_env.sh
 chmod 777 touch_env.sh
 ./touch_env.sh $@
+rm touch_env.sh
