@@ -1,5 +1,15 @@
 # Python Scripts for RT-Thread Env
 
+> WARNING
+> 
+> [env v1.5.x](https://github.com/RT-Thread/env/tree/v1.5.x) and [env-windows v1.5.x](https://github.com/RT-Thread/env-windows/tree/v1.5.2) only **SUPPORT** RT-Thread <= v5.1.0. if you work on RT-Thread > v5.1.0 or or [master](https://github.com/rt-thread/rt-thread) branch, please use [env v2.0.0](https://github.com/RT-Thread/env/tree/master) for linux, [env-windows v2.0](https://github.com/RT-Thread/env-windows/tree/v2.0.0) for windows
+>
+> env v1.5.x main components:
+> - Python version v2
+> - kconfig-frontends
+>
+> env v1.5.x confilt with python kconfiglib, please run `pip uninstall kconfiglib` first
+
 ## Usage under Linux
 
 ### Tutorial
