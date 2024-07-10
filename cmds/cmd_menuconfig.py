@@ -172,6 +172,18 @@ def mk_rtconfig(filename):
     rtconfig.close()
 
 
+# fix locale for kconfiglib
+def kconfiglib_fix_locale():
+    import os
+    import locale
+
+    # Get the list of supported locales
+    supported_locales = set(locale.locale_alias.keys())
+
+    # Check if LANG is set and its value is not in the supported locales
+    if 'LANG' in os.environ and os.environ['LANG'] not in supported_locales:
+        os.environ['LANG'] = 'C'
+
 def cmd(args):
     import menuconfig
     import defconfig
@@ -236,6 +248,7 @@ def cmd(args):
         defconfig.main()
     else:
         sys.argv = ['menuconfig', 'Kconfig']
+        kconfiglib_fix_locale()
         menuconfig._main()
 
     if os.path.isfile(".config"):
