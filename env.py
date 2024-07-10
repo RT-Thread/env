@@ -36,6 +36,28 @@ from vars import Export
 
 __version__ = 'RT-Thread Env Script v1.5.2'
 
+
+def show_version_warning():
+    print('===================================================================')
+    print('Welcome to %s' % __version__)
+    print('===================================================================')
+    # print('')
+    print('env v1.5.x main components:')
+    print('1. Python version v2')
+    print('2. kconfig-frontends')
+    print('')
+    print(        
+        'env v1.5.x confilt with python kconfiglib, please run \033[4mpip uninstall kconfiglib\033[0m first'
+    )
+    print('')
+    print(
+        '\033[1;33m** WARNING **\n'
+        'env v1.5.x only SUPPORT RT-Thread <= v5.1.0\n'
+        'if you work on RT-Thread > v5.1.0 or master branch, please use env v2.0 \033[0m',
+    )
+    print('===================================================================')
+
+
 def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers()
