@@ -38,7 +38,7 @@ sys.path.insert(0, mpath)
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread Env Tool v1.5.0'
+__version__ = 'RT-Thread Env Tool v2.0.1'
 
 
 def init_argparse():
