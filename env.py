@@ -41,6 +41,31 @@ from vars import Export
 __version__ = 'RT-Thread Env Tool v2.0.1'
 
 
+def show_version_warning():
+    rtt_ver = get_rtt_verion()
+
+    if rtt_ver <= (5, 1, 0) or rtt_ver == (0, 0, 0):
+        print('===================================================================')
+        print('Welcome to %s' % __version__)
+        print('===================================================================')
+        # print('')
+        print('env v2.0 has made the following important changes:')
+        print('1. Upgrading Python version from v2 to v3')
+        print('2. Replacing kconfig-frontends with Python kconfiglib')
+        print('')
+        print(
+            'env v2.0 require python kconfiglib (install by \033[4mpip install kconfiglib\033[0m),\n'
+            'but env v1.5.x confilt with kconfiglib (please run \033[4mpip uninstall kconfiglib\033[0m)'
+        )
+        print('')
+        print(
+            '\033[1;31;40m** WARNING **\n'
+            'env v2.0 only FULL SUPPORT RT-Thread > v5.1.0 or master branch.\n'
+            'but you are working on RT-Thread V%d.%d.%d, please use env v1.5.x \033[0m' % rtt_ver,
+        )
+        print('===================================================================')
+
+
 def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers()
@@ -64,6 +89,61 @@ def init_logger(env_root):
         datefmt=date_format,
         # filename=log_name
     )
+
+
+def get_rtt_verion():
+    import re
+
+    rtt_root = get_rtt_root()
+
+    if not rtt_root:
+        return (0, 0, 0)
+
+    if not os.path.isfile(os.path.join(rtt_root, "include", "rtdef.h")):
+        return (0, 0, 0)
+
+    major, minor, patch = 0, 0, 0
+    with open(os.path.join(rtt_root, "include", 'rtdef.h')) as kconfig:
+        lines = kconfig.readlines()
+        for i in range(len(lines)):
+            if "#define RT_VERSION_MAJOR" in lines[i]:
+                major = int(re.split(r"\s+", lines[i].strip())[2])
+            if "#define RT_VERSION_MINOR" in lines[i]:
+                minor = int(re.split(r"\s+", lines[i].strip())[2])
+            if "#define RT_VERSION_PATCH" in lines[i]:
+                patch = int(re.split(r"\s+", lines[i].strip())[2])
+
+    return (major, minor, patch)
+
+
+def get_rtt_root():
+    bsp_root = get_bsp_root()
+
+    # bsp/kconfig文件获取rtt_root
+    if os.path.isfile(os.path.join(bsp_root, "Kconfig")):
+        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
+            lines = kconfig.readlines()
+            for i in range(len(lines)):
+                if "config RTT_DIR" in lines[i]:
+                    rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
+                    if not os.path.isabs(rtt_root):
+                        rtt_root = os.path.join(bsp_root, rtt_root)
+                    return os.path.normpath(rtt_root)
+                if "RTT_DIR :=" in lines[i]:
+                    rtt_root = lines[i].strip().split(":=")[1].strip()
+                    if not os.path.isabs(rtt_root):
+                        rtt_root = os.path.join(bsp_root, rtt_root)
+                    return os.path.normpath(rtt_root)
+
+    if os.path.isfile("rt-thread", "include", "rtdef.h"):
+        return os.path.normpath(os.path.join(bsp_root, "rt-thread"))
+
+    if "bsp" in bsp_root:
+        rtt_root = bsp_root.split("bsp")[0]
+        if os.path.isfile(os.path.join(rtt_root, "include", "rtdef.h")):
+            return os.path.normpath(rtt_root)
+
+    return None
 
 
 def get_env_root():
@@ -135,6 +215,7 @@ def exec_arg(arg):
 
 
 def main():
+    show_version_warning()
     export_environment_variable()
     init_logger(get_env_root())
 
@@ -148,18 +229,22 @@ def main():
 
 
 def menuconfig():
+    show_version_warning()
     exec_arg('menuconfig')
 
 
 def pkgs():
+    show_version_warning()
     exec_arg('pkg')
 
 
 def sdk():
+    show_version_warning()
     exec_arg('sdk')
 
 
 def system():
+    show_version_warning()
     exec_arg('system')
 
 
