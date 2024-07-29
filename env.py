@@ -59,7 +59,7 @@ def show_version_warning():
         )
         print('')
         print(
-            '\033[1;33m** WARNING **\n'
+            '\033[1;31;40m** WARNING **\n'
             'env v2.0 only FULL SUPPORT RT-Thread > v5.1.0 or master branch.\n'
             'but you are working on RT-Thread V%d.%d.%d, please use env v1.5.x \033[0m' % rtt_ver,
         )
