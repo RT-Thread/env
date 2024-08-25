@@ -224,7 +224,9 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         logging.info(clone_cmd)
         execute_command(clone_cmd, cwd=bsp_package_path)
 
-        git_check_cmd = 'git checkout -q ' + ver_sha
+        git_check_cmd = (
+            'git remote set-branches origin ' + ver_sha + ';git fetch --depth 1 origin ' + ver_sha + ';git checkout -q ' + ver_sha
+        )
         execute_command(git_check_cmd, cwd=repo_path)
     except Exception as e:
         print('Error message:%s' % e)
