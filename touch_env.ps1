@@ -6,7 +6,7 @@ if ($args[0] -eq "--gitee") {
     echo "Using gitee service."
     $DEFAULT_RTT_PACKAGE_URL = "https://gitee.com/RT-Thread-Mirror/packages.git"
     $ENV_URL = "https://gitee.com/RT-Thread-Mirror/env.git"
-    $SDK_URL = "https://github.com/RT-Thread-Mirror/sdk.git"
+    $SDK_URL = "https://gitee.com/RT-Thread-Mirror/sdk.git"
 }
 
 $env_dir = "$HOME\.env"
