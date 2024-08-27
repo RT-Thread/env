@@ -27,7 +27,7 @@ if (!(Test-Path -Path $env_dir)) {
     mkdir $env_dir\tools | Out-Null
     git clone $package_url $env_dir/packages/packages --depth=1
     echo 'source "$PKGS_DIR/packages/Kconfig"' | Out-File -FilePath $env_dir/packages/Kconfig -Encoding ASCII
-    git clone $SDK_URL $PKGS_DIR/packages/sdk --depth=1
+    git clone $SDK_URL $env_dir/packages/sdk --depth=1
     git clone $ENV_URL $env_dir/tools/scripts --depth=1
     copy $env_dir/tools/scripts/env.ps1 $env_dir/env.ps1
 } else {
