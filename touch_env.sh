@@ -8,7 +8,7 @@ if [ $1 ] && [ $1 = --gitee ]; then
     gitee=1
     DEFAULT_RTT_PACKAGE_URL=https://gitee.com/RT-Thread-Mirror/packages.git
     ENV_URL=https://gitee.com/RT-Thread-Mirror/env.git
-    SDK_URL="https://github.com/RT-Thread-Mirror/sdk.git"
+    SDK_URL="https://gitee.com/RT-Thread-Mirror/sdk.git"
 fi
 
 env_dir=$HOME/.env
