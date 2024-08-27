@@ -44,7 +44,7 @@ __version__ = 'RT-Thread Env Tool v2.0.1'
 def show_version_warning():
     rtt_ver = get_rtt_verion()
 
-    if rtt_ver <= (5, 1, 0) or rtt_ver == (0, 0, 0):
+    if rtt_ver <= (5, 1, 0) and rtt_ver != (0, 0, 0):
         print('===================================================================')
         print('Welcome to %s' % __version__)
         print('===================================================================')
@@ -135,7 +135,7 @@ def get_rtt_root():
                         rtt_root = os.path.join(bsp_root, rtt_root)
                     return os.path.normpath(rtt_root)
 
-    if os.path.isfile("rt-thread", "include", "rtdef.h"):
+    if os.path.isfile(os.path.join("rt-thread", "include", "rtdef.h")):
         return os.path.normpath(os.path.join(bsp_root, "rt-thread"))
 
     if "bsp" in bsp_root:
