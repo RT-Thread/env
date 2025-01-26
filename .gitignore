@@ -102,3 +102,10 @@ ENV/
 .vscode/settings.json
 cmds/.config.old
 /cmds/.config
+
+# packages and sdk
+packages
+sdk_list.json
+sdk_cfg.json
+.config
+.config.old

@@ -23,13 +23,14 @@
 # 2018-5-28      SummerGift      Add copyright information
 # 2019-1-16      SummerGift      Add chinese detection
 # 2020-4-13      SummerGift      refactoring
-#
+# 2025-1-27      bernard         Add env.json for env information
 
 import os
 import sys
 import argparse
 import logging
 import platform
+import json
 
 script_path = os.path.abspath(__file__)
 mpath = os.path.dirname(script_path)
@@ -38,8 +39,16 @@ sys.path.insert(0, mpath)
 from cmds import *
 from vars import Export
 
-__version__ = 'RT-Thread Env Tool v2.0.1'
+__version__ = ''
 
+# try to read env.json to get information
+try:
+    with open('env.json', 'r') as file:
+        env_data = json.load(file)
+        __version__ = env_data['name'] + ' '+ env_data['version']
+except Exception as e:
+    # use the default 'v2.0.1'
+    __version__ = 'RT-Thread Env Tool v2.0.1'
 
 def show_version_warning():
     rtt_ver = get_rtt_verion()
