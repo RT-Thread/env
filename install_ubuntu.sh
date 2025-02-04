@@ -2,7 +2,7 @@
 
 sudo apt-get update
 sudo apt-get -qq install python3 python3-pip gcc git libncurses5-dev -y
-pip install scons requests tqdm kconfiglib
+pip install scons requests tqdm kconfiglib pyyaml
 
 url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
 if [ $1 ] && [ $1 = --gitee ]; then
