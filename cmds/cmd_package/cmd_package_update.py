@@ -752,17 +752,23 @@ def delete_git_package(pkg, remove_path_with_version, force_update, package_dele
                 )
 
 
-def delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname):
+def delete_zip_package(pkg, remove_path_with_version, force_update, package_delete_fail_list, sqlite_pathname):
     if os.path.isdir(remove_path_with_version):
         print("Start to remove %s \nplease wait..." % remove_path_with_version.encode("utf-8"))
-        try:
-            pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
-        except Exception as e:
-            package_delete_fail_list.append(pkg)
-            logging.warning(
-                'Error message:\n%s %s. %s \n\t'
-                % ("Delete folder failed, please delete the folder manually", remove_path_with_version.encode("utf-8"), e)
-            )
+        if force_update:
+            logging.info("package force update, Begin to remove package {0}".format(remove_path_with_version))
+            if not rm_package(remove_path_with_version):
+                print("Floder delete fail: %s" % remove_path_with_version.encode("utf-8"))
+                print("Please delete this folder manually.")
+        else:
+            try:
+                pkgsdb.deletepackdir(remove_path_with_version, sqlite_pathname)
+            except Exception as e:
+                package_delete_fail_list.append(pkg)
+                logging.warning(
+                    'Error message:\n%s %s. %s \n\t'
+                    % ("Delete folder failed, please delete the folder manually", remove_path_with_version.encode("utf-8"), e)
+                )
 
 
 def remove_packages(sys_value, force_update):
@@ -783,7 +789,7 @@ def remove_packages(sys_value, force_update):
         if is_git_package(pkg, bsp_packages_path):
             delete_git_package(pkg, remove_path_with_version, force_update, package_delete_fail_list)
         else:
-            delete_zip_package(pkg, remove_path_with_version, package_delete_fail_list, sqlite_pathname)
+            delete_zip_package(pkg, remove_path_with_version, force_update, package_delete_fail_list, sqlite_pathname)
 
     # write error messages
     with open(package_error_list_filename, 'w') as f:
