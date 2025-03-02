@@ -1,0 +1,8 @@
+{
+    "RTT_ROOT": "D:/workspace/rt-thread",
+    "board" : {
+        "name" : "vexpress-a9",
+        "path" : "qemu-vexpress-a9",
+        "linker_script": "link.lds"
+    }
+}
