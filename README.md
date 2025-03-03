@@ -1,7 +1,7 @@
 # 极简工程
 
-- 在env中引入rt-env对scons的扩展tools；
-  - 这样在未获得RT-Thread跟目录及building.py扩展前获得一定的支持；
+- 在env中引入[rt-env](https://github.com/RT-Thread/env/tree/standalone_project/env/site_tools)对scons的扩展tools；
+  - 这样在未获得RT-Thread根目录及building.py扩展前获得一定的脚本支持；
   - 对于读入project.json的处理放在rt-env tools中；
 - project.json中的特性包括：
   - RTT_ROOT，指向`rt-thread`的根目录，如果当前目录下存在`rt-thread`目录，则(优先)使用当前本地目录；
