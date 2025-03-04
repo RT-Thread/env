@@ -3,6 +3,10 @@
 - 在env中引入[rt-env](https://github.com/RT-Thread/env/tree/standalone_project/env/site_tools)对scons的扩展tools；
   - 这样在未获得RT-Thread根目录及building.py扩展前获得一定的脚本支持；
   - 对于读入project.json的处理放在rt-env tools中；
+  - 可以对rt-env进行优化，更好的分类，也包括对组件/软件包的SConscript支持xml/json配置的方式<这样未来可以基于xml/json来做UI配置>
+      - 组件/软件包的优化
+          - 可以有统一的入口定义，然后由上层逐渐包入下层的方式
+          - 统一的入口定义后，如果本地由相同名称的组件/软件包存在，则后续的组件/软件包将不再加入到构建中
 - project.json中的特性包括：
   - RTT_ROOT，指向`rt-thread`的根目录，如果当前目录下存在`rt-thread`目录，则(优先)使用当前本地目录；
   - SDK_LIB，指向SDK的目录位置，如`${RTT_ROOT}/stm32/libraries`；
@@ -15,8 +19,8 @@
 ## 工程类型
 
 - 工程应该可以分成三类（RT-Thread/BSP归入最后一类）
- - 传统`scons --dist`出的是一类，这类工程携带完整的rt-thread代码，及相关驱动；
- - 按支持到多固件编译的方式，和RT-Thread版本有些类似，但更本地化<例如针对stm32这样有SDK的公共驱动>
- - 传统的RT-Thread/BSP，在BSP目录下放置了繁多的BSP支持。
+   - 传统`scons --dist`出的是一类，这类工程携带完整的rt-thread代码，及相关驱动；
+   - 按支持到多固件编译的方式，和RT-Thread版本有些类似，但更本地化<例如针对stm32这样有SDK的公共驱动>
+   - 传统的RT-Thread/BSP，在BSP目录下放置了繁多的BSP支持。
 
 这三类中的前两类都可以很好的通过env创建出来工程，并在vscode扩展中很好的支持。
