@@ -225,9 +225,12 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         execute_command(clone_cmd, cwd=bsp_package_path)
 
         git_check_cmd = (
-            'git remote set-branches origin ' + ver_sha + ';git fetch --depth 1 origin ' + ver_sha + ';git checkout -q ' + ver_sha
+            'git remote set-branches origin master ' + ver_sha,
+            'git fetch --depth 1 origin '+ ver_sha,         
+            'git checkout -q ' + ver_sha
         )
-        execute_command(git_check_cmd, cwd=repo_path)
+        for cmd in git_check_cmd:
+            execute_command(cmd, cwd=repo_path)
     except Exception as e:
         print('Error message:%s' % e)
         print("\nFailed to download software package with git. Please check the network connection.")
@@ -336,6 +339,7 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     except Exception as e:
         logging.warning("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
+    logging.info("Package url: %s" % package_url)
     if is_git_url(package_url):
         if not install_git_package(
             bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha, upstream_changed, url_from_json
