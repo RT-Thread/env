@@ -38,24 +38,15 @@ sys.path.insert(0, mpath)
 
 from cmds import *
 from vars import Export
-
-__version__ = ''
-
-# try to read env.json to get information
-try:
-    with open('env.json', 'r') as file:
-        env_data = json.load(file)
-        __version__ = env_data['name'] + ' '+ env_data['version']
-except Exception as e:
-    # use the default 'v2.0.1'
-    __version__ = 'RT-Thread Env Tool v2.0.1'
+from version import get_rt_env_version
 
 def show_version_warning():
     rtt_ver = get_rtt_verion()
+    rt_env_name, rt_env_ver = get_rt_env_version()
 
     if rtt_ver <= (5, 1, 0) and rtt_ver != (0, 0, 0):
         print('===================================================================')
-        print('Welcome to %s' % __version__)
+        print('Welcome to %s %s' % (rt_env_name, rt_env_ver))
         print('===================================================================')
         # print('')
         print('env v2.0 has made the following important changes:')
@@ -79,7 +70,9 @@ def init_argparse():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers()
 
-    parser.add_argument('-v', '--version', action='version', version=__version__)
+    rt_env_name, rt_env_ver = get_rt_env_version()
+    env_ver_str = '%s %s' % (rt_env_name, rt_env_ver)
+    parser.add_argument('-v', '--version', action='version', version=env_ver_str)
 
     cmd_system.add_parser(subs)
     cmd_menuconfig.add_parser(subs)
