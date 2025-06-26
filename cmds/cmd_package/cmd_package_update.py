@@ -225,7 +225,7 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         execute_command(clone_cmd, cwd=bsp_package_path)
 
         git_check_cmd = (
-            'git remote set-branches origin master ' + ver_sha,
+            'git remote set-branches origin ' + ver_sha,
             'git fetch --depth 1 origin '+ ver_sha,         
             'git checkout -q ' + ver_sha
         )
