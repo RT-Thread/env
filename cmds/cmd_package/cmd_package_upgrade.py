@@ -139,7 +139,7 @@ def Information_statistics():
     if find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
         response = requests.get(
-            'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
+            'https://api.rt-thread.org/studio/statistics/api/envuse?userid='
             + str(mac_addr)
             + '&username='
             + str(mac_addr)
