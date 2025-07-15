@@ -1,9 +1,11 @@
 from setuptools import setup
+from version import get_rt_env_version
 
+env_name, env_ver = get_rt_env_version()
 setup(
     name='env',
-    version='2.0.1',
-    description='RT-Thread Env',
+    version=env_ver,
+    description=env_name,
     url='https://github.com/RT-Thread/env.git',
     author='RT-Thread Development Team',
     author_email='rt-thread@rt-thread.org',
