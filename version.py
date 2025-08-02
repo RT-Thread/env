@@ -23,6 +23,8 @@
 # 2025-06-23     Dongly      Add get_rt_env_version function
 
 import json
+import os
+import platform
 
 def get_rt_env_version():
     rt_env_ver = None
@@ -30,12 +32,28 @@ def get_rt_env_version():
 
     # try to read env.json to get information
     try:
-        with open('env.json', 'r') as file:
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        env_json_path = os.path.join(script_dir, 'env.json')
+        
+        # If not found in script directory, try ENV_ROOT
+        if not os.path.exists(env_json_path):
+            env_root = os.getenv("ENV_ROOT")
+            if env_root is None:
+                if platform.system() != 'Windows':
+                    env_root = os.path.join(os.getenv('HOME'), '.env')
+                else:
+                    env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
+            env_json_path = os.path.join(env_root, 'tools', 'scripts', 'env.json')
+        
+        with open(env_json_path, 'r') as file:
             env_data = json.load(file)
             rt_env_name = env_data['name'] 
             rt_env_ver = env_data['version']
     except Exception as e:
-        print("Failed to read env.json: %s" % str(e))
+        # Only print error if running interactively (not imported)
+        if __name__ == '__main__':
+            print("Failed to read env.json: %s" % str(e))
 
     if rt_env_name is None:
         rt_env_name = 'RT-Thread Env Tool'
