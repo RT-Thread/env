@@ -123,4 +123,9 @@ if ($args[0] -eq "--gitee") {
 wget $url -O touch_env.ps1
 echo "run touch_env.ps1"
 ./touch_env.ps1 $args[0]
-Read-Host -Prompt "Windows Env environment installment has finished. Press any key to continue..."
+
+if ($args.Count -ge 2 -and $args[1] -eq "-y") {
+    echo "Windows Env environment installment has finished. (auto mode, no pause)"
+} else {
+    Read-Host -Prompt "Windows Env environment installment has finished. Press any key to continue..."
+}
