@@ -38,7 +38,40 @@ import kconfig
 import pkgsdb
 from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
-from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, find_bool_macro_in_config
+from .cmd_package_utils import (
+    get_url_from_mirror_server,
+    execute_command,
+    git_pull_repo,
+    user_input,
+    find_bool_macro_in_config,
+)
+
+
+def _get_git_restore_url(package_obj, ver):
+    """Return a suitable git URL to restore remote.origin.url.
+
+    Prefer the per-version URL if it ends with '.git'. Otherwise, fall back to
+    the 'repository' field (appending '.git' when necessary). Return None when
+    no suitable git URL can be determined.
+    """
+    try:
+        url = package_obj.get_url(ver)
+    except Exception:
+        url = None
+
+    if url and isinstance(url, str) and url.endswith('.git'):
+        return url
+
+    repo = None
+    try:
+        repo = package_obj.pkg.get('repository') if package_obj and package_obj.pkg else None
+    except Exception:
+        repo = None
+
+    if repo and isinstance(repo, str):
+        return repo if repo.endswith('.git') else repo + '.git'
+
+    return None
 
 
 def determine_support_chinese(env_root):
@@ -167,7 +200,12 @@ def need_using_mirror_download():
     elif os.path.isfile(config_file) and find_bool_macro_in_config(config_file, 'SYS_DOWNLOAD_SERVER_GITEE'):
         is_China_ip = True  # Gitee which means China IP
         server_decision = "manually decision"
+    elif not os.path.isfile(config_file):
+        # env cmds/.config not found: default to GitHub without noisy prompts
+        is_China_ip = False
+        server_decision = "default GitHub (no env .config)"
     else:
+        # env .config exists but no explicit server set: keep legacy auto decision
         try:
             ip = requests.get('https://ifconfig.me/ip').content.decode()
             url = 'http://www.ip-api.com/json/' + ip
@@ -214,7 +252,15 @@ def update_submodule(repo_path, use_esp_mirror):
             execute_command(cmd, cwd=repo_path)
 
 
-def install_git_package(bsp_package_path, package_name, package_info, package_url, ver_sha, upstream_changed, url_origin):
+def install_git_package(
+    bsp_package_path,
+    package_name,
+    package_info,
+    package_url,
+    ver_sha,
+    upstream_changed,
+    url_origin,
+):
     try:
         repo_path = os.path.join(bsp_package_path, package_name)
         repo_path = repo_path + '-' + package_info['ver']
@@ -236,8 +282,9 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         print("\nFailed to download software package with git. Please check the network connection.")
         return False
 
-    # change upstream to origin url
-    if upstream_changed:
+    # change upstream back to origin url when applicable
+    # only restore when a valid git URL is available
+    if upstream_changed and url_origin and str(url_origin).endswith('.git'):
         cmd = 'git remote set-url origin ' + url_origin
         execute_command(cmd, cwd=repo_path)
 
@@ -340,9 +387,18 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
         logging.warning("Failed to connect to the mirror server, package will be downloaded from non-mirror server.\n")
 
     logging.info("Package url: %s" % package_url)
+    # compute a safe origin url to restore (git only)
+    restore_origin_url = _get_git_restore_url(package, package_info['ver'])
+
     if is_git_url(package_url):
         if not install_git_package(
-            bsp_package_path, pkgs_name_in_json, package_info, package_url, ver_sha, upstream_changed, url_from_json
+            bsp_package_path,
+            pkgs_name_in_json,
+            package_info,
+            package_url,
+            ver_sha,
+            upstream_changed,
+            restore_origin_url,
         ):
             result = False
     else:
@@ -463,12 +519,13 @@ def update_latest_packages(sys_value):
             # If the package has submodules, update the submodules.
             update_submodule(repo_path, pkgs_name_in_json == u"ESP-IDF")
 
-            # recover origin url to the path which get from packages.json file
-            if package.get_url(pkg['ver']):
-                cmd = 'git remote set-url origin ' + package.get_url(pkg['ver'])
+            # recover origin url to a proper git URL from package info
+            restore_url = _get_git_restore_url(package, pkg['ver'])
+            if restore_url:
+                cmd = 'git remote set-url origin ' + restore_url
                 git_cmd_exec(cmd, repo_path)
             else:
-                print("Can't find the package : %s's url in file : %s" % (payload_pkgs_name_in_json, pkg_path))
+                print("Can't restore origin: no git URL found for package in %s" % pkg_path)
 
             print("==============================>  %s update done\n" % pkgs_name_in_json)
 
