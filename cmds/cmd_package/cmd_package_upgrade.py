@@ -136,7 +136,7 @@ def Information_statistics():
     env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
     env_config_file = os.path.join(env_kconfig_path, '.config')
 
-    if find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
+    if os.path.isfile(env_config_file) and find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
         response = requests.get(
             'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
