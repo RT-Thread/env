@@ -210,13 +210,13 @@ def apply_toolchain(env, config_module: Optional[Any] = None) -> None:
 def _resolve_mcu(env, mcu_series: Dict[str, Dict[str, str]]) -> tuple:
     for macro, entry in mcu_series.items():
         if env.GetDepend(macro):
-            return (entry.get("cpu"), entry.get("link_script"), entry.get("bin"))
+            return (entry.get("cpu"), entry.get("link_script"))
     raise SystemExit("MCU series not configured, run: scons --menuconfig")
 
 
-def apply_device_flags(env, project_root: str, config_module: Optional[Any] = None) -> Optional[str]:
+def apply_device_flags(env, project_root: str, config_module: Optional[Any] = None) -> None:
     mcu_series = _get_attr(config_module, "MCU_SERIES", {})
-    cpu, link_script, bin_name = _resolve_mcu(env, mcu_series)
+    cpu, link_script = _resolve_mcu(env, mcu_series)
     if not cpu or not link_script:
         raise SystemExit("MCU series not configured, run: scons --menuconfig")
 
@@ -243,18 +243,11 @@ def apply_device_flags(env, project_root: str, config_module: Optional[Any] = No
 
     env.AppendUnique(CFLAGS=cflags, CXXFLAGS=cxxflags, ASFLAGS=asflags, LINKFLAGS=linkflags)
     env.AppendUnique(CPPPATH=[project_root])
-    return bin_name
 
 
-def setup_project(env, project_root: str, config_module: Optional[Any] = None) -> Optional[str]:
+def setup_project(env, project_root: str, config_module: Optional[Any] = None) -> None:
     apply_toolchain(env, config_module)
-    bin_name = apply_device_flags(env, project_root, config_module)
-    env["RTBOOT_BIN"] = bin_name
-    if bin_name:
-        output_dir = os.path.dirname(bin_name)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-    return bin_name
+    apply_device_flags(env, project_root, config_module)
 
 
 __all__ = ["apply_toolchain", "apply_device_flags", "setup_project"]

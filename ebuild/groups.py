@@ -122,6 +122,8 @@ class Group:
     def _project_root(env) -> str:
         if hasattr(env, 'GetProjectRoot'):
             return os.path.abspath(env.GetProjectRoot())
+        if hasattr(env, 'GetWorkspaceRoot'):
+            return os.path.abspath(env.GetWorkspaceRoot())
         return os.path.abspath(os.getcwd())
 
     def _build_root(self, env) -> str:

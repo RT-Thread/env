@@ -4,8 +4,8 @@
 from .system import BuildSystem, prepare
 
 
-def PrepareBuilding(env, project_root=None, proj_config=None):
-    return prepare(env, project_root, config_module=proj_config)
+def PrepareBuilding(env, proj_config=None):
+    return prepare(env, config_module=proj_config)
 
 
 def DoBuilding(env, target, objs=None):

@@ -17,8 +17,16 @@ CONFIG_HEADER = "proj_config.h"
 
 
 def resolve_project_root(explicit_root=None):
-    root = explicit_root or os.getcwd()
-    return os.path.abspath(root)
+    if explicit_root:
+        return os.path.abspath(explicit_root)
+    try:
+        from SCons.Script import Dir
+    except Exception:
+        return os.path.abspath(os.getcwd())
+    try:
+        return Dir('#').abspath
+    except Exception:
+        return os.path.abspath(os.getcwd())
 
 
 class ConfigType(Enum):

@@ -27,11 +27,11 @@ class BuildSystem:
     _current: Optional['BuildSystem'] = None
 
     def __init__(self, env, workspace_root: Optional[str] = None, project_root: Optional[str] = None) -> None:
-        if workspace_root is None:
-            workspace_root = project_root
         self.env = env
+        self.project_root = self._resolve_project_root(env, project_root)
+        if workspace_root is None:
+            workspace_root = self.project_root
         self.workspace_root = os.path.abspath(workspace_root or config.resolve_project_root())
-        self.project_root = os.path.abspath(os.getcwd())
         self.config_header = config.CONFIG_HEADER
 
         self.config = ConfigManager()
@@ -41,6 +41,26 @@ class BuildSystem:
         self.exporter = ProjectExporter(self)
 
         BuildSystem._current = self
+
+    @staticmethod
+    def _resolve_project_root(env, explicit_root: Optional[str]) -> str:
+        if explicit_root:
+            return os.path.abspath(explicit_root)
+        try:
+            from SCons.Script import Dir
+        except Exception:
+            Dir = None
+        if Dir is not None:
+            try:
+                return Dir('#').abspath
+            except Exception:
+                pass
+        if env is not None:
+            try:
+                return env.Dir('#').abspath
+            except Exception:
+                pass
+        return os.path.abspath(os.getcwd())
 
     @classmethod
     def current(cls) -> Optional['BuildSystem']:
@@ -90,9 +110,8 @@ class BuildSystem:
         env.AddMethod(lambda env: self.get_current_dir(), 'GetCurrentDir')
         env.AddMethod(lambda env, target, objs=None: self.do_building(target, objs), 'DoBuilding')
         env.AddMethod(lambda env: self.build_options, 'GetBuildOptions')
-        env.AddMethod(lambda env: self.workspace_root, 'GetProjectRoot')
-        env.AddMethod(lambda env: self.project_root, 'GetBSPRoot')
-        env.AddMethod(lambda env: self.workspace_root, 'GetRTTRoot')
+        env.AddMethod(lambda env: self.workspace_root, 'GetWorkspaceRoot')
+        env.AddMethod(lambda env: self.project_root, 'GetProjectRoot')
         env.AddMethod(get_cc, 'GetCC')
         env.AddMethod(lambda env: self, 'GetContext')
 
@@ -165,6 +184,20 @@ class BuildSystem:
     def prepare_building(self) -> List[Any]:
         return self.merge_groups()
 
+    def _apply_post_action(self, target: Any) -> None:
+        config_module = self.env.get('config')
+        if config_module is None:
+            return
+        post_action = getattr(config_module, 'POST_ACTION', None)
+        if not post_action:
+            return
+        if isinstance(post_action, (list, tuple)):
+            for action in post_action:
+                if action:
+                    self.env.AddPostAction(target, action)
+        else:
+            self.env.AddPostAction(target, post_action)
+
     def do_building(self, target: Optional[str], objs: Optional[List[Any]] = None) -> Optional[Any]:
         from SCons.Script import Default, GetOption
 
@@ -183,13 +216,9 @@ class BuildSystem:
         program = self.env.Program(target, objs)
         targets = [program]
 
-        bin_name = self.env.get('RTBOOT_BIN')
-        if bin_name:
-            bin_file = self.env.Command(bin_name, program, "$OBJCOPY -O binary $SOURCE $TARGET")
-            targets.append(bin_file)
-
         if self.env.get('SIZE'):
             self.env.AddPostAction(program, "$SIZE $TARGET")
+        self._apply_post_action(program)
         Default(targets)
         return program
 
@@ -267,10 +296,6 @@ class BuildSystem:
         return ToolchainSettings(cc_prefix=cc_prefix, build_program=build_program)
 
     def _prepare_environment(self) -> None:
-        self.env['PROJECT_ROOT'] = self.workspace_root
-        self.env.setdefault('RTT_ROOT', self.workspace_root)
-        self.env['BSP_ROOT'] = self.project_root
-
         tools_path = os.path.join(self.workspace_root, 'tools')
         if tools_path not in sys.path:
             sys.path.insert(0, tools_path)
@@ -297,7 +322,7 @@ class BuildSystem:
         if GetOption('menuconfig'):
             from .kconfig import menuconfig
 
-            menuconfig(self.workspace_root)
+            menuconfig(self.project_root)
             raise SystemExit(0)
 
     def _handle_attach(self) -> None:
@@ -306,7 +331,7 @@ class BuildSystem:
         if GetOption('attach'):
             from .attach import GenAttachConfigProject
 
-            GenAttachConfigProject(self.workspace_root)
+            GenAttachConfigProject(self.project_root)
             raise SystemExit(0)
 
     def _load_config(self) -> None:
@@ -340,7 +365,7 @@ class BuildSystem:
 def prepare(env, workspace_root: Optional[str] = None, project_root: Optional[str] = None, config_module=None) -> BuildSystem:
     if workspace_root is None:
         workspace_root = project_root
-    build = BuildSystem(env, workspace_root).setup()
+    build = BuildSystem(env, workspace_root, project_root).setup()
     from SCons.Script import Export
     Export(env=env)
     if config_module is not None:

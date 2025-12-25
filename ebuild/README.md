@@ -22,7 +22,7 @@ from ebuild import PrepareBuilding, DoBuilding
 
 # 准备构建环境
 env = Environment()
-build = PrepareBuilding(env, project_root='.', proj_config=proj_config)
+build = PrepareBuilding(env, proj_config=proj_config)
 
 # 注册组件（在 SConscript 中）
 # env.DefineGroup('my_component', ['src/*.c'], depend=['CONFIG_MY_FEATURE'])
@@ -78,6 +78,8 @@ scons --target=mdk5
 - **proj_config.h** - 由 menuconfig 生成的 C 头文件，包含所有配置宏
 - **Kconfig** - menuconfig 配置描述文件
 
+ProjectRoot 指 SCons 的执行根目录（`scons` 或 `scons -C dir` 的 `dir`），上述配置文件与 `.config`、`.ci/attachconfig` 都应位于该目录下。
+
 ### 组件注册
 
 EBuild 提供两种组件组织方式：
@@ -128,12 +130,14 @@ TOOLCHAIN_CONFIG = {
     'MCU_SERIES': {
         'CONFIG_STM32F103': {
             'cpu': 'cortex-m3',
-            'link_script': 'linkstm32f103xe.ld',
-            'bin': 'build/stm32f103.bin'
+            'link_script': 'linkstm32f103xe.ld'
         }
     },
     'BUILD': 'release'  # or 'debug'
 }
+
+# 可选：构建结束后执行的动作（如生成 bin）
+POST_ACTION = "$OBJCOPY -O binary $TARGET build/stm32f103.bin"
 ```
 
 ## 命令行选项
@@ -218,7 +222,7 @@ groups = env.Bridge()
 
 ### 核心函数
 
-- `PrepareBuilding(env, project_root, proj_config)` - 初始化构建系统
+- `PrepareBuilding(env, proj_config)` - 初始化构建系统
 - `DoBuilding(env, target, objs)` - 执行构建或导出
 
 ### SCons 环境方法
