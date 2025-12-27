@@ -264,6 +264,8 @@ class BuildSystem:
         from SCons.Script import GetOption
 
         cflags = list(base_cflags) if base_cflags else []
+        cc_flags: List[str] = []
+        arch_flags: List[str] = []
 
         def option_value(name: str, default: str = "") -> str:
             value = GetOption(name)
@@ -271,26 +273,39 @@ class BuildSystem:
 
         cc_prefix = option_value('cross-compile', '')
         if cc_prefix:
-            self.env['CC'] = cc_prefix + 'gcc'
-            self.env['AR'] = cc_prefix + 'ar'
-            self.env['AS'] = cc_prefix + 'gcc'
-            self.env['RANLIB'] = cc_prefix + 'ranlib'
-            cflags.append('-ffreestanding')
+            commands = {
+                "CC": "gcc",
+                "CXX": "g++",
+                "AS": "gcc",
+                "AR": "ar",
+                "LINK": "gcc",
+                "SIZE": "size",
+                "OBJDUMP": "objdump",
+                "OBJCOPY": "objcopy",
+                "RANLIB": "ranlib",
+            }
+            for key, value in commands.items():
+                self.env[key] = cc_prefix + value
+            cc_flags.append('-ffreestanding')
 
         cpu = option_value('cpu', '')
         if cpu:
-            cflags.append(f'-mcpu={cpu}')
+            arch_flags.append(f'-mcpu={cpu}')
 
         fpu = option_value('fpu', '')
         if fpu:
-            cflags.append(f'-mfpu={fpu}')
+            arch_flags.append(f'-mfpu={fpu}')
 
         float_abi = option_value('float-abi', '')
         if float_abi:
-            cflags.append(f'-mfloat-abi={float_abi}')
+            arch_flags.append(f'-mfloat-abi={float_abi}')
 
         if cflags:
             self.env.Append(CFLAGS=cflags)
+        if cc_flags or arch_flags:
+            self.env.Append(CCFLAGS=cc_flags + arch_flags)
+        if arch_flags:
+            self.env.Append(ASFLAGS=arch_flags, LINKFLAGS=arch_flags)
 
         build_program = not cc_prefix
         return ToolchainSettings(cc_prefix=cc_prefix, build_program=build_program)
@@ -385,4 +400,5 @@ def prepare(env, workspace_root: Optional[str] = None, project_root: Optional[st
             from .toolchain import setup_project
 
             setup_project(env, build.project_root, config_module)
+    build.apply_toolchain_options()
     return build

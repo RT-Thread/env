@@ -19,6 +19,45 @@ DEFAULT_COMMANDS = {
     "OBJCOPY": "objcopy",
 }
 
+_TOOLCHAIN_DEFAULTS = {
+    "gcc": {
+        "cpu_flag_format": "-mcpu={cpu}",
+        "thumb_flag": "-mthumb",
+        "section_flags": ["-ffunction-sections", "-fdata-sections"],
+        "link_script_flag": "-T",
+        "debug_flags": ["-O0", "-gdwarf-2", "-g"],
+        "release_flags": ["-Os"],
+        "as_debug_flags": ["-gdwarf-2"],
+    },
+    "clang": {
+        "cpu_flag_format": "-mcpu={cpu}",
+        "thumb_flag": "-mthumb",
+        "section_flags": ["-ffunction-sections", "-fdata-sections"],
+        "link_script_flag": "-T",
+        "debug_flags": ["-O0", "-gdwarf-2", "-g"],
+        "release_flags": ["-Os"],
+        "as_debug_flags": ["-gdwarf-2"],
+    },
+    "armclang": {
+        "cpu_flag_format": "-mcpu={cpu}",
+        "thumb_flag": "-mthumb",
+        "section_flags": ["-ffunction-sections", "-fdata-sections"],
+        "link_script_flag": "--scatter",
+        "debug_flags": ["-O0", "-g"],
+        "release_flags": ["-Os"],
+        "as_debug_flags": [],
+    },
+    "armcc": {
+        "cpu_flag_format": "--cpu={cpu}",
+        "thumb_flag": "--thumb",
+        "section_flags": [],
+        "link_script_flag": "--scatter",
+        "debug_flags": [],
+        "release_flags": [],
+        "as_debug_flags": [],
+    },
+}
+
 
 def _as_list(value: Any) -> List[str]:
     if not value:
@@ -26,6 +65,31 @@ def _as_list(value: Any) -> List[str]:
     if isinstance(value, (list, tuple)):
         return list(value)
     return str(value).split()
+
+
+def _normalize_toolchain(value: Any) -> str:
+    if not value:
+        return "gcc"
+    return str(value).strip().lower()
+
+
+def _format_flag(flag: Any, **kwargs: Any) -> str:
+    if flag is None:
+        return ""
+    text = str(flag)
+    try:
+        return text.format(**kwargs)
+    except (KeyError, ValueError):
+        return text
+
+
+def _format_flags(values: Any, **kwargs: Any) -> List[str]:
+    result: List[str] = []
+    for flag in _as_list(values):
+        formatted = _format_flag(flag, **kwargs)
+        if formatted:
+            result.append(formatted)
+    return result
 
 
 def _get_config_dict(config_module: Optional[Any]) -> Optional[Dict[str, Any]]:
@@ -46,6 +110,18 @@ def _get_attr(config_module: Optional[Any], name: str, default: Any) -> Any:
     if hasattr(config_module, name):
         return getattr(config_module, name)
     return default
+
+
+def _get_configured_flags(config_module: Optional[Any], name: str, **kwargs: Any) -> Optional[List[str]]:
+    value = _get_attr(config_module, name, None)
+    if value is None:
+        return None
+    return _format_flags(value, **kwargs)
+
+
+def _toolchain_defaults(config_module: Optional[Any]) -> Dict[str, Any]:
+    cross_tool = _normalize_toolchain(_get_attr(config_module, "CROSS_TOOL", "gcc"))
+    return _TOOLCHAIN_DEFAULTS.get(cross_tool, {})
 
 
 def _log_debug(config_module: Optional[Any], message: str) -> None:
@@ -193,17 +269,16 @@ def _resolve_exec_path(config_module: Optional[Any]) -> str:
 
 
 def apply_toolchain(env, config_module: Optional[Any] = None) -> None:
-    cross_tool = _get_attr(config_module, "CROSS_TOOL", "gcc")
-    if cross_tool != "gcc":
-        raise SystemExit("Only gcc toolchain is supported.")
-
     exec_path = _resolve_exec_path(config_module)
     if exec_path:
         env.PrependENVPath("PATH", exec_path)
 
     env.Replace(**_toolchain_bins(config_module))
-    env["ARFLAGS"] = "-rc"
-    env["ASCOM"] = env["ASPPCOM"]
+    arflags = _get_attr(config_module, "ARFLAGS", "-rc")
+    if arflags is not None:
+        env["ARFLAGS"] = arflags
+    if _get_attr(config_module, "USE_ASPPCOM", True):
+        env["ASCOM"] = env["ASPPCOM"]
     env.AppendUnique(CPPDEFINES=_as_list(_get_attr(config_module, "BASE_DEFINES", [])))
 
 
@@ -220,26 +295,69 @@ def apply_device_flags(env, project_root: str, config_module: Optional[Any] = No
     if not cpu or not link_script:
         raise SystemExit("MCU series not configured, run: scons --menuconfig")
 
-    device_flags = [
-        f"-mcpu={cpu}",
-        "-mthumb",
-        "-ffunction-sections",
-        "-fdata-sections",
-    ]
+    defaults = _toolchain_defaults(config_module)
+    cpu_flag_format = _get_attr(config_module, "CPU_FLAG_FORMAT", None)
+    if cpu_flag_format is None:
+        cpu_flag_format = defaults.get("cpu_flag_format")
+    thumb_flag = _get_attr(config_module, "THUMB_FLAG", None)
+    if thumb_flag is None:
+        thumb_flag = defaults.get("thumb_flag")
+    section_flags = _get_attr(config_module, "SECTION_FLAGS", None)
+    if section_flags is None:
+        section_flags = defaults.get("section_flags", [])
+
+    device_flags = _get_configured_flags(config_module, "DEVICE_FLAGS", cpu=cpu)
+    if device_flags is None:
+        device_flags = []
+        if cpu_flag_format:
+            cpu_flag = _format_flag(cpu_flag_format, cpu=cpu)
+            if cpu_flag:
+                device_flags.append(cpu_flag)
+        if thumb_flag:
+            device_flags.append(str(thumb_flag))
+        device_flags.extend(_as_list(section_flags))
+
+    link_device_flags = _get_configured_flags(config_module, "LINK_DEVICE_FLAGS", cpu=cpu)
+    if link_device_flags is None:
+        link_device_flags = list(device_flags)
+
+    link_script_flag = _get_attr(config_module, "LINK_SCRIPT_FLAG", None)
+    if link_script_flag is None:
+        link_script_flag = defaults.get("link_script_flag")
+
+    as_device_flags = _get_configured_flags(config_module, "AS_DEVICE_FLAGS", cpu=cpu)
+    if as_device_flags is None:
+        as_device_flags = list(device_flags)
 
     cflags = device_flags + _as_list(_get_attr(config_module, "BASE_CFLAGS", []))
     cxxflags = device_flags + _as_list(_get_attr(config_module, "BASE_CXXFLAGS", []))
-    asflags = _as_list(_get_attr(config_module, "BASE_ASFLAGS", [])) + device_flags
-    linkflags = device_flags + _as_list(_get_attr(config_module, "BASE_LINKFLAGS", [])) + ["-T", link_script]
+    asflags = _as_list(_get_attr(config_module, "BASE_ASFLAGS", [])) + as_device_flags
+    linkflags = link_device_flags + _as_list(_get_attr(config_module, "BASE_LINKFLAGS", []))
+    if link_script_flag is None:
+        raise SystemExit(
+            "Linker script flag is not configured.\n"
+            "  hint: set LINK_SCRIPT_FLAG or provide LINK_DEVICE_FLAGS/BASE_LINKFLAGS"
+        )
+    if link_script_flag:
+        linkflags += [link_script_flag, link_script]
 
     build = _get_attr(config_module, "BUILD", "release")
     if build == "debug":
-        cflags += ["-O0", "-gdwarf-2", "-g"]
-        cxxflags += ["-O0", "-gdwarf-2", "-g"]
-        asflags += ["-gdwarf-2"]
+        debug_flags = _get_attr(config_module, "DEBUG_FLAGS", None)
+        if debug_flags is None:
+            debug_flags = defaults.get("debug_flags", [])
+        as_debug_flags = _get_attr(config_module, "AS_DEBUG_FLAGS", None)
+        if as_debug_flags is None:
+            as_debug_flags = defaults.get("as_debug_flags", [])
+        cflags += _as_list(debug_flags)
+        cxxflags += _as_list(debug_flags)
+        asflags += _as_list(as_debug_flags)
     else:
-        cflags += ["-Os"]
-        cxxflags += ["-Os"]
+        release_flags = _get_attr(config_module, "RELEASE_FLAGS", None)
+        if release_flags is None:
+            release_flags = defaults.get("release_flags", [])
+        cflags += _as_list(release_flags)
+        cxxflags += _as_list(release_flags)
 
     env.AppendUnique(CFLAGS=cflags, CXXFLAGS=cxxflags, ASFLAGS=asflags, LINKFLAGS=linkflags)
     env.AppendUnique(CPPPATH=[project_root])

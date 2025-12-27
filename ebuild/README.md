@@ -140,6 +140,13 @@ TOOLCHAIN_CONFIG = {
 POST_ACTION = "$OBJCOPY -O binary $TARGET build/stm32f103.bin"
 ```
 
+非 GCC 工具链可通过以下配置项定制命令行参数：
+
+- DEVICE_FLAGS：编译器的设备参数（支持 `{cpu}` 占位符）
+- AS_DEVICE_FLAGS：汇编器的设备参数（支持 `{cpu}` 占位符）
+- LINK_DEVICE_FLAGS：链接器的设备参数（支持 `{cpu}` 占位符）
+- LINK_SCRIPT_FLAG：链接脚本参数前缀（如 `-T`、`--scatter`）
+
 ## 命令行选项
 
 | 选项 | 说明 |
@@ -149,32 +156,29 @@ POST_ACTION = "$OBJCOPY -O binary $TARGET build/stm32f103.bin"
 | `--attach=NAME` | 应用 attachconfig 方案（`?` 查看列表，`default` 恢复） |
 | `--verbose` | 显示完整编译命令 |
 | `--cross-compile=PREFIX` | 交叉编译器前缀 |
-| `--cpu=CPU` | 目标 CPU 类型 |
-| `--fpu=FPU` | FPU 类型 |
-| `--float-abi=ABI` | 浮点 ABI |
 
 ## 支持的工具链
 
 | 架构 | 配置模块 |
 |------|----------|
 | ARM | `ebuild.configs.arm_gcc` |
+| ARM (Keil MDK, ARMCC) | `ebuild.configs.armcc` |
+| ARM (Keil MDK, ARMCLANG) | `ebuild.configs.armclang` |
 | AArch64 | `ebuild.configs.aarch64_gcc` |
 | RISC-V | `ebuild.configs.riscv_gcc` |
 | Linux | `ebuild.configs.linux_gcc` |
+| Windows MSVC | `ebuild.configs.msvc` |
 
 ## 项目结构
 
 ```
 project/
-├── SConstruct              # 主构建脚本
-├── proj_config.py          # 项目配置
-├── Kconfig                 # 配置菜单定义
-├── proj_config.h           # 生成的配置头文件
 ├── .config                 # menuconfig 配置输出
-├── SConscript              # 组件注册脚本
-├── .vscode/                # VS Code 配置（导出后）
-├── CMakeLists.txt          # CMake 配置（导出后）
-└── *.uvprojx               # Keil 工程（导出后）
+├── proj_config.py          # 项目配置
+├── proj_config.h           # 生成的配置头文件
+├── Kconfig                 # 配置菜单定义
+├── SConstruct              # 主构建脚本
+└── SConscript              # 组件注册脚本
 ```
 
 ## 高级功能
