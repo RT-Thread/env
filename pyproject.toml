@@ -1,4 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "env"
+version = "2.0.2"
+description = "RT-Thread ENV"
+requires-python = ">=3.6"
+dependencies = [
+    "SCons>=4.0.0",
+    "requests",
+    "psutil",
+    "tqdm",
+    "kconfiglib",
+    "pyyaml",
+    "windows-curses; sys_platform=='win32'",
+]
+
+[project.scripts]
+rt-env = "env:main"
+menuconfig = "env:menuconfig"
+pkgs = "env:pkgs"
+sdk = "env:sdk"
+system = "env:system"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+packages = ["cmds", "cmds.cmd_package"]
+
 [tool.black]
 line-length = 128
 skip-string-normalization = true
-# use-tabs = false
