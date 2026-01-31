@@ -1,30 +1,23 @@
-$VENV_ROOT = "$PSScriptRoot\.venv"
-# rt-env目录是否存在
-if (-not (Test-Path -Path $VENV_ROOT)) {
-    Write-Host "Create Python venv for RT-Thread..."
-    python -m venv $VENV_ROOT
-    # 激活python venv
-    & "$VENV_ROOT\Scripts\Activate.ps1"
-    # 安装env-script
-    # 判断IP是否在中国大陆，若是则用清华源，否则用默认源
-    try {
-        $china = $false
-        $ipinfo = Invoke-RestMethod -Uri "https://ipinfo.io/json" -UseBasicParsing -TimeoutSec 3
-        if ($ipinfo.country -eq "CN") {
-            $china = $true
-        }
-    } catch {
-        $china = $false
+﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+
+# Overridden by $env:ENV_ROOT environment variable
+$env:ENV_ROOT = $PSScriptRoot
+
+# Virtual environment directory name
+$RT_VENV_DIR = "$env:ENV_ROOT\venv\rt-env" 
+
+if (Test-Path "$RT_VENV_DIR\Scripts\Activate.ps1") {
+    . "$RT_VENV_DIR\Scripts\Activate.ps1"
+    
+    # Show welcome message using rt-env command
+    if (Get-Command rt-env -ErrorAction SilentlyContinue) {
+        rt-env -v
     }
-    if ($china) {
-        Write-Host "Detected China Mainland IP, using Tsinghua PyPI mirror."
-        pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$PSScriptRoot\tools\scripts"
-    } else {
-        pip install "$PSScriptRoot\tools\scripts"
-    }
-} else {
-    # 激活python venv
-    & "$VENV_ROOT\Scripts\Activate.ps1"
+}
+else {
+    Write-Host "Virtual environment($RT_VENV_DIR\Scripts\Activate.ps1) not found. Please run the installation `RT-Thread ENV` first."
+    exit 1
 }
 
 $env:pathext = ".PS1;$env:pathext"

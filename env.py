@@ -40,15 +40,29 @@ from cmds import *
 from vars import Export
 from version import get_rt_env_version
 
-def show_version_warning():
+def show_version():
     rtt_ver = get_rtt_verion()
     rt_env_name, rt_env_ver = get_rt_env_version()
+    
+    print('\033[1;36m===================================================================\033[0m')
+    print('\033[1;36m    Welcome to %s %s\033[0m' % (rt_env_name, rt_env_ver))
+    print('\033[1;36m===================================================================\033[0m')
+    print('Environment Information:')
+    print('  - ENV_ROOT: %s' % get_env_root())
+    print('  - PKGS_ROOT: %s' % get_package_root())
+
+    if rtt_ver != (0, 0, 0):
+        print('  - RTT_ROOT: %s' % get_rtt_root())
+        print('  - BSP_ROOT: %s' % get_bsp_root())
+        print('  - RT-Thread Version: %d.%d.%d' % rtt_ver)
+    print('\033[1;36m===================================================================\033[0m')
+
+def show_version_warning(is_show_version=True):
+    rtt_ver = get_rtt_verion()
 
     if rtt_ver <= (5, 1, 0) and rtt_ver != (0, 0, 0):
-        print('===================================================================')
-        print('Welcome to %s %s' % (rt_env_name, rt_env_ver))
-        print('===================================================================')
-        # print('')
+        if is_show_version:
+            show_version()        
         print('env v2.0 has made the following important changes:')
         print('1. Upgrading Python version from v2 to v3')
         print('2. Replacing kconfig-frontends with Python kconfiglib')
@@ -72,7 +86,9 @@ def init_argparse():
 
     rt_env_name, rt_env_ver = get_rt_env_version()
     env_ver_str = '%s %s' % (rt_env_name, rt_env_ver)
-    parser.add_argument('-v', '--version', action='version', version=env_ver_str)
+    
+    # Override -v to show welcome message instead of version
+    parser.add_argument('-v', '--version', action='store_true', help='Show environment information')
 
     cmd_system.add_parser(subs)
     cmd_menuconfig.add_parser(subs)
@@ -216,18 +232,31 @@ def exec_arg(arg):
     args.func(args)
 
 
+def cmd_version(args):
+    """Handle version display."""
+    show_version()
+    show_version_warning(False)
+    sys.exit(0)
+
+
 def main():
+    parser = init_argparse()
+    args = parser.parse_args()
+
+    if args.version:
+        cmd_version(args)
+
+    # Check if any subcommand was provided
+    if not hasattr(args, 'func'):
+        # No subcommand provided, show help
+        parser.print_help()
+        exit(0)
+
     show_version_warning()
     export_environment_variable()
     init_logger(get_env_root())
 
-    parser = init_argparse()
-    args = parser.parse_args()
-
-    if not vars(args):
-        parser.print_help()
-    else:
-        args.func(args)
+    args.func(args)
 
 
 def menuconfig():

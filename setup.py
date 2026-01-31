@@ -1,49 +1,18 @@
 from setuptools import setup
-from version import get_rt_env_version
+import sys
+import os
 
-env_name, env_ver = get_rt_env_version()
+# Add current directory to path for version module discovery
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from version import get_rt_env_version
+    env_name, env_ver = get_rt_env_version()
+except Exception:
+    env_name = 'RT-Thread Env Tool'
+    env_ver = '2.0.2'
+
 setup(
-    name='env',
     version=env_ver,
     description=env_name,
-    url='https://github.com/RT-Thread/env.git',
-    author='RT-Thread Development Team',
-    author_email='rt-thread@rt-thread.org',
-    keywords='rt-thread',
-    license='Apache License 2.0',
-    project_urls={
-        'Github repository': 'https:/github.com/rt-thread/env.git',
-        'User guide': 'https:/github.com/rt-thread/env.git',
-    },
-    python_requires='>=3.6',
-    install_requires=[
-        'SCons>=4.0.0',
-        'requests',
-        'psutil',
-        'tqdm',
-        'kconfiglib',
-        'windows-curses; platform_system=="Windows"',
-    ],
-    packages=[
-        'env',
-        'env.cmds',
-        'env.cmds.cmd_package',
-    ],
-    package_dir={
-        'env': '.',
-        'env.cmds': 'cmds',
-        'env.cmds.cmd_package': 'cmds/cmd_package',
-    },
-    package_data={'': ['*.*']},
-    exclude_package_data={'': ['MANIFEST.in']},
-    include_package_data=True,
-    entry_points={
-        'console_scripts': [
-            'rt-env=env.env:main',
-            'menuconfig=env.env:menuconfig',
-            'pkgs=env.env:pkgs',
-            'sdk=env.env:sdk',
-            'system=env.env:system',
-        ]
-    },
 )
