@@ -82,3 +82,11 @@ set-executionpolicy remotesigned
 方案 A：每次重启 PowerShell 时，都需要输入命令 `~/.env/env.ps1`，以激活环境变量。（PLAN A: Each time you restart PowerShell, you need to enter the command `~/.env/env.ps1` to activate the environment variable.）
 
 方案 B (推荐)：打开 `C:\Users\user\Documents\WindowsPowerShell`，如果没有`WindowsPowerShell`则新建该文件夹。新建文件 `Microsoft.PowerShell_profile.ps1`，然后写入 `~/.env/env.ps1` 内容即可，它将在你重启 PowerShell 时自动执行，无需再执行方案 A 中的命令。（or PLAN B (recommended): Open `C:\Users\user\Documents\WindowsPowerShell` and create a new file `Microsoft.PowerShell_profile.ps1`. Then write `~/.env/env.ps1` to the file. It will be executed automatically when you restart PowerShell, without having to execute the command in scenario A.）
+
+### 常见问题
+
+对于中国大陆用户，请注意首次激活 Env 时可能出现错误，这可能是当前网络下使用的镜像（默认清华源）连接失败，修复方法：
+
+1. 再次进入安装 Env 的目录，运行`.\install_windows.ps1 --gitee`重新安装，并在**安装完成后不要激活 Env**。
+2. 打开 `~/.env/env.ps1` 文件，修改 `python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple` 和 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$PSScriptRoot\tools\scriptse` 中的镜像地址 `https://pypi.tuna.tsinghua.edu.cn/simple` 为其他可用的镜像。
+3. 激活 Env。
