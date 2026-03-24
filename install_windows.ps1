@@ -1,5 +1,10 @@
 
 $RTT_PYTHON = "python"
+$ARM_GNU_VERSION = "14.3.rel1"
+$ARM_GNU_INSTALLER = "arm-gnu-toolchain-$ARM_GNU_VERSION-mingw-w64-i686-arm-none-eabi.exe"
+$ARM_GNU_URL = "https://developer.arm.com/-/media/Files/downloads/gnu/$ARM_GNU_VERSION/binrel/$ARM_GNU_INSTALLER"
+$ARM_GNU_DIR = "C:\Program Files (x86)\Arm GNU Toolchain arm-none-eabi\14.3 rel1"
+$ARM_GNU_BIN = Join-Path $ARM_GNU_DIR "bin"
 
 function Test-Command( [string] $CommandName ) {
     (Get-Command $CommandName -ErrorAction SilentlyContinue) -ne $null
@@ -23,6 +28,40 @@ function Download-File([string] $Url, [string] $OutFile) {
     }
 
     return $false
+}
+
+function Ensure-SystemPathContains([string] $PathToAdd) {
+    if (!(Test-Path -Path $PathToAdd)) {
+        return
+    }
+
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    if ([string]::IsNullOrEmpty($machinePath)) {
+        $machinePath = ""
+    }
+
+    $machineItems = $machinePath -split ";" | Where-Object { $_ -ne "" }
+    if ($machineItems -notcontains $PathToAdd) {
+        $newMachinePath = if ($machinePath.TrimEnd(";")) {
+            $machinePath.TrimEnd(";") + ";" + $PathToAdd
+        } else {
+            $PathToAdd
+        }
+
+        try {
+            [Environment]::SetEnvironmentVariable("Path", $newMachinePath, "Machine")
+            echo "Add ARM GCC bin to system PATH: $PathToAdd"
+        } catch {
+            echo "Warning: failed to update system PATH. Please run PowerShell as Administrator."
+        }
+    } else {
+        echo "ARM GCC bin already exists in system PATH."
+    }
+
+    $procItems = $env:Path -split ";" | Where-Object { $_ -ne "" }
+    if ($procItems -notcontains $PathToAdd) {
+        $env:Path = $env:Path.TrimEnd(";") + ";" + $PathToAdd
+    }
 }
 
 foreach ($p_cmd in ("python3", "python", "py")) {
@@ -139,6 +178,29 @@ if (!$?) {
     cmd /c $RTT_PYTHON -m pip install psutil -i $PIP_SOURCE --trusted-host $PIP_HOST
 } else {
     echo "psutil module has installed. Jump this step."
+}
+
+if (Test-Command arm-none-eabi-gcc) {
+    echo "ARM GNU GCC has installed. Jump this step."
+} else {
+    if (!(Test-Path -Path $ARM_GNU_DIR)) {
+        echo "Downloading ARM GNU Toolchain $ARM_GNU_VERSION."
+        if (!(Download-File $ARM_GNU_URL $ARM_GNU_INSTALLER)) {
+            echo "Download ARM GNU Toolchain installer failed."
+            exit 1
+        }
+
+        echo "Installing ARM GNU Toolchain $ARM_GNU_VERSION."
+        $proc = Start-Process -FilePath ".\$ARM_GNU_INSTALLER" -ArgumentList "/S", "/P", "/R" -Wait -PassThru
+        if ($proc.ExitCode -ne 0) {
+            echo "Install ARM GNU Toolchain failed, exit code: $($proc.ExitCode)"
+            exit 1
+        }
+    } else {
+        echo "Found ARM GNU Toolchain directory: $ARM_GNU_DIR"
+    }
+
+    Ensure-SystemPathContains $ARM_GNU_BIN
 }
 
 $url = "https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
