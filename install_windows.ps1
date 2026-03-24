@@ -64,6 +64,22 @@ function Ensure-SystemPathContains([string] $PathToAdd) {
     }
 }
 
+function Ensure-UserEnvVar([string] $Name, [string] $Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return
+    }
+
+    $currentValue = [Environment]::GetEnvironmentVariable($Name, "User")
+    if ($currentValue -ne $Value) {
+        [Environment]::SetEnvironmentVariable($Name, $Value, "User")
+        echo "Set user environment variable $Name=$Value"
+    } else {
+        echo "User environment variable $Name already set."
+    }
+
+    Set-Item -Path "Env:$Name" -Value $Value
+}
+
 foreach ($p_cmd in ("python3", "python", "py")) {
     cmd /c $p_cmd --version | findstr "Python" | Out-Null
     if (!$?) { continue }
@@ -201,6 +217,19 @@ if (Test-Command arm-none-eabi-gcc) {
     }
 
     Ensure-SystemPathContains $ARM_GNU_BIN
+}
+
+$rttExecPath = ""
+if (Test-Path -Path $ARM_GNU_BIN) {
+    $rttExecPath = $ARM_GNU_BIN
+} elseif (Test-Command arm-none-eabi-gcc) {
+    $rttExecPath = Split-Path -Parent (Get-Command arm-none-eabi-gcc).Source
+}
+
+if (![string]::IsNullOrWhiteSpace($rttExecPath)) {
+    Ensure-UserEnvVar "RTT_EXEC_PATH" $rttExecPath
+} else {
+    echo "Warning: arm-none-eabi-gcc not found, skip setting RTT_EXEC_PATH."
 }
 
 $url = "https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
