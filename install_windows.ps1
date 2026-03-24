@@ -5,6 +5,26 @@ function Test-Command( [string] $CommandName ) {
     (Get-Command $CommandName -ErrorAction SilentlyContinue) -ne $null
 }
 
+function Download-File([string] $Url, [string] $OutFile) {
+    if (Test-Command "Invoke-WebRequest") {
+        try {
+            Invoke-WebRequest -Uri $Url -OutFile $OutFile
+            if (Test-Path -Path $OutFile) { return $true }
+        } catch {
+            echo "Invoke-WebRequest download failed: $Url"
+        }
+    }
+
+    if (Test-Command "curl.exe") {
+        cmd /c curl.exe -L $Url -o $OutFile | Out-Null
+        if ($LASTEXITCODE -eq 0 -and (Test-Path -Path $OutFile)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 foreach ($p_cmd in ("python3", "python", "py")) {
     cmd /c $p_cmd --version | findstr "Python" | Out-Null
     if (!$?) { continue }
@@ -16,7 +36,10 @@ cmd /c $RTT_PYTHON --version | findstr "Python" | Out-Null
 if (!$?) {
     echo "Python is not installed. Will install python 3.11.2."
     echo "Downloading Python."
-    wget -O Python_setup.exe https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe
+    if (!(Download-File "https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe" "Python_setup.exe")) {
+        echo "Download Python installer failed."
+        exit 1
+    }
     echo "Installing Python."
     if (Test-Path -Path "D:\") {
         cmd /c Python_setup.exe /quiet TargetDir=D:\Progrem\Python311 InstallAllUsers=1 PrependPath=1 Include_test=0
@@ -42,7 +65,10 @@ if (!(Test-Command git)) {
     if (!$?) {
         echo "Can't find winget cmd, Will install git 2.39.2."
         echo "downloading git."
-        wget -O Git64.exe $git_url
+        if (!(Download-File $git_url "Git64.exe")) {
+            echo "Download Git installer failed."
+            exit 1
+        }
         echo "Please install git. when install done, close the current terminal and run this script again."
         cmd /c Git64.exe /quiet PrependPath=1
         exit
@@ -120,9 +146,12 @@ if ($args[0] -eq "--gitee") {
     $url = "https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"
 }
 
-wget $url -O touch_env.ps1
+if (!(Download-File $url "touch_env.ps1")) {
+    echo "Download touch_env.ps1 failed. Please check network/proxy and retry."
+    exit 1
+}
 echo "run touch_env.ps1"
-./touch_env.ps1 $args[0]
+& .\touch_env.ps1 $args[0]
 
 if ($args.Count -ge 2 -and $args[1] -eq "-y") {
     echo "Windows Env environment installment has finished. (auto mode, no pause)"
