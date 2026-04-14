@@ -40,6 +40,14 @@ PLAN A: Whenever start the ubuntu system, you need to type command `source ~/.en
 
 or PLAN B: open `~/.bashrc` file, and attach the command `source ~/.env/env.sh` at the end of the file. It will be automatically executed when you log in the ubuntu, and you don't need to execute that command any more.
 
+### Troubleshooting
+
+**For Ubuntu 23.04+:** The install script uses `pip install` which may fail on newer Ubuntu versions due to PEP 668 restrictions. If the installation completes but you encounter `ModuleNotFoundError` errors later (e.g., `ModuleNotFoundError: No module named 'tqdm'` or `ModuleNotFoundError: No module named 'kconfiglib'` when using `pkgs` or `scons --menuconfig`), manually install the missing dependencies:
+
+```bash
+sudo apt install python3-tqdm python3-kconfiglib
+```
+
 ### Use Env
 
 Please see: <https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig>
