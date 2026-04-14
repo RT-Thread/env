@@ -18,8 +18,10 @@ if (-not (Test-Path -Path $VENV_ROOT)) {
     }
     if ($china) {
         Write-Host "Detected China Mainland IP, using Tsinghua PyPI mirror."
+        python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
         pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$PSScriptRoot\tools\scripts"
     } else {
+        python -m pip install --upgrade pip
         pip install "$PSScriptRoot\tools\scripts"
     }
 } else {
