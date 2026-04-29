@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import platform
+import re
 import shutil
 import time
 
@@ -40,6 +41,13 @@ from package import PackageOperation, Bridge_SConscript
 from vars import Import, Export
 from .cmd_package_utils import get_url_from_mirror_server, execute_command, git_pull_repo, user_input, \
     find_bool_macro_in_config
+
+
+def is_commit_sha(ver_sha):
+    """检测 VER_SHA 是否为 commit SHA（40位十六进制）"""
+    if ver_sha and re.match(r'^[0-9a-f]{40}$', ver_sha):
+        return True
+    return False
 
 
 def determine_support_chinese(env_root):
@@ -216,12 +224,26 @@ def install_git_package(bsp_package_path, package_name, package_info, package_ur
         repo_path = repo_path + '-' + package_info['ver']
         repo_name_with_version = '"' + repo_path + '"'
 
-        clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version + ' --depth=1'
-        logging.info(clone_cmd)
-        execute_command(clone_cmd, cwd=bsp_package_path)
+        # 修复：根据 VER_SHA 类型选择正确的克隆方式
+        if ver_sha and not is_commit_sha(ver_sha):
+            # VER_SHA 是分支名/标签名，使用 --branch 参数
+            clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version + ' --depth=1 --branch ' + ver_sha
+            logging.info(clone_cmd)
+            execute_command(clone_cmd, cwd=bsp_package_path)
+            # 分支名已在克隆时切换，无需额外 checkout
+        else:
+            # VER_SHA 是 SHA 或为空，使用原来的方式
+            clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version + ' --depth=1'
+            logging.info(clone_cmd)
+            execute_command(clone_cmd, cwd=bsp_package_path)
 
-        git_check_cmd = 'git checkout -q ' + ver_sha
-        execute_command(git_check_cmd, cwd=repo_path)
+            # 如果是 SHA，需要 fetch 后 checkout
+            if ver_sha and is_commit_sha(ver_sha):
+                fetch_cmd = 'git fetch origin ' + ver_sha
+                execute_command(fetch_cmd, cwd=repo_path)
+                git_check_cmd = 'git checkout -q ' + ver_sha
+                execute_command(git_check_cmd, cwd=repo_path)
+
     except Exception as e:
         print('Error message:%s' % e)
         print("\nFailed to download software package with git. Please check the network connection.")
