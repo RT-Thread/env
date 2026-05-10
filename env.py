@@ -30,7 +30,6 @@ import sys
 import argparse
 import logging
 import platform
-import json
 
 script_path = os.path.abspath(__file__)
 mpath = os.path.dirname(script_path)
@@ -78,6 +77,14 @@ def init_argparse():
     cmd_menuconfig.add_parser(subs)
     cmd_package.add_parser(subs)
     cmd_sdk.add_parser(subs)
+    agent_parser = subs.add_parser(
+        'agent',
+        help='Start EnvAgent AI assistant.',
+        description='Start EnvAgent AI assistant.',
+        add_help=False,
+    )
+    agent_parser.add_argument('agent_args', nargs=argparse.REMAINDER)
+    agent_parser.set_defaults(func=agent)
 
     return parser
 
@@ -221,6 +228,10 @@ def main():
     export_environment_variable()
     init_logger(get_env_root())
 
+    if len(sys.argv) > 1 and sys.argv[1] == 'agent':
+        agent()
+        return
+
     parser = init_argparse()
     args = parser.parse_args()
 
@@ -248,6 +259,18 @@ def sdk():
 def system():
     show_version_warning()
     exec_arg('system')
+
+
+def agent(args=None):
+    from eagent.cli import main as agent_main
+    from eagent.reload import ReloadArgs
+
+    argv = getattr(args, 'agent_args', None)
+    if argv is None:
+        argv = sys.argv[2:] if len(sys.argv) > 1 and sys.argv[1] == 'agent' else sys.argv[1:]
+    ReloadArgs.remember([sys.argv[0], 'agent', *argv])
+    sys.argv = [sys.argv[0], *argv]
+    agent_main(standalone_mode=True)
 
 
 if __name__ == '__main__':

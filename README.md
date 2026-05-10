@@ -18,6 +18,8 @@
 
 ### Install Env
 
+EnvAgent requires Python 3.11 or newer.
+
 ```
 wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.sh
 chmod 777 install_ubuntu.sh
@@ -44,6 +46,57 @@ or PLAN B: open `~/.bashrc` file, and attach the command `source ~/.env/env.sh` 
 
 Please see: <https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig>
 
+### Use EnvAgent
+
+Env includes EnvAgent as an integrated AI assistant feature. After activating Env:
+
+```bash
+source ~/.env/env.sh
+agent
+```
+
+You can also run it through the Env command dispatcher:
+
+```bash
+rt-env agent
+rt-env agent --prompt "help me inspect this BSP"
+```
+
+EnvAgent reads model profiles from `~/.env/agent.json`, or falls back to
+`ANTHROPIC_API_KEY` when no profile is configured. A typical `agent.json` looks
+like this:
+
+```json
+{
+  "active": "Kimi-K2",
+  "profiles": [
+    {
+      "name": "Kimi-K2",
+      "provider": "kimi",
+      "model": "kimi-k2-2026",
+      "key": "sk-xxxx",
+      "base_url": "https://api.moonshot.cn/anthropic"
+    }
+  ]
+}
+```
+
+Without `--prompt`, EnvAgent opens the full-screen TUI. Inside the TUI, press
+`Enter` to send, `Alt+Enter` for a newline, `/agent` to switch model profiles,
+and `Ctrl-D` to exit.
+
+EnvAgent stores user-level configuration and runtime state under the Env root
+directory, normally `~/.env`. For example, model profiles are stored in
+`~/.env/agent.json`, sessions in `~/.env/sessions`, and user hooks/settings in
+`~/.env/hooks` and `~/.env/settings.json`.
+
+Skills are loaded in this priority order, with the first skill name winning when
+duplicates exist:
+
+1. Project skills: `<project>/.agents/skills`
+2. User agent skills: `~/.agents/skills`
+3. Env skills: `~/.env/skills`
+
 ## Usage under Windows
 
 Tested on the following version of PowerShell:
@@ -54,6 +107,8 @@ Tested on the following version of PowerShell:
 ### Install Env
 
 您需要以管理员身份运行 PowerShell 来设置执行。（You need to run PowerShell as an administrator to set up execution.）
+
+EnvAgent 需要 Python 3.11 或更高版本。
 
 在 PowerShell 中执行（Execute the command in PowerShell）：
 
@@ -82,6 +137,32 @@ set-executionpolicy remotesigned
 方案 A：每次重启 PowerShell 时，都需要输入命令 `~/.env/env.ps1`，以激活环境变量。（PLAN A: Each time you restart PowerShell, you need to enter the command `~/.env/env.ps1` to activate the environment variable.）
 
 方案 B (推荐)：打开 `C:\Users\user\Documents\WindowsPowerShell`，如果没有`WindowsPowerShell`则新建该文件夹。新建文件 `Microsoft.PowerShell_profile.ps1`，然后写入 `~/.env/env.ps1` 内容即可，它将在你重启 PowerShell 时自动执行，无需再执行方案 A 中的命令。（or PLAN B (recommended): Open `C:\Users\user\Documents\WindowsPowerShell` and create a new file `Microsoft.PowerShell_profile.ps1`. Then write `~/.env/env.ps1` to the file. It will be executed automatically when you restart PowerShell, without having to execute the command in scenario A.）
+
+### Use EnvAgent
+
+激活 Env 后可以直接进入 EnvAgent：
+
+```powershell
+~/.env/env.ps1
+agent
+```
+
+也可以通过 Env 命令调用：
+
+```powershell
+rt-env agent
+rt-env agent --prompt "help me inspect this BSP"
+```
+
+EnvAgent 的模型配置文件为 `~/.env/agent.json`，格式与 Linux/macOS 相同。
+
+EnvAgent 的用户级配置和运行状态与 Env 工具一致放在 `~/.env` 下，例如
+`~/.env/agent.json`、`~/.env/sessions`、`~/.env/hooks` 和
+`~/.env/settings.json`。Skills 按以下优先级加载，同名 skill 以先加载者为准：
+
+1. 工程目录：`<project>/.agents/skills`
+2. 用户 Agent 目录：`~/.agents/skills`
+3. Env 目录：`~/.env/skills`
 
 ### 常见问题
 

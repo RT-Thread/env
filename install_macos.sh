@@ -61,6 +61,13 @@ if ! [[ $($RTT_PYTHON -m pip list | grep requests) ]]; then
     $RTT_PYTHON -m pip install requests
 fi
 
+for pypkg in psutil pyyaml anthropic click prompt_toolkit rich httpx pydantic; do
+    if ! [[ $($RTT_PYTHON -m pip list | grep $pypkg) ]]; then
+        echo "Installing $pypkg."
+        $RTT_PYTHON -m pip install $pypkg
+    fi
+done
+
 if ! [ -x "$(command -v arm-none-eabi-gcc)" ]; then
     echo "Installing GNU Arm Embedded Toolchain."
     brew install gnu-arm-embedded

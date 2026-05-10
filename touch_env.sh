@@ -29,5 +29,6 @@ if ! [ -d $env_dir ]; then
     echo 'source "$PKGS_DIR/packages/Kconfig"' >$env_dir/packages/Kconfig
     git clone $SDK_URL $env_dir/packages/sdk --depth=1
     git clone $ENV_URL $env_dir/tools/scripts --depth=1
-    echo -e 'export PATH=`python3 -m site --user-base`/bin:$HOME/.env/tools/scripts:$PATH\nexport RTT_EXEC_PATH=/usr/bin' >$env_dir/env.sh
+    cp $env_dir/tools/scripts/env.sh $env_dir/env.sh
+    echo 'export RTT_EXEC_PATH=/usr/bin' >>$env_dir/env.sh
 fi
