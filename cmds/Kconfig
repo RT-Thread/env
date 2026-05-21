@@ -4,6 +4,13 @@ config SYS_AUTO_UPDATE_PKGS
     bool "Auto update pkgs config"
     default y
 
+config SYS_PKGS_CONFIRM_DELETE
+    bool "Confirm before deleting disabled git packages"
+    default n
+    help
+        Ask before deleting a git package folder after the package is disabled.
+        If disabled, the package folder is deleted directly.
+
 choice
     prompt "Select download server"
     config SYS_DOWNLOAD_SERVER_AUTO
@@ -57,4 +64,3 @@ config SYS_PKGS_USING_STATISTICS
         which is used to count the number of users
 
 endmenu
-

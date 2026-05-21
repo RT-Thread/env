@@ -186,6 +186,11 @@ def is_user_mange_package(bsp_package_path, pkg):
 is_China_ip = None
 
 
+def should_confirm_delete_disabled_git_package():
+    env_config_file = os.path.join(Import('env_root'), 'tools', 'scripts', 'cmds', '.config')
+    return os.path.isfile(env_config_file) and find_bool_macro_in_config(env_config_file, 'SYS_PKGS_CONFIRM_DELETE')
+
+
 def need_using_mirror_download():
     global is_China_ip
 
@@ -793,9 +798,14 @@ def delete_git_package(pkg, remove_path_with_version, force_update, package_dele
     git_folder_to_remove = remove_path_with_version
 
     print("\nStart to remove %s \nplease wait..." % git_folder_to_remove.encode("utf-8"))
-    if force_update:
-        logging.info("package force update, Begin to remove package {0}".format(git_folder_to_remove))
+    if force_update or not should_confirm_delete_disabled_git_package():
+        if force_update:
+            logging.info("package force update, Begin to remove package {0}".format(git_folder_to_remove))
+        else:
+            logging.info("package disabled, Begin to remove package {0}".format(git_folder_to_remove))
         if not rm_package(git_folder_to_remove):
+            if not force_update:
+                package_delete_fail_list.append(pkg)
             print("Floder delete fail: %s" % git_folder_to_remove.encode("utf-8"))
             print("Please delete this folder manually.")
     else:
