@@ -22,6 +22,7 @@
 # Date           Author          Notes
 # 2020-04-08     SummerGift      Optimize program structure
 # 2020-04-13     SummerGift      refactoring
+# 2026-05-12     CYFS            share hal-sdk packages in libraries and create bridge SConscript for hal-sdk packages in BSP packages
 #
 
 import json
@@ -45,6 +46,82 @@ from .cmd_package_utils import (
     user_input,
     find_bool_macro_in_config,
 )
+
+
+HAL_SDK_PACKAGE_PATH = 'packages/peripherals/hal-sdk/'
+
+HAL_SDK_BRIDGE_SCONSCRIPT = '''import os
+from building import *
+
+
+def _same_path(path_a, path_b):
+    return os.path.normcase(os.path.abspath(path_a)) == os.path.normcase(os.path.abspath(path_b))
+
+
+def _get_existing_libraries_path(root):
+    exact_path = os.path.join(root, 'libraries')
+    if os.path.isdir(exact_path):
+        return exact_path
+
+    try:
+        for name in os.listdir(root):
+            path = os.path.join(root, name)
+            if name.lower() == 'libraries' and os.path.isdir(path):
+                return path
+    except OSError:
+        pass
+
+    return None
+
+
+def _is_rt_thread_bsp_dir(path):
+    parent = os.path.dirname(path)
+    return (
+        os.path.basename(path).lower() == 'bsp'
+        and os.path.isdir(os.path.join(parent, 'bsp'))
+        and os.path.isfile(os.path.join(parent, 'include', 'rtdef.h'))
+    )
+
+
+def _find_hal_sdk_libraries_path(bsp_root):
+    current = os.path.abspath(bsp_root)
+
+    while True:
+        libraries_path = _get_existing_libraries_path(current)
+        if libraries_path:
+            return libraries_path
+
+        if _is_rt_thread_bsp_dir(current):
+            return None
+
+        parent = os.path.dirname(current)
+        if _same_path(parent, current):
+            return None
+
+        current = parent
+
+
+cwd = GetCurrentDir()
+package_name = os.path.basename(cwd)
+bsp_root = os.path.abspath(os.path.join(cwd, '..', '..'))
+libraries_path_prefix = _find_hal_sdk_libraries_path(bsp_root)
+source_path = os.path.abspath(os.path.join(libraries_path_prefix, package_name)) if libraries_path_prefix else ''
+sconscript = os.path.join(source_path, 'SConscript') if source_path else ''
+variant_dir = os.path.join('..', '..', 'packages', package_name)
+
+objs = []
+if os.path.isfile(sconscript):
+    result = SConscript(sconscript, variant_dir=variant_dir, duplicate=0)
+    if isinstance(result, list):
+        objs += result
+    elif result:
+        objs.append(result)
+else:
+    print('warning: hal-sdk package source not found: %s' % source_path)
+
+Return('objs')
+
+'''
 
 
 def _get_git_restore_url(package_obj, ver):
@@ -72,6 +149,164 @@ def _get_git_restore_url(package_obj, ver):
         return repo if repo.endswith('.git') else repo + '.git'
 
     return None
+
+
+def _normalize_package_index_path(package_info):
+    path = package_info.get('path', '')
+    return path.replace('\\', '/').lstrip('/')
+
+
+def is_hal_sdk_package(package_info):
+    return _normalize_package_index_path(package_info).startswith(HAL_SDK_PACKAGE_PATH)
+
+
+def get_package_folder_name(package_name, version):
+    return package_name + '-' + version
+
+
+def _same_path(path_a, path_b):
+    return os.path.normcase(os.path.abspath(path_a)) == os.path.normcase(os.path.abspath(path_b))
+
+
+def _get_existing_libraries_path(root):
+    exact_path = os.path.join(root, 'libraries')
+    if os.path.isdir(exact_path):
+        return exact_path
+
+    try:
+        for name in os.listdir(root):
+            path = os.path.join(root, name)
+            if name.lower() == 'libraries' and os.path.isdir(path):
+                return path
+    except OSError:
+        pass
+
+    return None
+
+
+def _is_rt_thread_bsp_dir(path):
+    parent = os.path.dirname(path)
+    return (
+        os.path.basename(path).lower() == 'bsp'
+        and os.path.isdir(os.path.join(parent, 'bsp'))
+        and os.path.isfile(os.path.join(parent, 'include', 'rtdef.h'))
+    )
+
+
+def get_hal_sdk_libraries_path(bsp_root):
+    current = os.path.abspath(bsp_root)
+
+    while True:
+        libraries_path = _get_existing_libraries_path(current)
+        if libraries_path:
+            return libraries_path
+
+        if _is_rt_thread_bsp_dir(current):
+            return None
+
+        parent = os.path.dirname(current)
+        if _same_path(parent, current):
+            return None
+
+        current = parent
+
+
+def get_hal_sdk_package_path(bsp_root, package_name, version):
+    libraries_path = get_hal_sdk_libraries_path(bsp_root)
+    if not libraries_path:
+        return None
+
+    return os.path.join(libraries_path, get_package_folder_name(package_name, version))
+
+
+def get_bsp_package_path(bsp_package_path, package_name, version):
+    return os.path.join(bsp_package_path, get_package_folder_name(package_name, version))
+
+
+def create_hal_sdk_package_bridge(bsp_package_path, package_name, version):
+    package_folder_name = get_package_folder_name(package_name, version)
+    bridge_path = os.path.join(bsp_package_path, package_folder_name)
+    sconscript_path = os.path.join(bridge_path, 'SConscript')
+
+    try:
+        if os.path.isdir(os.path.join(bridge_path, '.git')):
+            print("Warning: %s is a full git package, skip creating hal-sdk bridge." % bridge_path)
+            return True
+        if not os.path.isdir(bridge_path):
+            os.makedirs(bridge_path)
+        with open(sconscript_path, 'w') as f:
+            f.write(HAL_SDK_BRIDGE_SCONSCRIPT)
+    except Exception as e:
+        logging.warning('Create hal-sdk package bridge failed: %s' % e)
+        return False
+
+    return True
+
+
+def is_hal_sdk_package_bridge(package_path):
+    if os.path.isdir(os.path.join(package_path, '.git')):
+        return False
+
+    sconscript_path = os.path.join(package_path, 'SConscript')
+    if not os.path.isfile(sconscript_path):
+        return False
+
+    try:
+        with open(sconscript_path, 'r') as f:
+            content = f.read()
+        return (
+            'hal-sdk package source not found' in content
+            and ('source_candidates' in content or '_find_hal_sdk_libraries_path' in content or 'libraries_path_prefix' in content)
+        )
+    except Exception:
+        return False
+
+
+def migrate_hal_sdk_package_to_libraries(bsp_package_path, package_name, version, source_path):
+    old_package_path = get_bsp_package_path(bsp_package_path, package_name, version)
+
+    if not os.path.isdir(old_package_path):
+        return True
+
+    try:
+        if is_hal_sdk_package_bridge(old_package_path):
+            if not os.path.exists(source_path):
+                shutil.rmtree(old_package_path)
+            return True
+
+        if os.path.exists(source_path):
+            shutil.rmtree(old_package_path)
+            return True
+
+        source_parent = os.path.dirname(source_path)
+        if not os.path.isdir(source_parent):
+            os.makedirs(source_parent)
+        shutil.move(old_package_path, source_path)
+        print("Move hal-sdk package to shared libraries: %s" % source_path)
+    except Exception as e:
+        logging.warning('Move hal-sdk package to shared libraries failed: %s' % e)
+        return False
+
+    return True
+
+
+def get_package_from_index(pkgs_root, package_info):
+    pkg_path = _normalize_package_index_path(package_info)
+    package = PackageOperation()
+    package.parse(os.path.join(pkgs_root, pkg_path, 'package.json'))
+    return package
+
+
+def get_package_name_from_index(pkgs_root, package_info):
+    package = get_package_from_index(pkgs_root, package_info)
+    return package.get_name()
+
+
+def use_hal_sdk_libraries(pkgs_root, bsp_root, package_info):
+    if not is_hal_sdk_package(package_info):
+        return False
+
+    return get_hal_sdk_libraries_path(bsp_root) is not None
 
 
 def determine_support_chinese(env_root):
@@ -265,10 +500,22 @@ def install_git_package(
     ver_sha,
     upstream_changed,
     url_origin,
+    install_path=None,
 ):
     try:
-        repo_path = os.path.join(bsp_package_path, package_name)
-        repo_path = repo_path + '-' + package_info['ver']
+        if install_path:
+            repo_path = install_path
+        else:
+            repo_path = get_bsp_package_path(bsp_package_path, package_name, package_info['ver'])
+
+        if os.path.isdir(repo_path):
+            print("Package already exists: %s" % repo_path)
+            return True
+
+        repo_parent = os.path.dirname(repo_path)
+        if not os.path.isdir(repo_parent):
+            os.makedirs(repo_parent)
+
         repo_name_with_version = '"' + repo_path + '"'
 
         clone_cmd = 'git clone ' + package_url + ' ' + repo_name_with_version
@@ -338,14 +585,6 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     local_pkgs_path = os.path.join(env_root, 'local_pkgs')
     bsp_package_path = os.path.join(bsp_root, 'packages')
 
-    if not force_update:
-        logging.info("Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
-        if is_user_mange_package(bsp_package_path, package_info):
-            logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
-            return result
-        else:
-            logging.info("NOT User managed package {0}, {1} need install. \n".format(bsp_package_path, package_info))
-
     package = PackageOperation()
     pkg_path = package_info['path']
     if pkg_path[0] == '/' or pkg_path[0] == '\\':
@@ -367,6 +606,15 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
         return False
 
     package_url = url_from_json
+    hal_sdk_libraries_path = get_hal_sdk_libraries_path(bsp_root) if is_hal_sdk_package(package_info) else None
+
+    if not force_update and not hal_sdk_libraries_path:
+        logging.info("Begin to check if it's an user managed package {0}, {1} \n".format(bsp_package_path, package_info))
+        if is_user_mange_package(bsp_package_path, package_info):
+            logging.info("User managed package {0}, {1} no need install. \n".format(bsp_package_path, package_info))
+            return result
+        else:
+            logging.info("NOT User managed package {0}, {1} need install. \n".format(bsp_package_path, package_info))
 
     pkgs_name_in_json = package.get_name()
     logging.info("begin to install packages: {0}".format(pkgs_name_in_json))
@@ -394,8 +642,23 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
     logging.info("Package url: %s" % package_url)
     # compute a safe origin url to restore (git only)
     restore_origin_url = _get_git_restore_url(package, package_info['ver'])
+    use_hal_sdk_libraries = hal_sdk_libraries_path is not None
+    hal_sdk_source_path = None
+
+    if use_hal_sdk_libraries:
+        hal_sdk_source_path = os.path.join(
+            hal_sdk_libraries_path, get_package_folder_name(pkgs_name_in_json, package_info['ver'])
+        )
+        if not migrate_hal_sdk_package_to_libraries(
+            bsp_package_path, pkgs_name_in_json, package_info['ver'], hal_sdk_source_path
+        ):
+            return False
+        if os.path.isdir(hal_sdk_source_path):
+            return create_hal_sdk_package_bridge(bsp_package_path, pkgs_name_in_json, package_info['ver'])
 
     if is_git_url(package_url):
+        install_path = hal_sdk_source_path if use_hal_sdk_libraries else None
+
         if not install_git_package(
             bsp_package_path,
             pkgs_name_in_json,
@@ -404,13 +667,22 @@ def install_package(env_root, pkgs_root, bsp_root, package_info, force_update):
             ver_sha,
             upstream_changed,
             restore_origin_url,
+            install_path,
         ):
             result = False
+        elif use_hal_sdk_libraries:
+            result = create_hal_sdk_package_bridge(bsp_package_path, pkgs_name_in_json, package_info['ver'])
     else:
         if not install_not_git_package(
             package, package_info, local_pkgs_path, package_url, bsp_package_path, pkgs_name_in_json
         ):
             result = False
+        elif use_hal_sdk_libraries:
+            if not migrate_hal_sdk_package_to_libraries(
+                bsp_package_path, pkgs_name_in_json, package_info['ver'], hal_sdk_source_path
+            ):
+                return False
+            result = create_hal_sdk_package_bridge(bsp_package_path, pkgs_name_in_json, package_info['ver'])
     return result
 
 
@@ -464,6 +736,7 @@ def update_latest_packages(sys_value):
     bsp_packages_path = sys_value[5]
 
     env_root = Import('env_root')
+    bsp_root = Import('bsp_root')
     pkgs_root = Import('pkgs_root')
 
     with open(package_filename, 'r') as f:
@@ -482,8 +755,12 @@ def update_latest_packages(sys_value):
 
         # Find out the packages which version is 'latest'
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
-            repo_path = os.path.join(bsp_packages_path, pkgs_name_in_json)
-            repo_path = get_package_folder(repo_path, pkg['ver'])
+            package_url = package.get_url(pkg['ver'])
+            hal_sdk_package_path = get_hal_sdk_package_path(bsp_root, pkgs_name_in_json, pkg['ver'])
+            if is_hal_sdk_package(pkg) and hal_sdk_package_path and package_url and is_git_url(package_url):
+                repo_path = hal_sdk_package_path
+            else:
+                repo_path = get_bsp_package_path(bsp_packages_path, pkgs_name_in_json, pkg['ver'])
 
             # noinspection PyBroadException
             try:
@@ -747,6 +1024,8 @@ def handle_download_error_packages(sys_value, force_update):
     logging.info("begin to handel download error packages")
     package_filename = sys_value[3]
     bsp_packages_path = sys_value[5]
+    bsp_root = Import('bsp_root')
+    pkgs_root = Import('pkgs_root')
 
     with open(package_filename, 'r') as f:
         package_json = json.load(f)
@@ -755,7 +1034,19 @@ def handle_download_error_packages(sys_value, force_update):
 
     for pkg in package_json:
         remove_path = get_package_remove_path(pkg, bsp_packages_path)
-        if os.path.exists(remove_path):
+        source_path = None
+        use_libraries = use_hal_sdk_libraries(pkgs_root, bsp_root, pkg)
+        if use_libraries:
+            try:
+                package_name = get_package_name_from_index(pkgs_root, pkg)
+                source_path = get_hal_sdk_package_path(bsp_root, package_name, pkg['ver'])
+            except Exception as e:
+                logging.warning('Failed to check hal-sdk source path: %s' % e)
+
+        if os.path.exists(remove_path) and (not use_libraries or (source_path and os.path.isdir(source_path))):
+            if use_libraries:
+                package_name = get_package_name_from_index(pkgs_root, pkg)
+                create_hal_sdk_package_bridge(bsp_packages_path, package_name, pkg['ver'])
             continue
         else:
             print("Error package : %s" % pkg)
@@ -842,6 +1133,16 @@ def delete_zip_package(pkg, remove_path_with_version, force_update, package_dele
                 )
 
 
+def delete_hal_sdk_package_bridge(pkg, remove_path_with_version, package_delete_fail_list):
+    if not os.path.isdir(remove_path_with_version):
+        return
+
+    print("Start to remove hal-sdk package bridge %s \nplease wait..." % remove_path_with_version.encode("utf-8"))
+    if not rm_package(remove_path_with_version):
+        package_delete_fail_list.append(pkg)
+        print("Error: Please delete the folder manually.")
+
+
 def remove_packages(sys_value, force_update):
     logging.info("Begin to remove packages")
     old_package = sys_value[0]
@@ -849,12 +1150,18 @@ def remove_packages(sys_value, force_update):
     package_error_list_filename = sys_value[4]
     bsp_packages_path = sys_value[5]
     sqlite_pathname = sys_value[6]
+    bsp_root = Import('bsp_root')
+    pkgs_root = Import('pkgs_root')
 
     case_delete = sub_list(old_package, new_package)
     package_delete_fail_list = []
 
     for pkg in case_delete:
         remove_path_with_version = get_package_remove_path(pkg, bsp_packages_path)
+
+        if use_hal_sdk_libraries(pkgs_root, bsp_root, pkg):
+            delete_hal_sdk_package_bridge(pkg, remove_path_with_version, package_delete_fail_list)
+            continue
 
         # delete .git directory
         if is_git_package(pkg, bsp_packages_path):
