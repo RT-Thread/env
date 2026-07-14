@@ -7,8 +7,12 @@ if [ ! -d "$VENV_ROOT" ]; then
         echo "Failed to create Python venv for RT-Thread."
         return 1
     fi
-    if ! "$VENV_ROOT/bin/python" -m pip install --upgrade pip ||
-        ! "$VENV_ROOT/bin/pip" install "$HOME/.env/tools/scripts"; then
+    if ! "$VENV_ROOT/bin/python" -m pip install --upgrade pip; then
+        echo "Failed to upgrade pip for RT-Thread."
+        rm -rf "$VENV_ROOT"
+        return 1
+    fi
+    if ! "$VENV_ROOT/bin/pip" install "$HOME/.env/tools/scripts"; then
         echo "Failed to install RT-Thread dependencies."
         rm -rf "$VENV_ROOT"
         return 1

@@ -17,7 +17,7 @@ if ($useGitee) {
 $env_dir = "$HOME\.env"
 
 if (Test-Path -Path $env_dir) {
-    $option = Read-Host ".env directory already exists. Would you like to remove and recreate .env directory? (Y/N) " option
+    $option = Read-Host ".env directory already exists. Would you like to remove and recreate .env directory? (Y/N) "
 } if (( $option -eq 'Y' ) -or ($option -eq 'y')) {
     Get-ChildItem $env_dir -Recurse | Remove-Item -Force -Recurse
     rm -r $env_dir
