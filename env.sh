@@ -4,8 +4,11 @@ VENV_ROOT="$HOME/.env/.venv"
 if [ ! -d "$VENV_ROOT" ]; then
     echo "Create Python venv for RT-Thread..."
     python3 -m venv "$VENV_ROOT" || return
-    "$VENV_ROOT/bin/python" -m pip install --upgrade pip
-    "$VENV_ROOT/bin/pip" install "$HOME/.env/tools/scripts"
+    if ! "$VENV_ROOT/bin/python" -m pip install --upgrade pip ||
+        ! "$VENV_ROOT/bin/pip" install "$HOME/.env/tools/scripts"; then
+        rm -rf "$VENV_ROOT"
+        return 1
+    fi
 fi
 
 . "$VENV_ROOT/bin/activate"
