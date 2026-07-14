@@ -31,5 +31,9 @@ if ! [ -d $env_dir ]; then
     git -C $env_dir/packages/packages remote set-url origin https://github.com/RT-Thread/packages.git
     git -C $env_dir/packages/sdk remote set-url origin https://github.com/RT-Thread/sdk.git
     git -C $env_dir/tools/scripts remote set-url origin https://github.com/RT-Thread/env.git
-    cp $env_dir/tools/scripts/env.sh $env_dir/env.sh
+    if ! cp $env_dir/tools/scripts/env.sh $env_dir/env.sh; then
+        echo "Failed to set up Env activation script."
+        rm -rf $env_dir
+        exit 1
+    fi
 fi
