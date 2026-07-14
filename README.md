@@ -25,20 +25,11 @@ chmod 777 install_ubuntu.sh
 rm install_ubuntu.sh
 ```
 
-对于中国大陆用户，请使用以下命令
-
-```
-wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
-chmod 777 install_ubuntu.sh
-./install_ubuntu.sh --gitee
-rm install_ubuntu.sh
-```
+安装脚本会自动识别网络区域，使用相应镜像下载仓库，完成后将仓库远程地址统一设为 GitHub。
 
 ### Prepare Env
 
-PLAN A: Whenever start the ubuntu system, you need to type command `source ~/.env/env.sh` to activate the environment variables.
-
-or PLAN B: open `~/.bashrc` file, and attach the command `source ~/.env/env.sh` at the end of the file. It will be automatically executed when you log in the ubuntu, and you don't need to execute that command any more.
+Run `source ~/.env/env.sh` to activate Env. The script creates and activates its Python virtual environment on first use. To activate Env automatically, add this command to `~/.bashrc`.
 
 ### Use Env
 
@@ -63,13 +54,7 @@ set-executionpolicy remotesigned
 .\install_windows.ps1
 ```
 
-对于中国大陆用户，请使用以下命令：
-
-```powershell
-wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_windows.ps1 -O install_windows.ps1
-set-executionpolicy remotesigned
-.\install_windows.ps1 --gitee
-```
+安装脚本会自动识别网络区域，使用相应镜像下载仓库，完成后将仓库远程地址统一设为 GitHub。
 
 注意：
 
@@ -79,14 +64,4 @@ set-executionpolicy remotesigned
 
 ### Prepare Env
 
-方案 A：每次重启 PowerShell 时，都需要输入命令 `~/.env/env.ps1`，以激活环境变量。（PLAN A: Each time you restart PowerShell, you need to enter the command `~/.env/env.ps1` to activate the environment variable.）
-
-方案 B (推荐)：打开 `C:\Users\user\Documents\WindowsPowerShell`，如果没有`WindowsPowerShell`则新建该文件夹。新建文件 `Microsoft.PowerShell_profile.ps1`，然后写入 `~/.env/env.ps1` 内容即可，它将在你重启 PowerShell 时自动执行，无需再执行方案 A 中的命令。（or PLAN B (recommended): Open `C:\Users\user\Documents\WindowsPowerShell` and create a new file `Microsoft.PowerShell_profile.ps1`. Then write `~/.env/env.ps1` to the file. It will be executed automatically when you restart PowerShell, without having to execute the command in scenario A.）
-
-### 常见问题
-
-对于中国大陆用户，请注意首次激活 Env 时可能出现错误，这可能是当前网络下使用的镜像（默认清华源）连接失败，修复方法：
-
-1. 再次进入安装 Env 的目录，运行`.\install_windows.ps1 --gitee`重新安装，并在**安装完成后不要激活 Env**。
-2. 打开 `~/.env/env.ps1` 文件，修改 `python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple` 和 `pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$PSScriptRoot\tools\scriptse` 中的镜像地址 `https://pypi.tuna.tsinghua.edu.cn/simple` 为其他可用的镜像。
-3. 激活 Env。
+Run `~/.env/env.ps1` to activate Env. The script creates and activates its Python virtual environment on first use. To activate Env automatically, add `~/.env/env.ps1` to your PowerShell profile.

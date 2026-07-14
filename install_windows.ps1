@@ -29,9 +29,14 @@ if (!$?) {
     echo "Python environment has installed. Jump this step."
 }
 
+try {
+    $useGitee = (Invoke-RestMethod -Uri "https://ipinfo.io/json" -UseBasicParsing -TimeoutSec 3).country -eq "CN"
+} catch {
+    $useGitee = $false
+}
+
 $git_url = "https://github.com/git-for-windows/git/releases/download/v2.39.2.windows.1/Git-2.39.2-64-bit.exe"
-if ($args[0] -eq "--gitee") {
-    echo "Use gitee mirror server!"
+if ($useGitee) {
     $git_url = "https://registry.npmmirror.com/-/binary/git-for-windows/v2.39.2.windows.1/Git-2.39.2-64-bit.exe"
 }
 
@@ -53,7 +58,7 @@ if (!(Test-Command git)) {
 
 $PIP_SOURCE = "https://pypi.org/simple"
 $PIP_HOST = "pypi.org"
-if ($args[0] -eq "--gitee") {
+if ($useGitee) {
     $PIP_SOURCE = "http://mirrors.aliyun.com/pypi/simple"
     $PIP_HOST = "mirrors.aliyun.com"
 }
@@ -116,13 +121,13 @@ if (!$?) {
 }
 
 $url = "https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.ps1"
-if ($args[0] -eq "--gitee") {
+if ($useGitee) {
     $url = "https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.ps1"
 }
 
 wget $url -O touch_env.ps1
 echo "run touch_env.ps1"
-./touch_env.ps1 $args[0]
+./touch_env.ps1
 
 if ($args.Count -ge 2 -and $args[1] -eq "-y") {
     echo "Windows Env environment installment has finished. (auto mode, no pause)"
