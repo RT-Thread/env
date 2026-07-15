@@ -4,7 +4,7 @@ TOUCH_ENV_URL=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.s
 COUNTRY=$(wget -qO- --timeout=3 https://ipinfo.io/country 2>/dev/null)
 if [ "$COUNTRY" = "CN" ]; then
     TOUCH_ENV_URL=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
-elif [ -z "$COUNTRY" ]; then
+elif [ -z "$COUNTRY" ] && [ -t 0 ]; then
     read -r -p "Unable to detect network region. Use the Gitee mirror? (y/N) " use_gitee
     if [[ "$use_gitee" =~ ^[Yy]$ ]]; then
         TOUCH_ENV_URL=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
