@@ -19,13 +19,18 @@
 ### Install Env
 
 ```
+# 中国大陆网络：
+wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
+
+# 其他地区网络：
 wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.sh
+
 chmod 777 install_ubuntu.sh
 ./install_ubuntu.sh
 rm install_ubuntu.sh
 ```
 
-安装脚本会自动识别网络区域，使用相应镜像下载仓库，完成后将仓库远程地址统一设为 GitHub。
+请根据自身网络地区选择对应的下载地址。安装脚本会自动识别网络区域，使用相应镜像下载仓库，完成后将仓库远程地址统一设为 GitHub。
 
 ### Prepare Env
 

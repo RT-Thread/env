@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+TOUCH_ENV_URL=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
+if [ "$(wget -qO- --timeout=3 https://ipinfo.io/country 2>/dev/null)" = "CN" ]; then
+    TOUCH_ENV_URL=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
+fi
+
 # 函数：从 AUR 安装 rt-thread-env-meta 包
 install_from_aur() {
     echo "正在从 AUR 安装 rt-thread-env-meta 包..."
@@ -59,7 +64,7 @@ esac
 
 echo "安装完成。"
 
-wget https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh -O touch_env.sh
+wget "$TOUCH_ENV_URL" -O touch_env.sh
 chmod 777 touch_env.sh
 ./touch_env.sh
 rm touch_env.sh
