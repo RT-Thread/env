@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+TOUCH_ENV_URL=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
+COUNTRY=$(wget -qO- --timeout=3 https://ipinfo.io/country 2>/dev/null)
+if [ "$COUNTRY" = "CN" ]; then
+    TOUCH_ENV_URL=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
+elif [ -z "$COUNTRY" ] && [ -t 0 ]; then
+    read -r -p "Unable to detect network region. Use Gitee mirror? (y/N, default: GitHub) " use_gitee
+    if [[ "$use_gitee" =~ ^[Yy]$ ]]; then
+        TOUCH_ENV_URL=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
+    fi
+fi
+
 # 函数：从 AUR 安装 rt-thread-env-meta 包
 install_from_aur() {
     echo "正在从 AUR 安装 rt-thread-env-meta 包..."
@@ -59,12 +70,7 @@ esac
 
 echo "安装完成。"
 
-url=https://raw.githubusercontent.com/RT-Thread/env/master/touch_env.sh
-if [ $1 ] && [ $1 = --gitee ]; then
-    url=https://gitee.com/RT-Thread-Mirror/env/raw/master/touch_env.sh
-fi
-
-wget $url -O touch_env.sh
+wget "$TOUCH_ENV_URL" -O touch_env.sh
 chmod 777 touch_env.sh
-./touch_env.sh $@
+./touch_env.sh
 rm touch_env.sh

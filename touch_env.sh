@@ -4,8 +4,7 @@ DEFAULT_RTT_PACKAGE_URL=https://github.com/RT-Thread/packages.git
 ENV_URL=https://github.com/RT-Thread/env.git
 SDK_URL="https://github.com/RT-Thread/sdk.git"
 
-if [ $1 ] && [ $1 = --gitee ]; then
-    gitee=1
+if [ "$(wget -qO- --timeout=3 https://ipinfo.io/country 2>/dev/null)" = "CN" ]; then
     DEFAULT_RTT_PACKAGE_URL=https://gitee.com/RT-Thread-Mirror/packages.git
     ENV_URL=https://gitee.com/RT-Thread-Mirror/env.git
     SDK_URL="https://gitee.com/RT-Thread-Mirror/sdk.git"
@@ -29,5 +28,12 @@ if ! [ -d $env_dir ]; then
     echo 'source "$PKGS_DIR/packages/Kconfig"' >$env_dir/packages/Kconfig
     git clone $SDK_URL $env_dir/packages/sdk --depth=1
     git clone $ENV_URL $env_dir/tools/scripts --depth=1
-    echo -e 'export PATH=`python3 -m site --user-base`/bin:$HOME/.env/tools/scripts:$PATH\nexport RTT_EXEC_PATH=/usr/bin' >$env_dir/env.sh
+    git -C $env_dir/packages/packages remote set-url origin https://github.com/RT-Thread/packages.git
+    git -C $env_dir/packages/sdk remote set-url origin https://github.com/RT-Thread/sdk.git
+    git -C $env_dir/tools/scripts remote set-url origin https://github.com/RT-Thread/env.git
+    if ! cp $env_dir/tools/scripts/env.sh $env_dir/env.sh; then
+        echo "Failed to set up Env activation script."
+        rm -rf $env_dir
+        exit 1
+    fi
 fi
