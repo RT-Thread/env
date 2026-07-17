@@ -198,6 +198,7 @@ def export_environment_variable():
     os.environ["ENV_ROOT"] = env_root
     os.environ['PKGS_ROOT'] = pkgs_root
     os.environ['PKGS_DIR'] = pkgs_root
+    os.environ['BSP_ROOT'] = bsp_root
     os.environ['BSP_DIR'] = bsp_root
 
     Export('env_root')

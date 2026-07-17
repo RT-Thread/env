@@ -190,9 +190,11 @@ def cmd(args):
 
     env_root = Import('env_root')
 
-    # get RTT_DIR from environment or Kconfig file
-    if get_rtt_root():
-        os.environ['RTT_DIR'] = get_rtt_root()
+    # Keep both legacy Kconfig symbol names and their environment variables set.
+    rtt_root = get_rtt_root()
+    if rtt_root:
+        os.environ['RTT_ROOT'] = rtt_root
+        os.environ['RTT_DIR'] = rtt_root
 
     if not os.path.exists('Kconfig'):
         if platform.system() == "Windows":
