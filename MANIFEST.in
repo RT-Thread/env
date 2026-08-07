@@ -1,0 +1,3 @@
+recursive-include plugins/bundled *
+recursive-include plugins/examples *
+recursive-include plugins/spec *.json *.md
