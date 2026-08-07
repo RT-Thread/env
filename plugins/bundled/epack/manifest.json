@@ -1,0 +1,53 @@
+{
+  "author": {
+    "name": "RT-Thread"
+  },
+  "backend": {
+    "artifacts": [
+      {
+        "format": "source-wheel",
+        "path": "backend/org_rt_thread_epack-1.0.0-py3-none-any.whl",
+        "role": "plugin"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "description": "Create and build Env plugins",
+      "entry": "rt_env_epack_plugin.cli:main",
+      "name": "epack"
+    }
+  ],
+  "compatibility": {
+    "abis": [
+      "py3"
+    ],
+    "architectures": [
+      "any"
+    ],
+    "env": ">=2.0.2,<3.0.0",
+    "implementations": [
+      "cpython"
+    ],
+    "platforms": [
+      "any"
+    ],
+    "python": ">=3.6.0,<4.0.0"
+  },
+  "description": "Official developer tool for Env plugin projects and .epack packages",
+  "id": "org.rt-thread.epack",
+  "license": {
+    "file": "licenses/LICENSE",
+    "spdx": "Apache-2.0"
+  },
+  "name": "Env epack Developer Tool",
+  "permissions": [
+    {
+      "name": "workspace.write",
+      "reason": "Create, validate and build plugin projects in the current workspace",
+      "required": true
+    }
+  ],
+  "schema_version": 1,
+  "version": "1.0.0"
+}
