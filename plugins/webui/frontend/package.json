@@ -1,0 +1,22 @@
+{
+  "name": "rt-thread-env-webui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "element-plus": "^2.11.1",
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@playwright/test": "^1.54.2",
+    "vite": "^7.1.1",
+    "vitest": "^3.2.4"
+  }
+}

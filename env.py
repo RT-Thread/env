@@ -79,6 +79,7 @@ def init_argparse():
     cmd_package.add_parser(subs)
     cmd_sdk.add_parser(subs)
     cmd_plugin.add_parser(subs)
+    cmd_webui.add_parser(subs)
 
     return parser
 

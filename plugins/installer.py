@@ -399,6 +399,7 @@ class PluginInstaller(object):
                     'author': manifest['author'],
                     'license': manifest['license'],
                     'compatibility': manifest['compatibility'],
+                    'compatibility_issues': compatibility_issues(validate_manifest(manifest)),
                     'permissions': manifest['permissions'],
                     'granted_permissions': list(record['granted_permissions']),
                     'source': active['package_path'],
