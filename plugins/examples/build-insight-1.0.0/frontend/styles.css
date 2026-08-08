@@ -1,0 +1,31 @@
+:root { color-scheme: light; font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif; background: #f3f5f4; color: #17201c; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1120px; margin: 0 auto; padding: 32px; }
+header { display: flex; align-items: start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.eyebrow { margin: 0 0 6px; color: #0f766e; font-size: 11px; font-weight: 800; }
+h1 { margin: 0; font-size: 28px; letter-spacing: 0; }
+header p:last-child { margin: 8px 0 0; color: #65716b; }
+.status { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #b8c3be; padding: 8px 11px; background: #fff; font-size: 12px; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: #2f7d4c; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+article, .sections { border: 1px solid #d8dfdc; background: #fff; padding: 20px; }
+article span, article small { display: block; color: #65716b; }
+article strong { display: block; margin: 10px 0 5px; font-size: 24px; }
+article .positive { color: #2f7d4c; }
+article div { height: 5px; margin-top: 16px; background: #e9eeec; }
+article div i { display: block; height: 100%; background: #0f766e; }
+article div .good { background: #2f7d4c; }
+.sections { margin-top: 14px; }
+.section-title { display: flex; align-items: center; justify-content: space-between; }
+h2 { margin: 0; font-size: 17px; }
+.section-title span { color: #65716b; font-size: 12px; }
+.bar-list { display: grid; gap: 16px; margin-top: 22px; }
+.bar-list > div { display: grid; grid-template-columns: 90px minmax(120px, 1fr) 90px; align-items: center; gap: 16px; }
+.bar-list b { height: 8px; background: #e9eeec; }
+.bar-list b i { display: block; height: 100%; background: #bd5a19; }
+.bar-list strong { text-align: right; }
+[data-theme="dark"] { background: #171a18; color: #edf2ef; }
+[data-theme="dark"] article, [data-theme="dark"] .sections, [data-theme="dark"] .status { border-color: #3a433e; background: #202522; }
+[data-theme="dark"] article div, [data-theme="dark"] .bar-list b { background: #303833; }
+@media (max-width: 720px) { main { padding: 20px 16px; } header { display: grid; } .metrics { grid-template-columns: 1fr; } .bar-list > div { grid-template-columns: 64px minmax(80px, 1fr) 72px; gap: 9px; } }

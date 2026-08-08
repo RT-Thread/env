@@ -1,0 +1,25 @@
+{
+  "author": {"name": "RT-Thread"},
+  "backend": {"artifacts": [{"format": "source-wheel", "path": "backend/org_rt_thread_probe_flash-0.9.6-py3-none-any.whl", "role": "plugin"}]},
+  "commands": [{"description": "Inspect connected probes and flash firmware", "entry": "rt_env_probe_flash.cli:main", "name": "env-flash"}],
+  "compatibility": {
+    "abis": ["py3"],
+    "architectures": ["any"],
+    "env": ">=2.0.2,<3.0.0",
+    "implementations": ["cpython"],
+    "platforms": ["linux", "windows"],
+    "python": ">=3.6.0,<4.0.0"
+  },
+  "description": "Detect ST-Link and J-Link probes and run explicit flash commands",
+  "health_check": "rt_env_probe_flash.cli:health_check",
+  "id": "org.rt-thread.probe-flash",
+  "license": {"file": "licenses/LICENSE", "spdx": "Apache-2.0"},
+  "name": "Probe & Flash",
+  "permissions": [
+    {"name": "device.serial", "reason": "Access the probe selected by the user", "required": true},
+    {"name": "process.execute", "reason": "Run OpenOCD or a vendor flash utility", "required": true},
+    {"name": "workspace.read", "reason": "Read the selected firmware artifact", "required": true}
+  ],
+  "schema_version": 1,
+  "version": "0.9.6"
+}
