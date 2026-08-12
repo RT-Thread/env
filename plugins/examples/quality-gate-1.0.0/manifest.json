@@ -1,0 +1,21 @@
+{
+  "author": {"name": "Env Community"},
+  "backend": {"artifacts": []},
+  "commands": [],
+  "compatibility": {
+    "abis": ["py3"],
+    "architectures": ["x86_64"],
+    "env": ">=2.0.2,<3.0.0",
+    "implementations": ["cpython"],
+    "platforms": ["windows"],
+    "python": ">=3.6.0,<4.0.0"
+  },
+  "description": "Review static analysis, test and coverage results in one page",
+  "id": "org.env-community.quality-gate",
+  "license": {"file": "licenses/LICENSE", "spdx": "Apache-2.0"},
+  "name": "Quality Gate",
+  "permissions": [],
+  "schema_version": 1,
+  "version": "1.0.0",
+  "webui": {"entry": "frontend/index.html", "frontend_sdk": ">=1.0.0,<2.0.0", "icon": "shield-check"}
+}

@@ -109,3 +109,6 @@ sdk_list.json
 sdk_cfg.json
 .config
 .config.old
+plugins/webui/frontend/node_modules/
+plugins/webui/frontend/playwright-report/
+plugins/webui/frontend/test-results/

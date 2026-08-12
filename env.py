@@ -78,6 +78,8 @@ def init_argparse():
     cmd_menuconfig.add_parser(subs)
     cmd_package.add_parser(subs)
     cmd_sdk.add_parser(subs)
+    cmd_plugin.add_parser(subs)
+    cmd_webui.add_parser(subs)
 
     return parser
 
@@ -249,6 +251,13 @@ def sdk():
 def system():
     show_version_warning()
     exec_arg('system')
+
+
+def webui():
+    show_version_warning()
+    export_environment_variable()
+    init_logger(get_env_root())
+    cmd_webui.main()
 
 
 if __name__ == '__main__':

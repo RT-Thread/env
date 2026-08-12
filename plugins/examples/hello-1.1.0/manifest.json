@@ -1,0 +1,48 @@
+{
+  "author": {
+    "name": "RT-Thread"
+  },
+  "backend": {
+    "artifacts": [
+      {
+        "format": "source-wheel",
+        "path": "backend/org_rt_thread_examples_hello-1.1.0-py3-none-any.whl",
+        "role": "plugin"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "description": "Run the Env plugin lifecycle example",
+      "entry": "env_plugin_hello.cli:main",
+      "name": "env-plugin-hello"
+    }
+  ],
+  "compatibility": {
+    "abis": [
+      "py3"
+    ],
+    "architectures": [
+      "any"
+    ],
+    "env": ">=2.0.2,<3.0.0",
+    "implementations": [
+      "cpython"
+    ],
+    "platforms": [
+      "any"
+    ],
+    "python": ">=3.6.0,<4.0.0"
+  },
+  "description": "Pure CLI example for the Env plugin lifecycle with JSON output",
+  "health_check": "env_plugin_hello.cli:health_check",
+  "id": "org.rt-thread.examples.hello",
+  "license": {
+    "file": "licenses/LICENSE",
+    "spdx": "Apache-2.0"
+  },
+  "name": "Env Plugin Hello",
+  "permissions": [],
+  "schema_version": 1,
+  "version": "1.1.0"
+}

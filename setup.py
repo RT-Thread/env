@@ -28,14 +28,34 @@ setup(
         'env',
         'env.cmds',
         'env.cmds.cmd_package',
+        'env.plugins',
+        'env.plugins.sdk',
+        'env.plugins.epack',
+        'env.plugins.spec',
+        'env.plugins.webui',
     ],
     package_dir={
         'env': '.',
         'env.cmds': 'cmds',
         'env.cmds.cmd_package': 'cmds/cmd_package',
+        'env.plugins': 'plugins',
+        'env.plugins.sdk': 'plugins/sdk',
+        'env.plugins.epack': 'plugins/epack',
+        'env.plugins.spec': 'plugins/spec',
+        'env.plugins.webui': 'plugins/webui',
     },
-    package_data={'': ['*.*']},
-    exclude_package_data={'': ['MANIFEST.in']},
+    package_data={
+        '': ['*.*'],
+        'env.plugins.webui': ['static/*', 'static/assets/*'],
+    },
+    exclude_package_data={
+        '': ['MANIFEST.in'],
+        'env.plugins.webui': [
+            'frontend/*',
+            'frontend/e2e/*',
+            'frontend/src/*',
+        ],
+    },
     include_package_data=True,
     entry_points={
         'console_scripts': [
@@ -44,6 +64,7 @@ setup(
             'pkgs=env.env:pkgs',
             'sdk=env.env:sdk',
             'system=env.env:system',
+            'webui=env.env:webui',
         ]
     },
 )

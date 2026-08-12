@@ -1,0 +1,14 @@
+include docs/env-plugin-requirements-and-ideas.md
+recursive-include docs/prototypes *.html
+recursive-include plugins/bundled *
+recursive-include plugins/examples *
+recursive-include plugins/spec *.json *.md
+recursive-include plugins/webui/static *.html *.js *.css
+include plugins/webui/frontend/index.html plugins/webui/frontend/package.json plugins/webui/frontend/package-lock.json
+include plugins/webui/frontend/vite.config.js plugins/webui/frontend/playwright.config.js
+recursive-include plugins/webui/frontend/src *.js *.vue *.css
+recursive-include plugins/webui/frontend/e2e *.js
+prune plugins/webui/frontend/node_modules
+prune plugins/webui/frontend/playwright-report
+prune plugins/webui/frontend/test-results
+global-exclude *.py[cod]

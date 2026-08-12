@@ -1,32 +1,57 @@
-$VENV_ROOT = "$PSScriptRoot\.venv"
-# rt-env目录是否存在
-if (-not (Test-Path -Path $VENV_ROOT)) {
-    Write-Host "Create Python venv for RT-Thread..."
-    python -m venv $VENV_ROOT
-    # 激活python venv
-    & "$VENV_ROOT\Scripts\Activate.ps1"
-    # 安装env-script
-    # 判断IP是否在中国大陆，若是则用清华源，否则用默认源
-    try {
-        $china = $false
-        $ipinfo = Invoke-RestMethod -Uri "https://ipinfo.io/json" -UseBasicParsing -TimeoutSec 3
-        if ($ipinfo.country -eq "CN") {
-            $china = $true
-        }
-    } catch {
-        $china = $false
-    }
-    if ($china) {
-        Write-Host "Detected China Mainland IP, using Tsinghua PyPI mirror."
-        python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
-        pip install -i https://pypi.tuna.tsinghua.edu.cn/simple "$PSScriptRoot\tools\scripts"
-    } else {
-        python -m pip install --upgrade pip
-        pip install "$PSScriptRoot\tools\scripts"
-    }
+if ([string]::IsNullOrWhiteSpace($env:ENV_ROOT)) {
+    $EnvRoot = $PSScriptRoot
 } else {
-    # 激活python venv
-    & "$VENV_ROOT\Scripts\Activate.ps1"
+    $EnvRoot = $env:ENV_ROOT
 }
 
-$env:pathext = ".PS1;$env:pathext"
+$env:ENV_ROOT = $EnvRoot
+$VenvRoot = Join-Path $EnvRoot ".venv"
+$ScriptsRoot = Join-Path $EnvRoot "tools\scripts"
+$BootstrapScript = Join-Path $ScriptsRoot "env_venv.py"
+$VenvPython = Join-Path $VenvRoot "Scripts\python.exe"
+$ActivateScript = Join-Path $VenvRoot "Scripts\Activate.ps1"
+$BootstrapStatus = 0
+$ActivateStatus = 0
+
+if (Test-Path -Path $VenvPython -PathType Leaf) {
+    $BootstrapPython = $VenvPython
+} elseif (Get-Command python -ErrorAction SilentlyContinue) {
+    $BootstrapPython = "python"
+} else {
+    $BootstrapPython = $null
+}
+
+if ($null -eq $BootstrapPython) {
+    Write-Error "Cannot prepare the RT-Thread Env venv: Python 3 was not found."
+    $BootstrapStatus = 1
+} elseif (-not (Test-Path -Path $BootstrapScript -PathType Leaf)) {
+    Write-Error "Cannot prepare the RT-Thread Env venv: $BootstrapScript was not found."
+    $BootstrapStatus = 1
+} else {
+    & $BootstrapPython $BootstrapScript `
+        --venv $VenvRoot `
+        --source $ScriptsRoot `
+        --activation-script (Join-Path $EnvRoot "env.ps1")
+    $BootstrapStatus = $LASTEXITCODE
+}
+
+if (Test-Path -Path $ActivateScript -PathType Leaf) {
+    try {
+        . $ActivateScript
+    } catch {
+        Write-Error "Failed to activate the RT-Thread Env Python venv: $_"
+        $ActivateStatus = 1
+    }
+} else {
+    Write-Error "Cannot activate the RT-Thread Env Python venv: $ActivateScript was not found."
+    $ActivateStatus = 1
+}
+
+$env:PATHEXT = ".PS1;$env:PATHEXT"
+
+if ($BootstrapStatus -ne 0) {
+    Write-Warning "The Env venv preparation failed, but activation was still attempted."
+}
+if ($ActivateStatus -ne 0) {
+    Write-Warning "The Env Python venv is not active."
+}

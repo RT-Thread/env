@@ -1,0 +1,64 @@
+{
+  "author": {
+    "name": "RT-Thread"
+  },
+  "backend": {
+    "artifacts": [
+      {
+        "format": "source-wheel",
+        "path": "backend/org_rt_thread_build_insight-1.0.0-py3-none-any.whl",
+        "role": "plugin"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "description": "Inspect an RT-Thread build workspace",
+      "entry": "rt_env_build_insight.cli:main",
+      "name": "env-build-insight"
+    }
+  ],
+  "compatibility": {
+    "abis": [
+      "py3"
+    ],
+    "architectures": [
+      "any"
+    ],
+    "env": ">=2.0.2,<3.0.0",
+    "implementations": [
+      "cpython"
+    ],
+    "platforms": [
+      "any"
+    ],
+    "python": ">=3.6.0,<4.0.0"
+  },
+  "description": "Inspect build output, firmware sections and recent size changes",
+  "health_check": "rt_env_build_insight.cli:health_check",
+  "id": "org.rt-thread.build-insight",
+  "license": {
+    "file": "licenses/LICENSE",
+    "spdx": "Apache-2.0"
+  },
+  "name": "Build Insight",
+  "permissions": [
+    {
+      "name": "workspace.read",
+      "reason": "Read build logs, map files and firmware artifacts",
+      "required": true
+    },
+    {
+      "name": "process.execute",
+      "reason": "Run explicitly requested build inspection tools",
+      "required": false
+    }
+  ],
+  "schema_version": 1,
+  "version": "1.0.0",
+  "webui": {
+    "entry": "frontend/index.html",
+    "frontend_sdk": ">=1.0.0,<2.0.0",
+    "icon": "chart-no-axes-combined"
+  }
+}

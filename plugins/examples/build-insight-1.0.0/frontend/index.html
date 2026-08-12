@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Build Insight</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">BUILD INSIGHT</p>
+        <h1>固件构建分析</h1>
+        <p id="context">等待 Env 宿主上下文</p>
+      </div>
+      <span class="status"><i></i>分析就绪</span>
+    </header>
+    <section class="metrics" aria-label="固件指标">
+      <article><span>Flash</span><strong>428.6 KB</strong><small>占用 41.9%</small><div><i style="width:42%"></i></div></article>
+      <article><span>RAM</span><strong>92.4 KB</strong><small>占用 36.1%</small><div><i style="width:36%"></i></div></article>
+      <article><span>本次变化</span><strong class="positive">-12.8 KB</strong><small>相对上次构建</small><div><i class="good" style="width:28%"></i></div></article>
+    </section>
+    <section class="sections">
+      <div class="section-title"><h2>段占用</h2><span>Debug · arm-none-eabi</span></div>
+      <div class="bar-list">
+        <div><span>.text</span><b><i style="width:78%"></i></b><strong>319.2 KB</strong></div>
+        <div><span>.rodata</span><b><i style="width:36%"></i></b><strong>78.4 KB</strong></div>
+        <div><span>.data</span><b><i style="width:16%"></i></b><strong>18.7 KB</strong></div>
+        <div><span>.bss</span><b><i style="width:22%"></i></b><strong>27.5 KB</strong></div>
+      </div>
+    </section>
+  </main>
+  <script src="plugin.js"></script>
+</body>
+</html>
