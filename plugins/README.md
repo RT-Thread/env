@@ -32,15 +32,28 @@ remove or disable Env's lifecycle installer.
 Start the production WebUI from any workspace:
 
 ```text
+webui
+webui -g
+webui -g --browser
+webui /path/to/workspace --no-browser
+
+# Source checkout equivalents
 python env.py webui
 python env.py webui /path/to/workspace --no-browser
-python env.py webui --host 0.0.0.0 --no-browser
+python env.py webui -g --no-browser
 ```
 
-The default listener is loopback-only. Passing `--host 0.0.0.0` explicitly
-listens on every IPv4 interface and prints a reachable local-network URL. The
-launch token, session, CSRF, Origin and Host protections remain enabled, but
-traffic is unencrypted HTTP and should only be exposed on a trusted network.
+The Env Python virtual environment installs `webui` as a direct command. The
+default listener is loopback-only. Passing `-g` or `--global` listens on every
+IPv4 interface, equivalent to `--host 0.0.0.0`, and prints a reachable
+local-network URL. The launch token, session, CSRF, Origin and Host protections
+remain enabled, but traffic is unencrypted HTTP and should only be exposed on
+a trusted network.
+
+Env opens the default browser automatically for local sessions. When
+`SSH_CONNECTION`, `SSH_CLIENT`, or `SSH_TTY` indicates an SSH session, it keeps
+the server running but skips browser launch. Use `--browser` to force browser
+launch or `--no-browser` to disable it explicitly.
 
 The server binds to an automatically selected loopback port, prints a one-time
 launch URL, and stops on Ctrl+C. Runtime use does not require Node.js or a CDN.

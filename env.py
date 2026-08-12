@@ -253,5 +253,12 @@ def system():
     exec_arg('system')
 
 
+def webui():
+    show_version_warning()
+    export_environment_variable()
+    init_logger(get_env_root())
+    cmd_webui.main()
+
+
 if __name__ == '__main__':
     main()

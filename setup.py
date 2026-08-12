@@ -64,6 +64,7 @@ setup(
             'pkgs=env.env:pkgs',
             'sdk=env.env:sdk',
             'system=env.env:system',
+            'webui=env.env:webui',
         ]
     },
 )
