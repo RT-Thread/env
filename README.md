@@ -34,7 +34,18 @@ rm install_ubuntu.sh
 
 ### Prepare Env
 
-Run `source ~/.env/env.sh` to activate Env. The script creates and activates its Python virtual environment on first use. To activate Env automatically, add this command to `~/.bashrc`.
+Run `source ~/.env/env.sh` to activate Env. The script creates a missing Python
+virtual environment and always attempts to activate it. When the local
+`tools/scripts` source changes, it offers to reinstall Env into the venv and
+synchronize the activation script. To activate Env automatically, add this
+command to `~/.bashrc`.
+
+The upgrade check is local and does not fetch the Env Git repository. Python
+packages use the Alibaba Cloud PyPI mirror when a mainland China IP is detected;
+other regions and detection failures use pip's configured default. Set
+`ENV_PYPI_INDEX_URL` to override the package index or
+`ENV_VENV_AUTO_UPGRADE=1` to accept a pending local-source upgrade without a
+prompt.
 
 ### Use Env
 
@@ -69,4 +80,6 @@ set-executionpolicy remotesigned
 
 ### Prepare Env
 
-Run `~/.env/env.ps1` to activate Env. The script creates and activates its Python virtual environment on first use. To activate Env automatically, add `~/.env/env.ps1` to your PowerShell profile.
+Run `~/.env/env.ps1` to activate Env. It follows the same venv creation, local
+upgrade, mirror selection, and activation behavior as `env.sh`. To activate Env
+automatically, add `~/.env/env.ps1` to your PowerShell profile.
