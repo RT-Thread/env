@@ -6,6 +6,7 @@ from __future__ import print_function
 import argparse
 import filecmp
 import hashlib
+import inspect
 import json
 import os
 from pathlib import Path
@@ -13,11 +14,21 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 
 ALIYUN_INDEX_URL = 'https://mirrors.aliyun.com/pypi/simple/'
 COUNTRY_URL = 'https://ipinfo.io/country'
+PROXY_ENVIRONMENT_KEYS = (
+    'ALL_PROXY',
+    'HTTPS_PROXY',
+    'HTTP_PROXY',
+    'PIP_PROXY',
+    'all_proxy',
+    'https_proxy',
+    'http_proxy',
+    'pip_proxy',
+)
 STATE_FILENAME = '.rt-thread-env-state.json'
 STATE_SCHEMA = 1
 
@@ -218,10 +229,22 @@ def sync_activation_script(source_root, activation_target):
             temporary_path.unlink()
 
 
+def _proxy_free_environment(environ=None):
+    environment = dict(os.environ if environ is None else environ)
+    for key in PROXY_ENVIRONMENT_KEYS:
+        environment.pop(key, None)
+    return environment
+
+
+def _open_without_proxy(request, timeout):
+    opener = build_opener(ProxyHandler({}))
+    return opener.open(request, timeout=timeout)
+
+
 def detect_country(timeout=3):
     request = Request(COUNTRY_URL, headers={'User-Agent': 'RT-Thread-Env/2'})
     try:
-        with urlopen(request, timeout=timeout) as response:
+        with _open_without_proxy(request, timeout=timeout) as response:
             return response.read(16).decode('ascii', 'ignore').strip().upper() or None
     except Exception:
         return None
@@ -255,12 +278,32 @@ def confirm_upgrade(stdin=None):
     return answer.strip().lower() in ('y', 'yes')
 
 
-def run_command(command):
-    subprocess.check_call([str(value) for value in command])
+def run_command(command, env=None):
+    subprocess.check_call([str(value) for value in command], env=_proxy_free_environment(env))
+
+
+def _command_runner_supports_env(command_runner):
+    try:
+        signature = inspect.signature(command_runner)
+    except (TypeError, ValueError):
+        return False
+    if any(parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()):
+        return True
+    return 'env' in signature.parameters
+
+
+def _invoke_command(command_runner, command, env=None):
+    if env is not None and _command_runner_supports_env(command_runner):
+        return command_runner(command, env=env)
+    return command_runner(command)
 
 
 def _index_arguments(index_url):
     return ['--index-url', index_url] if index_url else []
+
+
+def _pip_network_arguments(index_url):
+    return _index_arguments(index_url) + ['--proxy', '']
 
 
 def _index_label(index_url):
@@ -273,15 +316,19 @@ def _index_label(index_url):
 
 def install_env(layout, source_root, initial_install, index_url, command_runner=None):
     command_runner = command_runner or run_command
+    command_environment = _proxy_free_environment()
     python = str(layout['python'])
-    command_runner([python, '-m', 'ensurepip', '--upgrade'])
+    _invoke_command(command_runner, [python, '-m', 'ensurepip', '--upgrade'], env=command_environment)
     if initial_install:
-        command_runner(
+        _invoke_command(
+            command_runner,
             [python, '-m', 'pip', 'install', '--disable-pip-version-check', '--upgrade']
-            + _index_arguments(index_url)
-            + ['pip']
+            + _pip_network_arguments(index_url)
+            + ['pip'],
+            env=command_environment,
         )
-    command_runner(
+    _invoke_command(
+        command_runner,
         [
             python,
             '-m',
@@ -292,8 +339,9 @@ def install_env(layout, source_root, initial_install, index_url, command_runner=
             '--upgrade-strategy',
             'only-if-needed',
         ]
-        + _index_arguments(index_url)
-        + [str(_normalized(source_root))]
+        + _pip_network_arguments(index_url)
+        + [str(_normalized(source_root))],
+        env=command_environment,
     )
 
 
