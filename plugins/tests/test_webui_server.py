@@ -374,6 +374,61 @@ class WebUICommandTest(unittest.TestCase):
         )
         open_browser.assert_not_called()
 
+    def test_start_status_stop_lifecycle(self):
+        temporary = tempfile.TemporaryDirectory()
+        env_root = os.path.join(temporary.name, 'env')
+        try:
+            start = self.parse_webui('start', '--env-root', env_root, '--no-browser', '--port', '0')
+            start_output = io.StringIO()
+            with mock.patch('sys.stdout', new=start_output):
+                self.assertEqual(start.func(start), 0)
+            self.assertIn('Env WebUI:', start_output.getvalue())
+
+            status = self.parse_webui('status', '--env-root', env_root)
+            status_output = io.StringIO()
+            with mock.patch('sys.stdout', new=status_output):
+                self.assertEqual(status.func(status), 0)
+            self.assertIn('running and online', status_output.getvalue())
+
+            repeated = self.parse_webui('start', '--env-root', env_root, '--no-browser', '--port', '0')
+            repeated_output = io.StringIO()
+            with mock.patch('sys.stdout', new=repeated_output):
+                self.assertEqual(repeated.func(repeated), 0)
+            self.assertIn('already running', repeated_output.getvalue())
+
+            stop = self.parse_webui('stop', '--env-root', env_root)
+            stop_output = io.StringIO()
+            with mock.patch('sys.stdout', new=stop_output):
+                self.assertEqual(stop.func(stop), 0)
+            self.assertIn('stopped', stop_output.getvalue())
+
+            stopped = self.parse_webui('status', '--env-root', env_root)
+            stopped_output = io.StringIO()
+            with mock.patch('sys.stdout', new=stopped_output):
+                self.assertEqual(stopped.func(stopped), 0)
+            self.assertIn('is stopped', stopped_output.getvalue())
+        finally:
+            cleanup = self.parse_webui('stop', '--env-root', env_root)
+            with mock.patch('sys.stdout', new=io.StringIO()):
+                cleanup.func(cleanup)
+            temporary.cleanup()
+
+    def test_start_opens_browser_for_local_service(self):
+        temporary = tempfile.TemporaryDirectory()
+        env_root = os.path.join(temporary.name, 'env')
+        try:
+            start = self.parse_webui('start', '--env-root', env_root, '--port', '0')
+            with mock.patch.object(cmd_webui, 'is_ssh_session', return_value=False), mock.patch.object(
+                cmd_webui.webbrowser, 'open'
+            ) as open_browser:
+                start.func(start)
+            open_browser.assert_called_once()
+        finally:
+            stop = self.parse_webui('stop', '--env-root', env_root)
+            with mock.patch('sys.stdout', new=io.StringIO()):
+                stop.func(stop)
+            temporary.cleanup()
+
     def test_standalone_entry_reuses_webui_subcommand(self):
         with mock.patch.object(env_module, 'show_version_warning') as version_warning, mock.patch.object(
             env_module,
