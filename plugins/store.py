@@ -11,31 +11,89 @@ from .errors import StateError
 STATE_SCHEMA_VERSION = 1
 
 
+if os.name == 'nt':
+    import ctypes
+    from ctypes import wintypes
+
+    class _Overlapped(ctypes.Structure):
+        _fields_ = [
+            ('internal', ctypes.c_void_p),
+            ('internal_high', ctypes.c_void_p),
+            ('offset', wintypes.DWORD),
+            ('offset_high', wintypes.DWORD),
+            ('event', wintypes.HANDLE),
+        ]
+
+    _LOCKFILE_EXCLUSIVE_LOCK = 0x00000002
+
+
+def _lock_windows(handle, shared):
+    import msvcrt
+
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel32.LockFileEx.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(_Overlapped),
+    ]
+    kernel32.LockFileEx.restype = wintypes.BOOL
+    overlapped = _Overlapped()
+    flags = 0 if shared else _LOCKFILE_EXCLUSIVE_LOCK
+    file_handle = wintypes.HANDLE(msvcrt.get_osfhandle(handle))
+    if not kernel32.LockFileEx(file_handle, flags, 0, 1, 0, ctypes.byref(overlapped)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return kernel32, file_handle, overlapped
+
+
+def _unlock_windows(lock):
+    kernel32, file_handle, overlapped = lock
+    kernel32.UnlockFileEx.argtypes = [
+        wintypes.HANDLE,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        wintypes.DWORD,
+        ctypes.POINTER(_Overlapped),
+    ]
+    kernel32.UnlockFileEx.restype = wintypes.BOOL
+    if not kernel32.UnlockFileEx(file_handle, 0, 1, 0, ctypes.byref(overlapped)):
+        raise ctypes.WinError(ctypes.get_last_error())
+
+
 def empty_state():
     return {'schema_version': STATE_SCHEMA_VERSION, 'plugins': {}, 'commands': {}}
 
 
 class FileLock(object):
-    def __init__(self, path):
+    def __init__(self, path, shared=False):
         self.path = path
+        self.shared = bool(shared)
         self.handle = None
+        self._windows_lock = None
 
     def __enter__(self):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        self.handle = open(self.path, 'a+b')
-        self.handle.seek(0)
-        if os.name == 'nt':
-            import msvcrt
+        try:
+            self.handle = open(self.path, 'a+b')
+            self.handle.seek(0)
+            if os.name == 'nt':
+                if os.path.getsize(self.path) == 0:
+                    self.handle.write(b'0')
+                    self.handle.flush()
+                    self.handle.seek(0)
+                self._windows_lock = _lock_windows(self.handle.fileno(), self.shared)
+            else:
+                import fcntl
 
-            if os.path.getsize(self.path) == 0:
-                self.handle.write(b'0')
-                self.handle.flush()
-                self.handle.seek(0)
-            msvcrt.locking(self.handle.fileno(), msvcrt.LK_LOCK, 1)
-        else:
-            import fcntl
-
-            fcntl.flock(self.handle.fileno(), fcntl.LOCK_EX)
+                mode = fcntl.LOCK_SH if self.shared else fcntl.LOCK_EX
+                fcntl.flock(self.handle.fileno(), mode)
+        except Exception:
+            if self.handle is not None:
+                self.handle.close()
+                self.handle = None
+            raise
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -44,9 +102,7 @@ class FileLock(object):
         try:
             self.handle.seek(0)
             if os.name == 'nt':
-                import msvcrt
-
-                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+                _unlock_windows(self._windows_lock)
             else:
                 import fcntl
 
@@ -54,6 +110,7 @@ class FileLock(object):
         finally:
             self.handle.close()
             self.handle = None
+            self._windows_lock = None
 
 
 class StateStore(object):

@@ -245,6 +245,76 @@ class LifecycleTest(unittest.TestCase):
         self.assertGreater(elapsed, 0.5)
         self.assertFalse(os.path.exists(self.launcher()))
 
+    def test_command_allows_multiple_instances(self):
+        project = copy_project(os.path.join(EXAMPLES, 'hello-1.0.0'), os.path.join(self.temporary.name, 'parallel'))
+        source_path = os.path.join(project, 'src', 'env_plugin_hello', 'cli.py')
+        with open(source_path, 'w', encoding='utf-8') as source:
+            source.write(
+                'import os\n'
+                'import time\n\n'
+                'def health_check():\n'
+                '    return 0\n\n'
+                'def main(argv, context):\n'
+                '    marker = os.path.join(context.data_dir, "started-" + argv[0])\n'
+                '    with open(marker, "w") as started:\n'
+                '        started.write("started")\n'
+                '    release = os.path.join(context.data_dir, "release")\n'
+                '    while not os.path.exists(release):\n'
+                '        time.sleep(0.01)\n'
+                '    print(argv[0])\n'
+                '    return 0\n'
+            )
+        package = build_example_project(project, self.packages)
+        self.service.install(package, allow_unsigned=True)
+        marker_root = os.path.join(
+            self.env_root,
+            'var',
+            'plugins',
+            'data',
+            'org.rt-thread.examples.hello',
+        )
+        first = subprocess.Popen(
+            [self.launcher(), 'first'],
+            cwd=self.temporary.name,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        try:
+            self._wait_for_path(os.path.join(marker_root, 'started-first'))
+            second = subprocess.Popen(
+                [self.launcher(), 'second'],
+                cwd=self.temporary.name,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+            )
+            try:
+                self._wait_for_path(os.path.join(marker_root, 'started-second'))
+                self.assertIsNone(first.poll(), 'the first command instance was serialized')
+                with open(os.path.join(marker_root, 'release'), 'w') as release:
+                    release.write('release')
+                first_stdout, first_stderr = first.communicate(timeout=2.0)
+                second_stdout, second_stderr = second.communicate(timeout=2.0)
+            finally:
+                if second.poll() is None:
+                    second.kill()
+                    second.communicate()
+            self.assertEqual(first.returncode, 0, first_stderr)
+            self.assertEqual(second.returncode, 0, second_stderr)
+            self.assertEqual(first_stdout.strip(), 'first')
+            self.assertEqual(second_stdout.strip(), 'second')
+        finally:
+            if first.poll() is None:
+                first.kill()
+                first.communicate()
+
+    def _wait_for_path(self, path):
+        deadline = time.monotonic() + 5.0
+        while not os.path.exists(path) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertTrue(os.path.exists(path), 'expected marker was not created: %s' % path)
+
 
 def build_example_project(project, output):
     from plugins.epack.builder import build_project

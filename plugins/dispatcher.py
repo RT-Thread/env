@@ -72,7 +72,9 @@ def dispatch(command_name, argv, env_root=None, workspace_root=None):
         if owner is None:
             raise DispatchError("plugin command is not registered: %s" % command_name)
 
-    with FileLock(paths.runtime_lock(owner)):
+    # Commands share the runtime lease so independent terminal invocations can
+    # run concurrently. Lifecycle operations still acquire it exclusively.
+    with FileLock(paths.runtime_lock(owner), shared=True):
         with store.lock():
             state = store.load()
             plugin_id, version, command, permissions, site_packages = _load_command(state, command_name, paths)
