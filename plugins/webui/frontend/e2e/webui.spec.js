@@ -105,6 +105,7 @@ test('desktop installs and opens a local WebUI package', async ({ browser }) => 
   await page.goto(launchUrl)
   await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
   await expect(page.getByRole('tab', { name: '本地安装' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: '在线插件' })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: '发现插件' })).toHaveCount(0)
   await expect(page.getByText('工作台', { exact: true })).toHaveCount(0)
   await expect(page.getByText('终端', { exact: true })).toHaveCount(0)

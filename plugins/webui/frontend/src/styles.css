@@ -109,6 +109,13 @@ button, input, select { letter-spacing: 0; }
 .page-header p { margin: 6px 0 0; color: var(--muted); }
 .page-actions { display: flex; gap: 8px; }
 .plugin-tabs > .el-tabs__header { margin-bottom: 20px; }
+.market-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.market-toolbar .el-input { flex: 1; min-width: 220px; }
+.market-alert { margin-bottom: 16px; }
+.market-card { min-height: 218px; }
+.market-hint { margin: 8px 0 0; color: var(--orange); font-size: 12px; line-height: 1.45; }
+.state.update { border-color: #dda177; background: var(--orange-soft); color: var(--orange); }
+.muted-status { color: var(--muted); }
 .local-install-panel { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(340px, 1.2fr); gap: 24px; align-items: start; }
 .local-upload-zone { min-height: 270px; }
 .package-review { min-width: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 18px 0; }
@@ -134,7 +141,7 @@ button, input, select { letter-spacing: 0; }
 .description { min-height: 42px; margin: 16px 0 13px; color: var(--muted); line-height: 1.55; }
 .metadata { display: flex; min-width: 0; flex-wrap: wrap; gap: 7px 15px; color: var(--muted); font-size: 11px; }
 .metadata span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
-.card-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 18px; }
+.card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 18px; }
 .installed-card { min-height: 218px; }
 .settings-view { width: min(900px, 100%); justify-self: center; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding: 20px 0; }
