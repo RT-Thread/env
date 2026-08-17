@@ -47,6 +47,14 @@ other regions and detection failures use pip's configured default. Set
 `ENV_VENV_AUTO_UPGRADE=1` to accept a pending local-source upgrade without a
 prompt.
 
+### Troubleshooting
+
+**For Ubuntu 23.04+:** The install script uses `pip install` which may fail on newer Ubuntu versions due to PEP 668 restrictions. If the installation completes but you encounter `ModuleNotFoundError` errors later (e.g., `ModuleNotFoundError: No module named 'tqdm'` or `ModuleNotFoundError: No module named 'kconfiglib'` when using `pkgs` or `scons --menuconfig`), manually install the missing dependencies:
+
+```bash
+sudo apt install python3-tqdm python3-kconfiglib
+```
+
 ### Use Env
 
 Please see: <https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig>
