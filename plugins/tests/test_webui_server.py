@@ -3,6 +3,7 @@ from http.cookiejar import CookieJar
 from http.client import HTTPConnection
 from urllib.error import HTTPError
 from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
+import hashlib
 import io
 import json
 import os
@@ -27,6 +28,9 @@ ENV_SCRIPT = os.path.join(REPOSITORY, 'env.py')
 class WebUIServerTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
+        self._market_env = mock.patch.dict(os.environ, {'ENV_PLUGIN_MARKET_URL': ''}, clear=False)
+        self._market_env.start()
+        os.environ.pop('ENV_PLUGIN_MARKET_URL', None)
         self.server = WebUIServer(
             env_root=os.path.join(self.temporary.name, 'env'),
             workspace=self.temporary.name,
@@ -40,6 +44,7 @@ class WebUIServerTest(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
         self.thread.join(timeout=2)
+        self._market_env.stop()
         self.temporary.cleanup()
 
     def request_json(self, path, method='GET', body=None, csrf=True):
@@ -89,6 +94,7 @@ class WebUIServerTest(unittest.TestCase):
         session = self.authenticate()
         self.assertEqual(session['frontend_sdk'], '1.0.0')
         self.assertTrue(session['plugin_asset_base'].startswith('/plugin-assets/'))
+        self.assertEqual(session['market'], {'enabled': False, 'url': '', 'source': None})
 
         package = os.path.join(
             REPOSITORY,
@@ -198,6 +204,138 @@ class WebUIServerTest(unittest.TestCase):
                 with self.assertRaises(HTTPError) as rejected:
                     self.request_json('/api/v1/plugins/install', method='POST', body=body)
                 self.assertEqual(rejected.exception.code, 400)
+
+        for path in (
+            '/api/v1/market/status',
+            '/api/v1/market/plugins',
+            '/api/v1/market/plugins/org.example.hello',
+        ):
+            with self.subTest(path=path):
+                with self.assertRaises(HTTPError) as missing:
+                    self.request_json(path)
+                self.assertEqual(missing.exception.code, 404)
+
+    def test_configured_market_is_proxied_and_prepared(self):
+        package = os.path.join(
+            REPOSITORY,
+            'plugins',
+            'examples',
+            'prebuilt',
+            'org.rt-thread.build-insight-1.0.0-py3-none-any.epack',
+        )
+        with open(package, 'rb') as source:
+            content = source.read()
+        digest = hashlib.sha256(content).hexdigest()
+        catalog = {
+            'items': [
+                {
+                    'id': 'org.rt-thread.build-insight',
+                    'name': 'Build Insight',
+                    'description': 'build output',
+                    'latest_version': '1.0.0',
+                    'download_count': 3,
+                    'capabilities': ['webui'],
+                    'status': 'published',
+                }
+            ],
+            'page': 1,
+            'page_size': 20,
+            'total': 1,
+        }
+        detail = dict(catalog['items'][0])
+        detail['versions'] = [
+            {
+                'version': '1.0.0',
+                'artifacts': [
+                    {
+                        'id': digest,
+                        'sha256': digest,
+                        'version': '1.0.0',
+                        'filename': os.path.basename(package),
+                        'download_url': '/api/v1/artifacts/%s/download' % digest,
+                        'compatibility': {
+                            'env': '>=2.0.2,<3.0.0',
+                            'python': '>=3.6.0,<4.0.0',
+                            'implementations': ['cpython'],
+                            'abis': ['py3'],
+                            'platforms': ['any'],
+                            'architectures': ['any'],
+                        },
+                    }
+                ],
+            }
+        ]
+        resolved = {
+            'plugin': catalog['items'][0],
+            'artifact': detail['versions'][0]['artifacts'][0],
+        }
+
+        class FakeMarket(object):
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def health(self):
+                return True
+
+            def list_plugins(self, query=None, sort='updated', page=1, page_size=20):
+                self.query = query
+                self.sort = sort
+                return catalog
+
+            def plugin_detail(self, plugin_id):
+                self.plugin_id = plugin_id
+                return detail
+
+            def resolve(self, plugin_id):
+                self.resolved_id = plugin_id
+                return resolved
+
+            def download(self, sha256, destination, filename=None):
+                with open(destination, 'wb') as output:
+                    output.write(content)
+                return {'path': destination, 'sha256': sha256, 'filename': filename}
+
+        env_root = os.path.join(self.temporary.name, 'market-env')
+        os.makedirs(os.path.join(env_root, 'var', 'plugins'), exist_ok=True)
+        with open(os.path.join(env_root, 'var', 'plugins', 'market.json'), 'w', encoding='utf-8') as output:
+            output.write('{"url": "http://127.0.0.1:8800"}\n')
+        self.server.shutdown()
+        self.thread.join(timeout=2)
+        with mock.patch('plugins.webui.server.MarketClient', FakeMarket):
+            self.server = WebUIServer(
+                env_root=env_root,
+                workspace=self.temporary.name,
+                launcher_dir=os.path.join(self.temporary.name, 'market-launchers'),
+            )
+            self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+            self.thread.start()
+            self.origin = self.server.url.rstrip('/')
+            self.opener = build_opener(HTTPCookieProcessor(CookieJar()))
+            session = self.authenticate()
+            self.assertTrue(session['market']['enabled'])
+            self.assertEqual(session['market']['url'], 'http://127.0.0.1:8800')
+            _, status = self.request_json('/api/v1/market/status')
+            self.assertTrue(status['reachable'])
+            _, plugins = self.request_json('/api/v1/market/plugins?q=build&sort=downloads')
+            self.assertEqual(plugins['items'][0]['action'], 'install')
+            _, item = self.request_json('/api/v1/market/plugins/org.rt-thread.build-insight')
+            self.assertTrue(item['compatible'])
+            self.assertIn('diagnosis', item)
+            self.assertEqual(item['diagnosis']['reason_code'], 'ok')
+            self.assertNotIn('download_url', item['versions'][0]['artifacts'][0])
+            _, prepared = self.request_json(
+                '/api/v1/market/plugins/org.rt-thread.build-insight/prepare',
+                method='POST',
+                body={},
+            )
+            self.assertEqual(prepared['id'], 'org.rt-thread.build-insight')
+            self.assertTrue(prepared['upload_id'])
+            _, installed = self.request_json(
+                '/api/v1/plugins/install',
+                method='POST',
+                body={'upload_id': prepared['upload_id'], 'allow_unsigned': True},
+            )
+            self.assertEqual(installed['id'], 'org.rt-thread.build-insight')
 
     def test_launch_token_is_one_time(self):
         self.authenticate()

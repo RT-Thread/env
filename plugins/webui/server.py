@@ -15,6 +15,16 @@ import time
 from urllib.parse import parse_qs, unquote, urlparse
 
 from ..errors import PluginError, StateError, UsageError
+from ..market import (
+    MarketClient,
+    MarketError,
+    annotate_catalog_item,
+    diagnose_market_plugin,
+    load_market_config,
+    public_artifact,
+    runtime_profile,
+    strip_download_urls,
+)
 from ..service import PluginService
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
 
@@ -23,6 +33,10 @@ SESSION_COOKIE = 'env_webui_session'
 UPLOAD_TTL = 15 * 60
 JSON_LIMIT = 256 * 1024
 PACKAGE_LIMIT = 256 * 1024 * 1024
+
+
+class MarketNotConfigured(UsageError):
+    pass
 
 
 class WebUIApplication(object):
@@ -47,6 +61,8 @@ class WebUIApplication(object):
         self.allow_remote_hosts = bool(allow_remote_hosts)
         self.uploads = {}
         self.upload_lock = threading.Lock()
+        self.market = load_market_config(self.service.paths)
+        self.market_client = MarketClient(self.market['url']) if self.market['enabled'] else None
 
     def consume_launch(self, token):
         if not self.launch_token or not hmac.compare_digest(token, self.launch_token):
@@ -84,16 +100,160 @@ class WebUIApplication(object):
         with open(target, 'wb') as output:
             output.write(content)
         try:
-            summary = self.service.inspect_package(target)
+            return self._register_upload(target, filename, token)
         except Exception:
-            os.unlink(target)
+            try:
+                os.unlink(target)
+            except OSError:
+                pass
             raise
+
+    def register_package(self, package_path, filename):
+        self.cleanup_uploads()
+        token = secrets.token_urlsafe(24)
+        target = os.path.join(self.service.paths.staging, 'webui-upload-%s.epack' % token)
+        os.replace(package_path, target)
+        try:
+            return self._register_upload(target, filename, token)
+        except Exception:
+            try:
+                os.unlink(target)
+            except OSError:
+                pass
+            raise
+
+    def _register_upload(self, target, filename, token):
+        summary = self.service.inspect_package(target)
         with self.upload_lock:
             self.uploads[token] = (target, time.monotonic() + UPLOAD_TTL)
         summary['path'] = os.path.basename(filename)
         summary['compatibility_issues'] = []
         summary['upload_id'] = token
         return summary
+
+    def installed_index(self):
+        return dict((item['id'], item) for item in self.service.list())
+
+    def market_status(self):
+        self._require_market()
+        try:
+            reachable = self.market_client.health()
+            message = ''
+        except MarketError as exc:
+            reachable = False
+            message = str(exc)
+        return {
+            'enabled': True,
+            'url': self.market['url'],
+            'source': self.market['source'],
+            'reachable': reachable,
+            'message': message,
+            'runtime': runtime_profile(),
+        }
+
+    def market_plugins(self, query):
+        self._require_market()
+        catalog = self.market_client.list_plugins(
+            query=_first(query, 'q', ''),
+            sort=_first(query, 'sort', 'updated'),
+            page=_int_query(query, 'page', 1, 1, None),
+            page_size=_int_query(query, 'page_size', 20, 1, 100),
+        )
+        installed = self.installed_index()
+        items = [annotate_catalog_item(item, installed) for item in catalog.get('items') or []]
+        result = dict(catalog)
+        result['items'] = items
+        return result
+
+    def market_plugin(self, plugin_id):
+        self._require_market()
+        detail = strip_download_urls(self.market_client.plugin_detail(plugin_id))
+        installed = self.installed_index()
+        result = annotate_catalog_item(detail, installed)
+        result['compatible'] = False
+        result['compatibility_message'] = ''
+        result['resolved'] = None
+        diagnosis = diagnose_market_plugin(detail, installed.get(plugin_id))
+        result['diagnosis'] = diagnosis
+        try:
+            resolved = self.market_client.resolve(plugin_id)
+        except MarketError as exc:
+            result['compatibility_message'] = diagnosis.get('summary') or str(exc)
+            if exc.code in ('incompatible', 'yanked') or exc.status in (404, 410):
+                result['action'] = 'incompatible'
+            else:
+                raise
+        else:
+            artifact = public_artifact(resolved.get('artifact'))
+            result['compatible'] = True
+            result['resolved'] = {
+                'version': (artifact or {}).get('version'),
+                'artifact': artifact,
+            }
+            result['compatibility_message'] = diagnosis.get('summary') or ''
+        return result
+
+    def prepare_market_plugin(self, plugin_id):
+        self._require_market()
+        try:
+            resolved = self.market_client.resolve(plugin_id)
+        except MarketError as exc:
+            raise self._prepare_error(plugin_id, exc, 'resolve')
+        artifact = resolved.get('artifact') or {}
+        sha256 = artifact.get('sha256') or artifact.get('id')
+        filename = artifact.get('filename') or ('%s.epack' % plugin_id)
+        token_name = secrets.token_urlsafe(12)
+        temporary = os.path.join(self.service.paths.staging, 'market-download-%s.epack' % token_name)
+        try:
+            try:
+                self.market_client.download(sha256, temporary, filename=filename)
+            except MarketError as exc:
+                raise self._prepare_error(plugin_id, exc, 'download')
+            try:
+                summary = self.register_package(temporary, filename)
+            except PluginError as exc:
+                raise self._prepare_error(plugin_id, exc, 'inspect')
+        except Exception:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
+            raise
+        if summary['id'] != plugin_id:
+            package_path = self.consume_upload(summary['upload_id'])
+            try:
+                os.unlink(package_path)
+            except OSError:
+                pass
+            raise MarketError(
+                'downloaded package id does not match the market plugin',
+                code='invalid_package',
+                status=400,
+                details={'stage': 'inspect'},
+            )
+        return summary
+
+    def _prepare_error(self, plugin_id, exc, stage):
+        details = {'stage': stage}
+        if isinstance(exc, MarketError) and exc.details:
+            details.update(exc.details)
+        if stage in ('resolve', 'download') and (
+            isinstance(exc, MarketError) and (exc.code in ('incompatible', 'yanked') or exc.status in (404, 410))
+        ):
+            try:
+                detail = strip_download_urls(self.market_client.plugin_detail(plugin_id))
+                details['diagnosis'] = diagnose_market_plugin(detail, self.installed_index().get(plugin_id))
+            except Exception:
+                pass
+        code = exc.code if isinstance(exc, MarketError) else exc.__class__.__name__.lower()
+        status = exc.status if isinstance(exc, MarketError) else 422
+        if isinstance(exc, UsageError) and not isinstance(exc, MarketError):
+            status = 400
+        return MarketError(str(exc), code=code, status=status, details=details)
+
+    def _require_market(self):
+        if self.market_client is None:
+            raise MarketNotConfigured()
 
     def consume_upload(self, token):
         self.cleanup_uploads()
@@ -188,6 +348,14 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 self._plugin_asset(parsed.path)
             else:
                 self._host_asset(parsed.path)
+        except MarketNotConfigured:
+            self._error(HTTPStatus.NOT_FOUND, 'not_found', 'API endpoint was not found')
+        except MarketError as exc:
+            try:
+                status = HTTPStatus(exc.status)
+            except ValueError:
+                status = HTTPStatus.BAD_GATEWAY
+            self._error(status, exc.code, str(exc), details=exc.details)
         except PluginError as exc:
             status = HTTPStatus.CONFLICT if isinstance(exc, StateError) else HTTPStatus.UNPROCESSABLE_ENTITY
             if isinstance(exc, UsageError):
@@ -228,8 +396,19 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                     'workspace': self.application.workspace,
                     'csrf_token': self.application.csrf_token,
                     'plugin_asset_base': '/plugin-assets/%s/' % self.application.asset_token,
+                    'market': {
+                        'enabled': bool(self.application.market['enabled']),
+                        'url': self.application.market.get('url') or '',
+                        'source': self.application.market.get('source'),
+                    },
                 }
             )
+            return
+        if method == 'GET' and path == '/api/v1/market/status':
+            self._json(self.application.market_status())
+            return
+        if method == 'GET' and path == '/api/v1/market/plugins':
+            self._json(self.application.market_plugins(query))
             return
         if method == 'GET' and path == '/api/v1/plugins':
             self._json(self.application.installed())
@@ -245,6 +424,15 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             self._json(self.application._public_plugin(result), status=HTTPStatus.CREATED)
             return
         segments = [unquote(item) for item in path.split('/') if item]
+        if len(segments) >= 4 and segments[:3] == ['api', 'v1', 'market']:
+            if segments[3] == 'plugins' and len(segments) >= 5:
+                plugin_id = segments[4]
+                if method == 'GET' and len(segments) == 5:
+                    self._json(self.application.market_plugin(plugin_id))
+                    return
+                if method == 'POST' and len(segments) == 6 and segments[5] == 'prepare':
+                    self._json(self.application.prepare_market_plugin(plugin_id), status=HTTPStatus.CREATED)
+                    return
         if len(segments) >= 4 and segments[:3] == ['api', 'v1', 'plugins']:
             plugin_id = segments[3]
             if method == 'GET' and len(segments) == 4:
@@ -435,8 +623,11 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _error(self, status, code, message):
-        content = json.dumps({'error': {'code': code, 'message': message}}, ensure_ascii=True).encode('utf-8')
+    def _error(self, status, code, message, details=None):
+        error = {'code': code, 'message': message}
+        if details:
+            error['details'] = details
+        content = json.dumps({'error': error}, ensure_ascii=True).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(content)))
@@ -449,6 +640,17 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
 def _first(query, name, default):
     values = query.get(name)
     return values[0] if values else default
+
+
+def _int_query(query, name, default, minimum, maximum):
+    raw = _first(query, name, str(default))
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        raise UsageError('%s must be an integer' % name)
+    if value < minimum or (maximum is not None and value > maximum):
+        raise UsageError('%s is out of range' % name)
+    return value
 
 
 class WebUIServer(object):
