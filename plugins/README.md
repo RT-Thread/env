@@ -7,9 +7,10 @@ WebUI. Plugins are imported from local `.epack` files. Env validates, installs,
 upgrades, enables, disables, diagnoses and uninstalls them. CLI and browser
 operations share the same state and `PluginService` facade.
 
-The current open-source system does not include an online plugin marketplace.
-It does not download a plugin from its ID or from a URL. Obtain a local
-`.epack` file first, then import it through the Env CLI or local WebUI.
+The local lifecycle still installs from `.epack` files. An optional plugin
+market URL can be configured; when it is present, the WebUI shows an online
+catalog and downloads a matching artifact through the local Host API. Env
+never installs from a raw plugin id or URL.
 
 ## Layout
 
@@ -17,6 +18,7 @@ It does not download a plugin from its ID or from a URL. Obtain a local
 - `installer.py`, `store.py`, `launchers.py`: transactional lifecycle state and command launchers.
 - `dispatcher.py`, `sdk/`: mandatory command dispatch and plugin runtime context.
 - `epack/`: plugin project initialization, validation, build and package inspection.
+- `market.py`: optional plugin market URL and Host API client.
 - `webui/`: local Host API, Vue source and prebuilt host assets.
 - `bundled/epack/`: source project for the optional official `epack` developer tool.
 - `examples/`: CLI-only, WebUI-only and combined example plugin projects.
@@ -89,7 +91,13 @@ rt-env plugin disable org.example.demo
 rt-env plugin enable org.example.demo
 rt-env plugin update /path/to/plugin-1.1.0.epack --yes
 rt-env plugin uninstall org.example.demo --yes
+rt-env plugin market
+rt-env plugin market set http://127.0.0.1:8800
+rt-env plugin market clear
 ```
+
+`ENV_PLUGIN_MARKET_URL` overrides `${ENV_ROOT}/var/plugins/market.json`.
+Without a configured URL, the WebUI hides the online plugin page.
 
 Add `--purge-data` to uninstall a plugin and remove its private configuration,
 data and cache. Workspace files are never removed by the uninstall workflow.
@@ -296,4 +304,4 @@ cookies or sessions, or call Env lifecycle APIs. See the complete
 - If dependency wheels are declared, place them under the project `wheels/` directory at the paths listed in the manifest.
 - Frontend resources must be prebuilt and must not contain source maps, symbolic links or path-traversal members.
 - V1 packages are currently unsigned local artifacts. Do not make `--yes` the default policy for packages from untrusted sources.
-- The open-source WebUI only accepts local files. It does not query an online catalog or download plugins from URLs.
+- The WebUI shows the online catalog only when a market URL is configured. Installation still uses a one-time local upload id after the Host API downloads and inspects the artifact.

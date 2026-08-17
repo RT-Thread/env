@@ -23,6 +23,7 @@ class EnvPluginCliTest(unittest.TestCase):
         self.v2 = build_example('1.1.0', self.packages)
         self.environment = dict(os.environ)
         self.environment['ENV_PLUGIN_LAUNCHER_DIR'] = self.launchers
+        self.environment.pop('ENV_PLUGIN_MARKET_URL', None)
 
     def tearDown(self):
         self.temporary.cleanup()
@@ -59,6 +60,22 @@ class EnvPluginCliTest(unittest.TestCase):
         removed = self.cli('uninstall', 'org.rt-thread.examples.hello', '--yes', '--json')
         self.assertEqual(removed.returncode, 0, removed.stderr)
         self.assertTrue(json.loads(removed.stdout)['uninstalled'])
+
+    def test_market_url_can_be_configured_and_cleared(self):
+        missing = self.cli('market', '--json')
+        self.assertEqual(missing.returncode, 0, missing.stderr)
+        self.assertEqual(json.loads(missing.stdout)['enabled'], False)
+        configured = self.cli('market', 'set', 'http://127.0.0.1:8800/', '--json')
+        self.assertEqual(configured.returncode, 0, configured.stderr)
+        payload = json.loads(configured.stdout)
+        self.assertEqual(payload['url'], 'http://127.0.0.1:8800')
+        self.assertEqual(payload['source'], 'file')
+        shown = self.cli('market')
+        self.assertIn('http://127.0.0.1:8800', shown.stdout)
+        invalid = self.cli('market', 'set', 'ftp://example.invalid')
+        self.assertEqual(invalid.returncode, 2)
+        cleared = self.cli('market', 'clear', '--json')
+        self.assertFalse(json.loads(cleared.stdout)['enabled'])
 
 
 if __name__ == '__main__':

@@ -23,6 +23,7 @@ async function request(path, options = {}) {
     const error = new Error(payload.error?.message || `请求失败 (${response.status})`)
     error.code = payload.error?.code || 'request_failed'
     error.status = response.status
+    error.details = payload.error?.details
     throw error
   }
   return payload.data
@@ -59,5 +60,20 @@ export const api = {
   }),
   uninstall: (id, purgeData) => request(`/api/v1/plugins/${encodeURIComponent(id)}?purge_data=${purgeData}`, {
     method: 'DELETE',
+  }),
+  marketStatus: () => request('/api/v1/market/status'),
+  marketPlugins: (params = {}) => {
+    const query = new URLSearchParams()
+    if (params.q) query.set('q', params.q)
+    if (params.sort) query.set('sort', params.sort)
+    if (params.page) query.set('page', String(params.page))
+    if (params.pageSize) query.set('page_size', String(params.pageSize))
+    const suffix = query.toString()
+    return request(`/api/v1/market/plugins${suffix ? `?${suffix}` : ''}`)
+  },
+  marketPlugin: (id) => request(`/api/v1/market/plugins/${encodeURIComponent(id)}`),
+  prepareMarketPlugin: (id) => request(`/api/v1/market/plugins/${encodeURIComponent(id)}/prepare`, {
+    method: 'POST',
+    json: {},
   }),
 }

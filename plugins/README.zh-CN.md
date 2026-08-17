@@ -4,7 +4,7 @@
 
 `plugins/` 实现 Env 的本地插件生命周期、命令运行时和本机 WebUI。插件包从本地文件导入，Env 负责检查、安装、升级、启用、禁用、诊断和卸载。CLI 和 WebUI 使用同一套状态和 `PluginService`，不会各自维护一份插件状态。
 
-当前系统不包含在线插件市场，也不会根据插件 ID 自动下载插件。用户需要先取得 `.epack` 文件，再通过 Env CLI 或本机 WebUI 导入。
+本机生命周期仍从 `.epack` 安装。可选配置在线插件市场地址后，WebUI 会显示在线目录，并由本机 Host API 下载匹配制品。Env 不会按插件 ID 或任意 URL 直接安装。
 
 ## 目录职责
 
@@ -12,6 +12,7 @@
 - `installer.py`、`store.py`、`launchers.py`：管理安装状态、事务回滚和插件命令启动器。
 - `dispatcher.py`、`sdk/`：统一分发插件命令，并创建插件运行上下文。
 - `epack/`：插件工程初始化、校验、构建和包检查工具。
+- `market.py`：可选的在线插件市场地址和 Host API 客户端。
 - `webui/`：Env 本机 Host API、前端源码和发行版静态资源。
 - `bundled/epack/`：官方可选 `epack` 开发工具的插件工程。
 - `examples/`：CLI、WebUI 以及两者组合的示例工程。
@@ -75,7 +76,12 @@ rt-env plugin disable org.example.demo
 rt-env plugin enable org.example.demo
 rt-env plugin update /path/to/plugin-1.1.0.epack --yes
 rt-env plugin uninstall org.example.demo --yes
+rt-env plugin market
+rt-env plugin market set http://127.0.0.1:8800
+rt-env plugin market clear
 ```
+
+`ENV_PLUGIN_MARKET_URL` 优先于 `${ENV_ROOT}/var/plugins/market.json`。未配置地址时，WebUI 不显示在线插件页面。
 
 卸载时加上 `--purge-data` 会同时删除插件自己的配置、数据和缓存；工作区文件不会由卸载流程删除。
 
@@ -252,4 +258,4 @@ webui stop
 - 使用依赖 wheel 时，需要按清单路径把文件放在工程的 `wheels/` 目录中。
 - 前端资源必须是预构建文件；不能包含 source map、符号链接或路径穿越成员。
 - v1 包目前是未签名的本地制品，不应将 `--yes` 作为不可信来源包的默认策略。
-- 当前开源 WebUI 只接受本地文件，不会查询在线 catalog，也不会根据 URL 下载插件。
+- 仅在配置了市场地址时，WebUI 才显示在线插件目录。安装仍是 Host API 下载并检查后，使用一次性 upload id 交给本机安装器。

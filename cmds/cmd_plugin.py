@@ -5,6 +5,7 @@ import json
 import sys
 
 from plugins.errors import PluginError, UsageError
+from plugins.market import clear_market_url, load_market_config, save_market_url
 from plugins.service import PluginService
 
 
@@ -46,6 +47,49 @@ def _confirm_package(service, package_path, assume_yes):
     return summary
 
 
+def cmd(args):
+    try:
+        service = _service(args)
+        operation = args.plugin_operation
+        if operation == 'install':
+            _confirm_package(service, args.package, args.yes)
+            result = service.install(args.package, allow_unsigned=args.yes or sys.stdin.isatty())
+        elif operation in ('upgrade', 'update'):
+            _confirm_package(service, args.package, args.yes)
+            result = service.upgrade(args.package, allow_unsigned=args.yes or sys.stdin.isatty())
+        elif operation == 'uninstall':
+            detail = ' and delete its configuration/data/cache' if args.purge_data else ' and retain its data'
+            _confirm('Uninstall %s%s?' % (args.plugin_id, detail), args.yes)
+            result = service.uninstall(args.plugin_id, purge_data=args.purge_data)
+        elif operation == 'enable':
+            result = service.enable(args.plugin_id)
+        elif operation == 'disable':
+            result = service.disable(args.plugin_id)
+        elif operation == 'list':
+            result = service.list()
+        elif operation == 'info':
+            result = service.info(args.plugin_id)
+        elif operation == 'doctor':
+            result = service.doctor(args.plugin_id)
+        elif operation == 'market':
+            result = _market_command(service, args)
+        else:
+            raise UsageError('missing plugin operation')
+        _print_result(result, args.json)
+    except PluginError as exc:
+        print('env plugin: %s' % exc, file=sys.stderr)
+        raise SystemExit(exc.exit_code)
+
+
+def _market_command(service, args):
+    action = getattr(args, 'market_operation', None)
+    if action == 'set':
+        return save_market_url(service.paths, args.market_url)
+    if action == 'clear':
+        return clear_market_url(service.paths)
+    return load_market_config(service.paths)
+
+
 def _print_result(value, as_json):
     if as_json:
         _print_json(value)
@@ -73,44 +117,19 @@ def _print_result(value, as_json):
             for issue in item['issues']:
                 print('  - %s' % issue)
         return
+    if isinstance(value, dict) and set(value) >= set(['enabled', 'url', 'source']):
+        if value.get('enabled'):
+            source = 'environment variable' if value.get('source') == 'env' else 'configuration file'
+            print('Plugin market: %s (%s)' % (value['url'], source))
+        else:
+            print('Plugin market is not configured.')
+        return
     if isinstance(value, dict):
         for key in sorted(value):
             current = value[key]
             if isinstance(current, (dict, list)):
                 current = json.dumps(current, ensure_ascii=True, sort_keys=True)
             print('%s: %s' % (key, current))
-
-
-def cmd(args):
-    try:
-        service = _service(args)
-        operation = args.plugin_operation
-        if operation == 'install':
-            _confirm_package(service, args.package, args.yes)
-            result = service.install(args.package, allow_unsigned=args.yes or sys.stdin.isatty())
-        elif operation in ('upgrade', 'update'):
-            _confirm_package(service, args.package, args.yes)
-            result = service.upgrade(args.package, allow_unsigned=args.yes or sys.stdin.isatty())
-        elif operation == 'uninstall':
-            detail = ' and delete its configuration/data/cache' if args.purge_data else ' and retain its data'
-            _confirm('Uninstall %s%s?' % (args.plugin_id, detail), args.yes)
-            result = service.uninstall(args.plugin_id, purge_data=args.purge_data)
-        elif operation == 'enable':
-            result = service.enable(args.plugin_id)
-        elif operation == 'disable':
-            result = service.disable(args.plugin_id)
-        elif operation == 'list':
-            result = service.list()
-        elif operation == 'info':
-            result = service.info(args.plugin_id)
-        elif operation == 'doctor':
-            result = service.doctor(args.plugin_id)
-        else:
-            raise UsageError('missing plugin operation')
-        _print_result(result, args.json)
-    except PluginError as exc:
-        print('env plugin: %s' % exc, file=sys.stderr)
-        raise SystemExit(exc.exit_code)
 
 
 def _add_output_arguments(parser, include_yes=False):
@@ -149,5 +168,14 @@ def add_parser(sub):
     doctor = operations.add_parser('doctor', help='diagnose plugin state')
     doctor.add_argument('plugin_id', nargs='?')
     _add_output_arguments(doctor)
+
+    market = operations.add_parser('market', help='show or configure the online plugin market URL')
+    _add_output_arguments(market)
+    market_ops = market.add_subparsers(dest='market_operation')
+    market_set = market_ops.add_parser('set', help='save the online plugin market URL')
+    market_set.add_argument('market_url')
+    _add_output_arguments(market_set)
+    market_clear = market_ops.add_parser('clear', help='remove the online plugin market URL')
+    _add_output_arguments(market_clear)
 
     parser.set_defaults(func=cmd)
