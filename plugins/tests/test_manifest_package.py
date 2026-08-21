@@ -59,6 +59,26 @@ class ManifestTest(unittest.TestCase):
         self.assertIn('architecture mips is not supported', issues)
         self.assertEqual(len(issues), 2, 'py3 source wheels should accept the current Python 3 ABI')
 
+    def test_service_manifest_is_validated_and_exposed(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['service'] = {
+            'entry': 'rt_env_plugin_hello.service:create_service',
+            'health_path': '/health',
+            'start_timeout': 10,
+        }
+        manifest = validate_manifest(data)
+        self.assertEqual(manifest.service['health_path'], '/health')
+
+    def test_service_manifest_rejects_unsafe_health_path(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['service'] = {
+            'entry': 'rt_env_plugin_hello.service:create_service',
+            'health_path': '/../health',
+            'start_timeout': 10,
+        }
+        with self.assertRaisesRegex(ManifestError, 'health_path'):
+            validate_manifest(data)
+
 
 class PackageTest(unittest.TestCase):
     def setUp(self):
