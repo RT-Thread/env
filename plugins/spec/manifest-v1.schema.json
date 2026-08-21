@@ -241,6 +241,30 @@
       "type": "string",
       "pattern": "^[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*$"
     },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry",
+        "health_path",
+        "start_timeout"
+      ],
+      "properties": {
+        "entry": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*$"
+        },
+        "health_path": {
+          "type": "string",
+          "pattern": "^/(?!.*(?:^|/)\\.\\.?/)[^:]*$"
+        },
+        "start_timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 60
+        }
+      }
+    },
     "webui": {
       "type": "object",
       "additionalProperties": false,
@@ -268,6 +292,7 @@
   "anyOf": [
     {"properties": {"commands": {"minItems": 1}}},
     {"required": ["webui"]},
-    {"required": ["health_check"]}
+    {"required": ["health_check"]},
+    {"required": ["service"]}
   ]
 }

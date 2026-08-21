@@ -175,6 +175,7 @@ class EpackArchive(object):
             'permissions': list(self.manifest.permissions),
             'commands': list(self.manifest.commands),
             'backend': self.manifest.data['backend'],
+            'service': self.manifest.service,
             'webui': self.manifest.webui,
             'files': list(self._members),
             'signing_status': self.signing_status,

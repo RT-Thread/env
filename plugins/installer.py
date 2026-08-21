@@ -392,6 +392,7 @@ class PluginInstaller(object):
         manifest = active['manifest']
         result['commands'] = [command['name'] for command in manifest['commands']]
         result['webui'] = manifest.get('webui')
+        result['service'] = manifest.get('service')
         if details:
             result.update(
                 {

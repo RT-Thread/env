@@ -148,6 +148,10 @@ class Manifest(object):
     def health_check(self):
         return self.data.get('health_check')
 
+    @property
+    def service(self):
+        return self.data.get('service')
+
     def to_dict(self):
         return json.loads(json.dumps(self.data, sort_keys=True))
 
@@ -173,7 +177,7 @@ def validate_manifest(data):
         'commands',
         'backend',
     ]
-    _keys(data, required, ['health_check', 'webui'], 'manifest')
+    _keys(data, required, ['health_check', 'service', 'webui'], 'manifest')
 
     if data['schema_version'] != SCHEMA_VERSION:
         raise ManifestError("unsupported manifest schema_version: %r" % data['schema_version'])
@@ -276,9 +280,9 @@ def validate_manifest(data):
             uses_pyc = artifact_format == 'pyc-wheel'
     if plugin_artifacts > 1:
         raise ManifestError("manifest.backend.artifacts can contain at most one plugin artifact")
-    requires_backend = bool(commands or data.get('health_check'))
+    requires_backend = bool(commands or data.get('health_check') or data.get('service'))
     if requires_backend and plugin_artifacts != 1:
-        raise ManifestError("commands and health_check require exactly one plugin artifact")
+        raise ManifestError("commands, health_check and service require exactly one plugin artifact")
     if artifacts and plugin_artifacts != 1:
         raise ManifestError("dependency artifacts require exactly one plugin artifact")
     if uses_pyc:
@@ -300,6 +304,22 @@ def validate_manifest(data):
         if not ENTRY_RE.match(health_check):
             raise ManifestError("manifest.health_check must use module.path:callable syntax")
 
+    if 'service' in data:
+        service = _object(data['service'], 'manifest.service')
+        _keys(service, ['entry', 'health_path', 'start_timeout'], [], 'manifest.service')
+        entry = _string(service['entry'], 'manifest.service.entry')
+        if not ENTRY_RE.match(entry):
+            raise ManifestError("manifest.service.entry must use module.path:callable syntax")
+        health_path = _string(service['health_path'], 'manifest.service.health_path')
+        if '\\' in health_path or ':' in health_path or not health_path.startswith('/'):
+            raise ManifestError("manifest.service.health_path must be an absolute HTTP path")
+        service_path = PurePosixPath(health_path)
+        if any(part in ('', '.', '..') for part in service_path.parts):
+            raise ManifestError("manifest.service.health_path contains an unsafe path component")
+        timeout = service['start_timeout']
+        if type(timeout) is not int or not 1 <= timeout <= 60:
+            raise ManifestError("manifest.service.start_timeout must be an integer between 1 and 60")
+
     if 'webui' in data:
         webui = _object(data['webui'], 'manifest.webui')
         _keys(webui, ['entry', 'icon', 'frontend_sdk'], [], 'manifest.webui')
@@ -319,7 +339,7 @@ def validate_manifest(data):
             raise ManifestError("manifest.webui.icon must be a lowercase icon identifier")
         _string(webui['frontend_sdk'], 'manifest.webui.frontend_sdk')
 
-    if not commands and 'webui' not in data and 'health_check' not in data:
+    if not commands and 'webui' not in data and 'health_check' not in data and 'service' not in data:
         raise ManifestError("manifest must declare a command, WebUI page or health_check")
 
     return Manifest(data)

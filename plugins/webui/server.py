@@ -4,6 +4,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
+import http.client
 import ipaddress
 import json
 import mimetypes
@@ -15,6 +16,7 @@ import time
 from urllib.parse import parse_qs, unquote, urlparse
 
 from ..errors import PluginError, StateError, UsageError
+from ..backend import BackendUnavailableError
 from ..market import (
     MarketClient,
     MarketError,
@@ -278,6 +280,7 @@ class WebUIApplication(object):
                 pass
 
     def close(self):
+        self.service.stop_backends()
         with self.upload_lock:
             paths = [value[0] for value in self.uploads.values()]
             self.uploads.clear()
@@ -319,6 +322,9 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self._dispatch('DELETE')
 
     def do_OPTIONS(self):
+        if self._valid_host() and self._is_backend_request(urlparse(self.path).path):
+            self._plugin_options()
+            return
         self._error(HTTPStatus.FORBIDDEN, 'cross_origin_denied', 'cross-origin requests are not allowed')
 
     def _dispatch(self, method):
@@ -330,11 +336,23 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             if parsed.path.startswith('/_launch/'):
                 self._launch(parsed.path)
                 return
-            if method == 'GET' and parsed.path.startswith('/plugin-assets/'):
+            if method == 'GET' and parsed.path.startswith('/plugin-assets/') and not self._is_tokenized_backend_request(parsed.path):
                 self._tokenized_plugin_asset(parsed.path)
                 return
             if not self.application.authenticated(self.headers.get('Cookie')):
                 self._error(HTTPStatus.UNAUTHORIZED, 'authentication_required', 'open the URL printed by env webui')
+                return
+            if method == 'GET' and self._is_backend_path(parsed.path) and self._is_websocket_request():
+                if not self._valid_plugin_origin():
+                    self._error(HTTPStatus.FORBIDDEN, 'origin_denied', 'WebSocket Origin is not allowed')
+                    return
+                self._plugin_websocket_proxy(parsed)
+                return
+            if self._is_backend_path(parsed.path) and self._is_backend_request(parsed.path):
+                if not self._valid_plugin_origin():
+                    self._error(HTTPStatus.FORBIDDEN, 'origin_denied', 'plugin request Origin is not allowed')
+                    return
+                self._plugin_http_proxy(method, parsed)
                 return
             if parsed.path.startswith('/api/'):
                 if method != 'GET' and not self._valid_write_request():
@@ -363,6 +381,8 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             self._error(status, exc.__class__.__name__.lower(), str(exc))
         except (ValueError, OSError) as exc:
             self._error(HTTPStatus.BAD_REQUEST, 'invalid_request', str(exc))
+        except BackendUnavailableError as exc:
+            self._error(HTTPStatus.BAD_GATEWAY, 'backend_unavailable', str(exc))
         except Exception:
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, 'internal_error', 'the WebUI request could not be completed')
 
@@ -450,6 +470,8 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 body = self._read_json()
                 if set(body) != set(['enabled']) or not isinstance(body['enabled'], bool):
                     raise UsageError("enabled request must contain one boolean field")
+                if not body['enabled']:
+                    self.application.service.stop_backend(plugin_id)
                 operation = self.application.service.enable if body['enabled'] else self.application.service.disable
                 result = operation(plugin_id)
                 self._json(self.application._public_plugin(self.application.service.info(result['id'])))
@@ -465,6 +487,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 purge = _first(query, 'purge_data', 'false').lower()
                 if purge not in ('true', 'false'):
                     raise UsageError("purge_data must be true or false")
+                self.application.service.stop_backend(plugin_id)
                 self._json(self.application.service.uninstall(plugin_id, purge_data=(purge == 'true')))
                 return
         self._error(HTTPStatus.NOT_FOUND, 'not_found', 'API endpoint was not found')
@@ -499,6 +522,134 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         asset = '/'.join(segments[2:]) or None
         target = self.application.service.resolve_webui_asset(plugin_id, asset)
         self._file(target, plugin=True)
+
+    def _is_backend_request(self, path):
+        segments = [item for item in path.split('/') if item]
+        return (
+            (len(segments) >= 3 and segments[0] == 'plugins' and segments[2] == 'backend')
+            or (len(segments) >= 5 and segments[0] == 'plugin-assets' and segments[3] == 'backend')
+        )
+
+    def _is_backend_path(self, path):
+        return path.startswith('/plugins/') or path.startswith('/plugin-assets/')
+
+    def _is_tokenized_backend_request(self, path):
+        return self._is_backend_request(path)
+
+    def _backend_target(self, parsed):
+        segments = [unquote(item) for item in parsed.path.split('/') if item]
+        if len(segments) >= 3 and segments[0] == 'plugins' and segments[2] == 'backend':
+            plugin_id = segments[1]
+            target_parts = segments[3:]
+        elif len(segments) >= 5 and segments[0] == 'plugin-assets' and segments[3] == 'backend':
+            if not hmac.compare_digest(segments[1], self.application.asset_token):
+                raise UsageError('invalid plugin backend path')
+            plugin_id = segments[2]
+            target_parts = segments[4:]
+        else:
+            raise UsageError('invalid plugin backend path')
+        if not target_parts:
+            raise UsageError('invalid plugin backend path')
+        target = '/' + '/'.join(target_parts)
+        if parsed.query:
+            target += '?' + parsed.query
+        port = self.application.service.backend_port(plugin_id, self.application.workspace)
+        return plugin_id, port, target
+
+    def _plugin_http_proxy(self, method, parsed):
+        _plugin_id, port, target = self._backend_target(parsed)
+        body = b''
+        if method in ('POST', 'PUT', 'DELETE'):
+            body = self._read_body(256 * 1024 * 1024) if self.headers.get('Content-Length') else b''
+        headers = {
+            'Host': '127.0.0.1:%d' % port,
+            'Accept': self.headers.get('Accept', '*/*'),
+            'User-Agent': self.headers.get('User-Agent', 'EnvWebUI/1.0'),
+        }
+        for name in ('Content-Type', 'Content-Length'):
+            value = self.headers.get(name)
+            if value:
+                headers[name] = value
+        connection = http.client.HTTPConnection('127.0.0.1', port, timeout=30)
+        try:
+            connection.request(method, target, body=body, headers=headers)
+            response = connection.getresponse()
+            content = response.read(256 * 1024 * 1024 + 1)
+        finally:
+            connection.close()
+        if len(content) > 256 * 1024 * 1024:
+            raise UsageError('backend response exceeds size limit')
+        self.send_response(response.status, response.reason)
+        for name, value in response.getheaders():
+            if name.lower() in ('connection', 'keep-alive', 'transfer-encoding', 'server', 'date'):
+                continue
+            self.send_header(name, value)
+        self.send_header('Content-Length', str(len(content)))
+        origin = self.headers.get('Origin')
+        if origin in ('null', 'http://%s' % self.headers.get('Host')):
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+            self.send_header('Vary', 'Origin')
+        self.end_headers()
+        self.wfile.write(content)
+
+    def _plugin_options(self):
+        if not self._valid_plugin_origin():
+            self._error(HTTPStatus.FORBIDDEN, 'origin_denied', 'plugin request Origin is not allowed')
+            return
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header('Access-Control-Allow-Origin', self.headers.get('Origin', 'null'))
+        self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', self.headers.get('Access-Control-Request-Headers', 'content-type'))
+        self.send_header('Access-Control-Max-Age', '300')
+        self.send_header('Vary', 'Origin')
+        self.end_headers()
+
+    def _is_websocket_request(self):
+        return self.headers.get('Upgrade', '').lower() == 'websocket'
+
+    def _valid_plugin_origin(self):
+        origin = self.headers.get('Origin', '')
+        expected = 'http://%s' % self.headers.get('Host')
+        return not origin or origin == 'null' or hmac.compare_digest(origin, expected)
+
+    def _plugin_websocket_proxy(self, parsed):
+        _plugin_id, port, target = self._backend_target(parsed)
+        upstream = socket.create_connection(('127.0.0.1', port), timeout=10)
+        upstream.settimeout(None)
+        key = self.headers.get('Sec-WebSocket-Key', '')
+        if not key:
+            upstream.close()
+            raise UsageError('WebSocket key is missing')
+        request = [
+            'GET %s HTTP/1.1' % target,
+            'Host: 127.0.0.1:%d' % port,
+            'Upgrade: websocket',
+            'Connection: Upgrade',
+            'Sec-WebSocket-Key: %s' % key,
+            'Sec-WebSocket-Version: %s' % self.headers.get('Sec-WebSocket-Version', '13'),
+            '',
+            '',
+        ]
+        upstream.sendall('\r\n'.join(request).encode('ascii'))
+        response = _read_http_headers(upstream)
+        if not response.startswith(b'HTTP/1.1 101') and not response.startswith(b'HTTP/1.0 101'):
+            upstream.close()
+            raise UsageError('backend WebSocket upgrade failed')
+        self.connection.sendall(response)
+        self.close_connection = True
+        client_to_backend = threading.Thread(target=_relay_stream, args=(self.connection, upstream), daemon=True)
+        backend_to_client = threading.Thread(target=_relay_stream, args=(upstream, self.connection), daemon=True)
+        client_to_backend.start()
+        backend_to_client.start()
+        client_to_backend.join()
+        try:
+            upstream.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+        backend_to_client.join(timeout=5)
+        upstream.close()
 
     def _tokenized_plugin_asset(self, path):
         segments = [unquote(item) for item in path.split('/') if item]
@@ -543,8 +694,8 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             self.send_header(
                 'Content-Security-Policy',
                 "default-src 'none'; script-src %s; style-src %s 'unsafe-inline'; img-src %s data:; "
-                "connect-src 'none'; frame-ancestors %s; base-uri 'none'; form-action 'none'"
-                % (origin, origin, origin, origin),
+                "connect-src %s; frame-ancestors %s; base-uri 'none'; form-action 'none'"
+                % (origin, origin, origin, origin, origin),
             )
         else:
             self.send_header(
@@ -640,6 +791,33 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
 def _first(query, name, default):
     values = query.get(name)
     return values[0] if values else default
+
+
+def _read_http_headers(connection):
+    content = b''
+    while b'\r\n\r\n' not in content and len(content) <= 64 * 1024:
+        chunk = connection.recv(4096)
+        if not chunk:
+            break
+        content += chunk
+    if b'\r\n\r\n' not in content:
+        raise UsageError('backend WebSocket response headers are invalid')
+    return content
+
+
+def _relay_stream(source, destination):
+    try:
+        while True:
+            chunk = source.read(65536) if hasattr(source, 'read') else source.recv(65536)
+            if not chunk:
+                break
+            if hasattr(destination, 'sendall'):
+                destination.sendall(chunk)
+            else:
+                destination.write(chunk)
+                destination.flush()
+    except (OSError, ValueError):
+        pass
 
 
 def _int_query(query, name, default, minimum, maximum):
