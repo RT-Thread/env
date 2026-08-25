@@ -28,6 +28,8 @@ if ! [ -d $env_dir ]; then
     echo 'source "$PKGS_DIR/packages/Kconfig"' >$env_dir/packages/Kconfig
     git clone $SDK_URL $env_dir/packages/sdk --depth=1
     git clone $ENV_URL $env_dir/tools/scripts --depth=1
+    # Use the Gitee mirror for the initial download in China, then keep the
+    # canonical GitHub remotes for subsequent updates and metadata.
     git -C $env_dir/packages/packages remote set-url origin https://github.com/RT-Thread/packages.git
     git -C $env_dir/packages/sdk remote set-url origin https://github.com/RT-Thread/sdk.git
     git -C $env_dir/tools/scripts remote set-url origin https://github.com/RT-Thread/env.git

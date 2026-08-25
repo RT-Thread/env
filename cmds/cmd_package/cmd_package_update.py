@@ -31,6 +31,10 @@ import os
 import platform
 import shutil
 import time
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
 
 import requests
 
@@ -43,6 +47,8 @@ from .cmd_package_utils import (
     get_url_from_mirror_server,
     execute_command,
     git_pull_repo,
+    is_env_repository,
+    get_git_root_path as resolve_git_root_path,
     user_input,
     find_bool_macro_in_config,
 )
@@ -125,28 +131,18 @@ Return('objs')
 
 
 def _get_git_restore_url(package_obj, ver):
-    """Return a suitable git URL to restore remote.origin.url.
+    """Return the version-specific Git URL used to clone a package.
 
-    Prefer the per-version URL if it ends with '.git'. Otherwise, fall back to
-    the 'repository' field (appending '.git' when necessary). Return None when
-    no suitable git URL can be determined.
+    The package ``repository`` field is descriptive metadata and may point to
+    a project homepage. It must never be converted into a Git remote URL.
     """
     try:
         url = package_obj.get_url(ver)
     except Exception:
         url = None
 
-    if url and isinstance(url, str) and url.endswith('.git'):
+    if url and is_git_url(url):
         return url
-
-    repo = None
-    try:
-        repo = package_obj.pkg.get('repository') if package_obj and package_obj.pkg else None
-    except Exception:
-        repo = None
-
-    if repo and isinstance(repo, str):
-        return repo if repo.endswith('.git') else repo + '.git'
 
     return None
 
@@ -466,11 +462,23 @@ def need_using_mirror_download():
 
 
 def is_git_url(package_url):
-    return package_url.endswith('.git')
+    if not isinstance(package_url, str):
+        return False
+
+    package_url = package_url.strip()
+    if not package_url.endswith('.git'):
+        return False
+
+    parsed = urlparse(package_url)
+    return parsed.scheme in ('http', 'https', 'git', 'ssh') and bool(parsed.netloc)
 
 
 def update_submodule(repo_path, use_esp_mirror):
     print(repo_path)
+    if is_env_repository(repo_path):
+        logging.warning('Refusing submodule operations in the Env repository: %s', repo_path)
+        return
+
     # If there is a .gitmodules file in the package, prepare to update submodule.
     gitmodules_path = os.path.join(repo_path, '.gitmodules')
     if os.path.isfile(gitmodules_path):
@@ -536,9 +544,11 @@ def install_git_package(
 
     # change upstream back to origin url when applicable
     # only restore when a valid git URL is available
-    if upstream_changed and url_origin and str(url_origin).endswith('.git'):
+    if upstream_changed and url_origin and is_git_url(url_origin) and not is_env_repository(repo_path):
         cmd = 'git remote set-url origin ' + url_origin
         execute_command(cmd, cwd=repo_path)
+    elif upstream_changed and is_env_repository(repo_path):
+        logging.warning('Refusing to change the Env repository remote: %s', repo_path)
 
     # If there is a .gitmodules file in the package, prepare to update submodule.
     gitmodules_path = os.path.join(repo_path, '.gitmodules')
@@ -711,6 +721,10 @@ def get_package_folder(origin_path, version):
 
 
 def git_cmd_exec(cmd, cwd):
+    if is_env_repository(cwd):
+        logging.warning('Refusing Git command in the Env repository: %s', cmd)
+        return
+
     try:
         execute_command(cmd, cwd=cwd)
     except Exception as e:
@@ -743,7 +757,6 @@ def update_latest_packages(sys_value):
         read_back_pkgs_json = json.load(f)
 
     for pkg in read_back_pkgs_json:
-        right_path_flag = True
         package = PackageOperation()
         pkg_path = pkg['path']
         if pkg_path[0] == '/' or pkg_path[0] == '\\':
@@ -756,11 +769,23 @@ def update_latest_packages(sys_value):
         # Find out the packages which version is 'latest'
         if pkg['ver'] == "latest_version" or pkg['ver'] == "latest":
             package_url = package.get_url(pkg['ver'])
+            if not is_git_url(package_url):
+                logging.info('Skip Git update for non-Git package %s: %s', pkgs_name_in_json, package_url)
+                continue
+
             hal_sdk_package_path = get_hal_sdk_package_path(bsp_root, pkgs_name_in_json, pkg['ver'])
             if is_hal_sdk_package(pkg) and hal_sdk_package_path and package_url and is_git_url(package_url):
                 repo_path = hal_sdk_package_path
             else:
                 repo_path = get_bsp_package_path(bsp_packages_path, pkgs_name_in_json, pkg['ver'])
+
+            get_git_root = get_git_root_path(repo_path)
+            if not get_git_root or not _same_path(repo_path, get_git_root):
+                logging.warning('Skip Git update outside a package repository: %s', repo_path)
+                continue
+            if is_env_repository(repo_path):
+                logging.warning('Skip Git update for the Env repository: %s', repo_path)
+                continue
 
             # noinspection PyBroadException
             try:
@@ -771,29 +796,12 @@ def update_latest_packages(sys_value):
                     # Change repo's upstream address.
                     mirror_url = get_url_from_mirror_server(payload_pkgs_name_in_json, pkg['ver'])
 
-                    # if git root is same as repo path, then change the upstream
-                    get_git_root = get_git_root_path(repo_path)
-                    if get_git_root:
-                        if os.path.normcase(repo_path) == os.path.normcase(get_git_root):
-                            if mirror_url[0] is not None:
-                                cmd = 'git remote set-url origin ' + mirror_url[0]
-                                git_cmd_exec(cmd, repo_path)
-                        else:
-                            print("\n==============================> updating")
-                            print("Package path: %s" % repo_path)
-                            print("Git root: %s" % get_git_root)
-                            print("Error: Not currently in a git root directory, cannot switch upstream.\n")
-                            right_path_flag = False
-                            result = False
-                    else:
-                        right_path_flag = False
-                        result = False
+                    if mirror_url[0] and is_git_url(mirror_url[0]):
+                        cmd = 'git remote set-url origin ' + mirror_url[0]
+                        git_cmd_exec(cmd, repo_path)
 
             except Exception as e:
                 logging.warning("Failed to connect to the mirror server, using non-mirror server to update.")
-
-            if not right_path_flag:
-                continue
 
             # Update the package repository from upstream.
             git_pull_repo(repo_path)
@@ -803,11 +811,13 @@ def update_latest_packages(sys_value):
 
             # recover origin url to a proper git URL from package info
             restore_url = _get_git_restore_url(package, pkg['ver'])
-            if restore_url:
+            if restore_url and not is_env_repository(repo_path):
                 cmd = 'git remote set-url origin ' + restore_url
                 git_cmd_exec(cmd, repo_path)
+            elif is_env_repository(repo_path):
+                logging.warning('Refusing to restore the Env repository remote: %s', repo_path)
             else:
-                print("Can't restore origin: no git URL found for package in %s" % pkg_path)
+                print("Can't restore origin: no version-specific Git URL found for package in %s" % pkg_path)
 
             print("==============================>  %s update done\n" % pkgs_name_in_json)
 
@@ -815,24 +825,14 @@ def update_latest_packages(sys_value):
 
 
 def get_git_root_path(repo_path):
-    if os.path.isdir(repo_path):
-        try:
-            before = os.getcwd()
-            os.chdir(repo_path)
-            result = os.popen("git rev-parse --show-toplevel")
-            result = result.read()
-            for line in result.splitlines()[:5]:
-                get_git_root = line
-                break
-            os.chdir(before)
-            return get_git_root
-        except Exception as e:
-            logging.warning("Error message : %s" % e)
-            return None
-    else:
+    result = resolve_git_root_path(repo_path)
+    if result:
+        return result
+
+    if not os.path.isdir(repo_path):
         logging.warning("Missing path {0}".format(repo_path))
         logging.warning("If you manage this package manually, Env tool will not update it.")
-        return None
+    return None
 
 
 def pre_package_update():
