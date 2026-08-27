@@ -26,6 +26,7 @@
 import json
 import os
 import platform
+import shlex
 import subprocess
 import sys
 import time
@@ -35,8 +36,135 @@ import logging
 from vars import Import
 
 
+def get_git_root_path(repo_path):
+    """Return the Git worktree root containing repo_path, if any."""
+    if not repo_path or not os.path.isdir(repo_path):
+        return None
+
+    try:
+        process = subprocess.Popen(
+            ['git', '-C', os.path.abspath(repo_path), 'rev-parse', '--show-toplevel'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        output = process.communicate()[0]
+        if process.returncode != 0:
+            return None
+        if not isinstance(output, str):
+            output = output.decode('utf-8', errors='replace')
+        return output.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def is_env_repository(repo_path):
+    """Return True when repo_path resolves to the Env repository itself."""
+    try:
+        env_root = Import('env_root')
+    except (KeyError, TypeError):
+        env_root = None
+
+    if not env_root:
+        env_root = os.environ.get('ENV_ROOT')
+    if not env_root:
+        home = os.environ.get('HOME') or os.environ.get('USERPROFILE')
+        if home:
+            env_root = os.path.join(home, '.env')
+    if not env_root:
+        return False
+
+    git_root = get_git_root_path(repo_path)
+    if not git_root:
+        return False
+
+    git_root = os.path.realpath(git_root)
+    env_root = os.path.realpath(env_root)
+    env_repository_roots = (env_root, os.path.join(env_root, 'tools', 'scripts'))
+    return any(git_root == root for root in map(os.path.realpath, env_repository_roots))
+
+
+def _git_config_command_targets(command, cwd=None):
+    """Yield working-tree paths for Git commands that may write config.
+
+    Git global options can appear between ``git`` and the subcommand, and
+    ``-C`` can select a repository unrelated to the process working directory.
+    Tokenizing the command keeps the Env-repository guard effective for both
+    forms instead of relying on a fragile substring match.
+    """
+    try:
+        tokens = shlex.split(str(command), posix=(os.name != 'nt'))
+    except ValueError:
+        tokens = str(command).split()
+
+    default_cwd = os.path.abspath(cwd or os.getcwd())
+    config_commands = ('config', 'remote', 'submodule')
+
+    for index, token in enumerate(tokens):
+        if os.path.basename(token).lower() not in ('git', 'git.exe'):
+            continue
+
+        target_cwd = default_cwd
+        git_dir = None
+        cursor = index + 1
+        while cursor < len(tokens):
+            option = tokens[cursor]
+            if option == '-C' and cursor + 1 < len(tokens):
+                target_cwd = tokens[cursor + 1]
+                cursor += 2
+            elif option.startswith('-C') and len(option) > 2:
+                target_cwd = option[2:]
+                cursor += 1
+            elif option == '--work-tree' and cursor + 1 < len(tokens):
+                target_cwd = tokens[cursor + 1]
+                cursor += 2
+            elif option.startswith('--work-tree='):
+                target_cwd = option.split('=', 1)[1]
+                cursor += 1
+            elif option == '--git-dir' and cursor + 1 < len(tokens):
+                git_dir = tokens[cursor + 1]
+                cursor += 2
+            elif option.startswith('--git-dir='):
+                git_dir = option.split('=', 1)[1]
+                cursor += 1
+            elif option in ('-c', '--config-env') and cursor + 1 < len(tokens):
+                cursor += 2
+            elif option.startswith('-'):
+                cursor += 1
+            else:
+                break
+
+        if cursor >= len(tokens) or tokens[cursor].lower() not in config_commands:
+            continue
+
+        target_cwd = target_cwd.strip()
+        if len(target_cwd) >= 2 and target_cwd[0] == target_cwd[-1] and target_cwd[0] in ('"', "'"):
+            target_cwd = target_cwd[1:-1]
+        if not os.path.isabs(target_cwd):
+            target_cwd = os.path.join(default_cwd, target_cwd)
+        target_cwd = os.path.abspath(target_cwd)
+
+        if git_dir:
+            git_dir = git_dir.strip()
+            if len(git_dir) >= 2 and git_dir[0] == git_dir[-1] and git_dir[0] in ('"', "'"):
+                git_dir = git_dir[1:-1]
+            if not os.path.isabs(git_dir):
+                git_dir = os.path.join(target_cwd, git_dir)
+            target_cwd = os.path.dirname(os.path.abspath(git_dir))
+        yield target_cwd
+
+
+def _changes_git_config(command):
+    """Identify Git command families that can write repository config."""
+    return any(_git_config_command_targets(command))
+
+
 def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
+
+    for command_cwd in _git_config_command_targets(cmd_string, cwd):
+        if is_env_repository(command_cwd):
+            logging.warning('Refusing Git config mutation in the Env repository: %s', cmd_string)
+            return ''
 
     logging.debug('execute_command: %s' % cmd_string)
     sub = subprocess.Popen(cmd_string, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=shell, bufsize=4096)
@@ -58,7 +186,7 @@ def is_windows():
 
 def git_pull_repo(repo_path, repo_url=''):
     try:
-        if is_windows():
+        if is_windows() and not is_env_repository(repo_path):
             cmd = r'git config --local core.autocrlf true'
             execute_command(cmd, cwd=repo_path)
         cmd = r'git pull ' + repo_url

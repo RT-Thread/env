@@ -39,6 +39,9 @@ def main(argv=None):
     for command in manifest['commands']:
         entry = _load_entry(command['entry'], os.path.abspath(site_packages))
         _accepts_command_abi(entry, command['entry'])
+    service = manifest.get('service')
+    if service:
+        _load_entry(service['entry'], os.path.abspath(site_packages))
     health_entry = manifest.get('health_check')
     if health_entry:
         result = _load_entry(health_entry, os.path.abspath(site_packages))()

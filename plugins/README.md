@@ -40,8 +40,9 @@ org.example.demo-1.0.0-py3-none-any.epack
 ```
 
 `manifest.json` declares the plugin ID, name, version and compatibility, plus
-permissions and the applicable command, WebUI and backend artifact entries. A
-command entry uses `module.path:callable` syntax and implements:
+permissions and the applicable command, WebUI, health-check, service and
+backend artifact entries. A command entry uses `module.path:callable` syntax
+and implements:
 
 ```python
 def main(argv, context):
@@ -269,9 +270,9 @@ files under `frontend/`:
 }
 ```
 
-A WebUI-only plugin may omit `src/` and backend wheels. A plugin with commands
-or a health check must provide a backend artifact. After installation, start
-the local WebUI with:
+A WebUI-only plugin may omit `src/` and backend wheels. A plugin that declares
+commands, a health check, or a `service` must provide exactly one backend
+artifact with the `plugin` role. After installation, start the local WebUI with:
 
 ```bash
 webui start
@@ -297,11 +298,32 @@ and language through versioned `postMessage` messages. Pages cannot read host
 cookies or sessions, or call Env lifecycle APIs. See the complete
 [`build-insight` example](examples/build-insight-1.0.0/README.md).
 
+A plugin that needs a local HTTP or WebSocket backend may declare a `service`
+entry in its manifest. Env invokes the entry as `entry(context, host, port)`;
+`context` is a `RuntimeContext`, and the callable must return an ASGI
+application or an object with an `app` attribute:
+
+```python
+def create_service(context, host, port):
+    return app
+```
+
+The service starts on the first backend request. Env loads it in a supervised
+child process, checks `health_path`, binds it to a random loopback port, and
+proxies `/plugins/<id>/backend/` to it. Plugin asset pages may use the
+tokenized `/plugin-assets/<token>/<id>/backend/` equivalent returned by the
+WebUI session API. `health_path` must be an absolute safe HTTP path, and
+`start_timeout` must be an integer from 1 to 60 seconds. The service runner
+uses Uvicorn, so `uvicorn` and its runtime dependencies must be available as
+backend dependency wheels. The process is stopped when the plugin is disabled,
+upgraded, uninstalled, or the WebUI exits.
+
 ## Build and publishing notes
 
 - Command names in `manifest.json` must be unique and must not conflict with an existing system or plugin command.
 - `workspace.write` already includes read access; do not declare `workspace.read` with it.
 - If dependency wheels are declared, place them under the project `wheels/` directory at the paths listed in the manifest.
+- Service backends require `uvicorn` and its runtime dependencies to be included as dependency wheels.
 - Frontend resources must be prebuilt and must not contain source maps, symbolic links or path-traversal members.
 - V1 packages are currently unsigned local artifacts. Do not make `--yes` the default policy for packages from untrusted sources.
 - The WebUI shows the online catalog only when a market URL is configured. Installation still uses a one-time local upload id after the Host API downloads and inspects the artifact.

@@ -26,7 +26,7 @@
 import os
 import uuid
 from vars import Import
-from .cmd_package_utils import git_pull_repo, get_url_from_mirror_server, find_bool_macro_in_config
+from .cmd_package_utils import execute_command, git_pull_repo, get_url_from_mirror_server, find_bool_macro_in_config
 from .cmd_package_update import need_using_mirror_download
 
 try:
@@ -65,15 +65,12 @@ def upgrade_packages_index(force_upgrade=False):
 
     if not os.path.isdir(pkgs_path):
         cmd = 'git clone ' + git_repo + ' ' + pkgs_path + ' --depth=1'
-        os.system(cmd)
+        execute_command(cmd, cwd=packages_root)
         print("upgrade from :%s" % (git_repo.encode("utf-8")))
     else:
         if force_upgrade:
-            cwd = os.getcwd()
-            os.chdir(pkgs_path)
-            os.system('git fetch --all')
-            os.system('git reset --hard origin/master')
-            os.chdir(cwd)
+            execute_command('git fetch --all', cwd=pkgs_path)
+            execute_command('git reset --hard origin/master', cwd=pkgs_path)
         print("Begin to upgrade env packages.")
         git_pull_repo(pkgs_path, git_repo)
         print("==============================>  Env packages upgrade done \n")
@@ -88,11 +85,8 @@ def upgrade_packages_index(force_upgrade=False):
             if os.path.isdir(os.path.join(package_path, '.git')):
                 print("Begin to upgrade %s." % filename)
                 if force_upgrade:
-                    cwd = os.getcwd()
-                    os.chdir(package_path)
-                    os.system('git fetch --all')
-                    os.system('git reset --hard origin/master')
-                    os.chdir(cwd)
+                    execute_command('git fetch --all', cwd=package_path)
+                    execute_command('git reset --hard origin/master', cwd=package_path)
                 git_pull_repo(package_path)
                 print("==============================>  Env %s update done \n" % filename)
 
@@ -115,11 +109,8 @@ def upgrade_env_script(force_upgrade=False):
 
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
     if force_upgrade:
-        cwd = os.getcwd()
-        os.chdir(env_scripts_root)
-        os.system('git fetch --all')
-        os.system('git reset --hard origin/master')
-        os.chdir(cwd)
+        execute_command('git fetch --all', cwd=env_scripts_root)
+        execute_command('git reset --hard origin/master', cwd=env_scripts_root)
     print("Begin to upgrade env scripts.")
     git_pull_repo(env_scripts_root, env_scripts_repo)
     print("==============================>  Env scripts upgrade done \n")

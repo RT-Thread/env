@@ -220,7 +220,7 @@ def validate_project(directory):
     if not os.path.isfile(license_path) or os.path.getsize(license_path) == 0:
         raise PackageError("project requires a non-empty LICENSE file")
     source_root = os.path.join(directory, 'src')
-    requires_backend = bool(manifest.commands or manifest.health_check or manifest.artifacts)
+    requires_backend = bool(manifest.commands or manifest.health_check or manifest.service or manifest.artifacts)
     if requires_backend and not os.path.isdir(source_root):
         raise PackageError("project requires a src directory")
     for artifact in manifest.artifacts:
@@ -232,6 +232,8 @@ def validate_project(directory):
         _validate_source_entry(source_root, command['entry'])
     if manifest.health_check:
         _validate_source_entry(source_root, manifest.health_check)
+    if manifest.service:
+        _validate_source_entry(source_root, manifest.service['entry'])
     if os.path.isdir(source_root):
         _validate_resource_tree(source_root, 'plugin source')
     frontend_root = os.path.join(directory, 'frontend')

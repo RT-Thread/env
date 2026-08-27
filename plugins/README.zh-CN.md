@@ -32,7 +32,7 @@ org.example.demo-1.0.0-py3-none-any.epack
 └── backend/org_example_demo-1.0.0-py3-none-any.whl
 ```
 
-`manifest.json` 声明插件 ID、名称、版本和兼容性，并按插件能力声明权限、命令、WebUI 和后端 artifact。命令入口使用 `module.path:callable` 格式，并实现：
+`manifest.json` 声明插件 ID、名称、版本和兼容性，并按插件能力声明权限、命令、WebUI、健康检查、service 和后端制品。命令入口使用 `module.path:callable` 格式，并实现：
 
 ```python
 def main(argv, context):
@@ -230,13 +230,13 @@ WebUI 页面由 `manifest.webui` 声明，并以预构建静态资源放在 `fro
 }
 ```
 
-纯 WebUI 插件可以没有 `src/` 和后端 wheel；CLI 或健康检查存在时则必须提供后端 artifact。安装后启动本机 WebUI：
+纯 WebUI 插件可以没有 `src/` 和后端 wheel；声明命令、健康检查或 `service` 的插件必须提供且只能提供一个 `plugin` 角色的后端制品。安装后启动本机 WebUI：
 
 ```bash
 webui start
 ```
 
-`webui start` 会在后台启动本机服务，普通本地会话默认打开浏览器，打印启动 URL
+`webui start` 会在后台启动本机服务，在本地会话中默认打开浏览器，打印启动 URL
 后返回命令行。可以使用以下命令查询或停止服务：
 
 ```bash
@@ -251,11 +251,40 @@ webui stop
 
 插件页面运行在不带 `allow-same-origin` 的 iframe 中，宿主通过版本化 `postMessage` 传递主题和语言。页面不能读取宿主 Cookie、会话或直接调用 Env 生命周期 API。完整示例见 [`examples/build-insight-1.0.0/README.md`](examples/build-insight-1.0.0/README.md)。
 
+需要 HTTP 或 WebSocket 后端的插件可以在 `manifest.json` 声明 `service`：
+
+```json
+{
+  "service": {
+    "entry": "package.service:create_service",
+    "health_path": "/health",
+    "start_timeout": 15
+  }
+}
+```
+
+服务入口按 `entry(context, host, port)` 调用，其中 `context` 是
+`RuntimeContext`，返回值必须是 ASGI 应用，或带有 `app` 属性的对象：
+
+```python
+def create_service(context, host, port):
+    return app
+```
+
+首次访问后端路径时，Env 才会按需在独立子进程中启动服务，检查
+`health_path` 后将服务绑定到随机回环端口，并把
+`/plugins/<id>/backend/` 下的请求代理到服务。插件资源页也可以使用 WebUI
+会话接口返回的 `/plugin-assets/<token>/<id>/backend/` 路径。`health_path` 必须是
+安全的绝对 HTTP 路径，`start_timeout` 必须是 1 到 60 之间的整数。服务运行器使用
+Uvicorn，插件包必须通过 dependency wheel 提供 `uvicorn` 及其运行时依赖。插件禁用、
+升级、卸载或 WebUI 退出时，宿主会停止并回收服务进程。
+
 ## 构建和发布注意事项
 
 - `manifest.json` 中的命令名必须唯一，并且不能与系统已有命令或其他插件冲突。
 - `workspace.write` 已包含读取能力，不应同时声明 `workspace.read`。
 - 使用依赖 wheel 时，需要按清单路径把文件放在工程的 `wheels/` 目录中。
+- service 后端需要通过依赖 wheel 提供 `uvicorn` 及其运行时依赖。
 - 前端资源必须是预构建文件；不能包含 source map、符号链接或路径穿越成员。
 - v1 包目前是未签名的本地制品，不应将 `--yes` 作为不可信来源包的默认策略。
 - 仅在配置了市场地址时，WebUI 才显示在线插件目录。安装仍是 Host API 下载并检查后，使用一次性 upload id 交给本机安装器。
