@@ -32,6 +32,41 @@ async function request(path, options = {}) {
 export const api = {
   session: () => request('/api/v1/session'),
   plugins: () => request('/api/v1/plugins'),
+  sdk: () => request('/api/v1/sdk'),
+  sdkPlan: (packages) => request('/api/v1/sdk/plan', {
+    method: 'POST',
+    json: { packages },
+  }),
+  sdkApply: (planId, confirmRemove = []) => request('/api/v1/sdk/apply', {
+    method: 'POST',
+    json: { plan_id: planId, confirm_remove: confirmRemove },
+  }),
+  sdkTask: (taskId) => request(`/api/v1/sdk/tasks/${encodeURIComponent(taskId)}`),
+  sdkCancelTask: (taskId) => request(`/api/v1/sdk/tasks/${encodeURIComponent(taskId)}/cancel`, {
+    method: 'POST',
+    json: {},
+  }),
+  toolchains: () => request('/api/v1/settings/toolchains'),
+  addToolchain: (entry) => request('/api/v1/settings/toolchains', {
+    method: 'POST',
+    json: entry,
+  }),
+  updateToolchain: (name, entry) => request(`/api/v1/settings/toolchains/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    json: entry,
+  }),
+  removeToolchain: (name) => request(`/api/v1/settings/toolchains/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  }),
+  fileContextMenu: () => request('/api/v1/settings/file-context-menu'),
+  installFileContextMenu: () => request('/api/v1/settings/file-context-menu/install', {
+    method: 'POST',
+    json: {},
+  }),
+  removeFileContextMenu: () => request('/api/v1/settings/file-context-menu/remove', {
+    method: 'POST',
+    json: {},
+  }),
   plugin: (id) => request(`/api/v1/plugins/${encodeURIComponent(id)}`),
   doctor: (id) => request(`/api/v1/plugins/${encodeURIComponent(id)}/doctor`),
   uploadPackage: (file) => request('/api/v1/packages', {

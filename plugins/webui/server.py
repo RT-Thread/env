@@ -29,6 +29,14 @@ from ..market import (
 )
 from ..service import PluginService
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
+try:
+    from ...sdk_manager import SdkManager, SdkUsageError
+    from ...toolchain_manager import ToolchainManager
+    from ...file_context_menu import FileContextMenuManager
+except ImportError:
+    from sdk_manager import SdkManager, SdkUsageError
+    from toolchain_manager import ToolchainManager
+    from file_context_menu import FileContextMenuManager
 
 
 SESSION_COOKIE = 'env_webui_session'
@@ -52,6 +60,9 @@ class WebUIApplication(object):
     ):
         self.service = PluginService(env_root=env_root, launcher_dir=launcher_dir)
         self.service.paths.ensure()
+        self.sdk = SdkManager(env_root=env_root)
+        self.toolchains = ToolchainManager(env_root=env_root)
+        self.context_menu = FileContextMenuManager(env_root=env_root)
         self.workspace = os.path.abspath(workspace or os.getcwd())
         if not os.path.isdir(self.workspace):
             raise UsageError("WebUI workspace is not a directory: %s" % self.workspace)
@@ -135,6 +146,60 @@ class WebUIApplication(object):
 
     def installed_index(self):
         return dict((item['id'], item) for item in self.service.list())
+
+    def sdk_snapshot(self):
+        try:
+            snapshot = self.sdk.snapshot()
+        except SdkUsageError as exc:
+            return {
+                'available': False,
+                'platform': self.sdk.hostos,
+                'packages_root': self.sdk.packages_root,
+                'index_root': self.sdk.index_root,
+                'config_path': self.sdk.config_path,
+                'revision': self.sdk.revision(),
+                'config_revision': self.sdk.revision(),
+                'packages': [],
+                'error': str(exc),
+            }
+        snapshot['available'] = True
+        return snapshot
+
+    def sdk_plan(self, body):
+        return self.sdk.plan(body)
+
+    def sdk_apply(self, body):
+        if not isinstance(body, dict) or set(body) - set(['plan_id', 'confirm_remove']) or 'plan_id' not in body:
+            raise UsageError('SDK apply request must contain plan_id and optional confirm_remove')
+        confirm_remove = body.get('confirm_remove', [])
+        return self.sdk.start_apply(body['plan_id'], confirm_remove)
+
+    def sdk_task(self, task_id):
+        return self.sdk.task(task_id)
+
+    def sdk_cancel_task(self, task_id):
+        return self.sdk.cancel_task(task_id)
+
+    def toolchain_snapshot(self):
+        return self.toolchains.snapshot()
+
+    def add_toolchain(self, body):
+        return self.toolchains.add(body)
+
+    def update_toolchain(self, name, body):
+        return self.toolchains.update(name, body)
+
+    def remove_toolchain(self, name):
+        return self.toolchains.remove(name)
+
+    def context_menu_snapshot(self):
+        return self.context_menu.snapshot()
+
+    def install_context_menu(self):
+        return self.context_menu.install()
+
+    def remove_context_menu(self):
+        return self.context_menu.remove()
 
     def market_status(self):
         self._require_market()
@@ -433,6 +498,30 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         if method == 'GET' and path == '/api/v1/plugins':
             self._json(self.application.installed())
             return
+        if method == 'GET' and path == '/api/v1/sdk':
+            self._json(self.application.sdk_snapshot())
+            return
+        if method == 'GET' and path == '/api/v1/settings/toolchains':
+            self._json(self.application.toolchain_snapshot())
+            return
+        if method == 'GET' and path == '/api/v1/settings/file-context-menu':
+            self._json(self.application.context_menu_snapshot())
+            return
+        if method == 'POST' and path == '/api/v1/sdk/plan':
+            self._json(self.application.sdk_plan(self._read_json()))
+            return
+        if method == 'POST' and path == '/api/v1/sdk/apply':
+            self._json(self.application.sdk_apply(self._read_json()), status=HTTPStatus.ACCEPTED)
+            return
+        if method == 'POST' and path == '/api/v1/settings/toolchains':
+            self._json(self.application.add_toolchain(self._read_json()), status=HTTPStatus.CREATED)
+            return
+        if method == 'POST' and path == '/api/v1/settings/file-context-menu/install':
+            self._json(self.application.install_context_menu(), status=HTTPStatus.CREATED)
+            return
+        if method == 'POST' and path == '/api/v1/settings/file-context-menu/remove':
+            self._json(self.application.remove_context_menu())
+            return
         if method == 'POST' and path == '/api/v1/packages':
             content = self._read_body(PACKAGE_LIMIT)
             filename = unquote(self.headers.get('X-Filename', 'local.epack'))
@@ -490,6 +579,19 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 self.application.service.stop_backend(plugin_id)
                 self._json(self.application.service.uninstall(plugin_id, purge_data=(purge == 'true')))
                 return
+        if len(segments) >= 5 and segments[:4] == ['api', 'v1', 'sdk', 'tasks']:
+            if len(segments) == 5 and method == 'GET':
+                self._json(self.application.sdk_task(segments[4]))
+                return
+            if len(segments) == 6 and segments[5] == 'cancel' and method == 'POST':
+                self._json(self.application.sdk_cancel_task(segments[4]), status=HTTPStatus.ACCEPTED)
+                return
+        if len(segments) == 5 and segments[:4] == ['api', 'v1', 'settings', 'toolchains'] and method == 'DELETE':
+            self._json(self.application.remove_toolchain(segments[4]))
+            return
+        if len(segments) == 5 and segments[:4] == ['api', 'v1', 'settings', 'toolchains'] and method == 'PUT':
+            self._json(self.application.update_toolchain(segments[4], self._read_json()))
+            return
         self._error(HTTPStatus.NOT_FOUND, 'not_found', 'API endpoint was not found')
 
     def _install(self, body, upgrade, expected_plugin_id=None):

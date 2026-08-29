@@ -6,6 +6,48 @@ afterEach(() => {
 })
 
 describe('local package API', () => {
+  it('exposes SDK snapshot, plan, apply and task endpoints', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
+    vi.stubGlobal('fetch', fetchMock)
+    setCsrfToken('csrf-token')
+
+    await api.sdk()
+    await api.sdkPlan([{ name: 'demo-gcc', enabled: true, version: 'v1' }])
+    await api.sdkApply('plan-1', ['demo-gcc'])
+    await api.sdkTask('task-1')
+    await api.sdkCancelTask('task-1')
+    await api.toolchains()
+    await api.addToolchain({ name: 'gcc', path: '/opt/gcc', description: 'GCC' })
+    await api.updateToolchain('gcc', { name: 'gcc-arm', path: '/opt/gcc-arm', description: 'ARM GCC' })
+    await api.removeToolchain('gcc')
+    await api.fileContextMenu()
+    await api.installFileContextMenu()
+    await api.removeFileContextMenu()
+
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/sdk',
+      '/api/v1/sdk/plan',
+      '/api/v1/sdk/apply',
+      '/api/v1/sdk/tasks/task-1',
+      '/api/v1/sdk/tasks/task-1/cancel',
+      '/api/v1/settings/toolchains',
+      '/api/v1/settings/toolchains',
+      '/api/v1/settings/toolchains/gcc',
+      '/api/v1/settings/toolchains/gcc',
+      '/api/v1/settings/file-context-menu',
+      '/api/v1/settings/file-context-menu/install',
+      '/api/v1/settings/file-context-menu/remove',
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+      packages: [{ name: 'demo-gcc', enabled: true, version: 'v1' }],
+    })
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
+      plan_id: 'plan-1',
+      confirm_remove: ['demo-gcc'],
+    })
+    expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual({})
+  })
+
   it('installs only from an upload id', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
     vi.stubGlobal('fetch', fetchMock)

@@ -15,8 +15,10 @@ import {
   Moon,
   MoreFilled,
   Operation,
+  Plus,
   Platform,
   Refresh,
+  FolderOpened,
   Setting,
   Sunny,
   SwitchButton,
@@ -25,7 +27,7 @@ import {
   UploadFilled,
   WarningFilled,
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { api, setCsrfToken } from './api.js'
 
 const session = ref(null)
@@ -35,6 +37,7 @@ const actionBusy = ref(false)
 const sidebarOpen = ref(false)
 const currentView = ref('plugins')
 const pluginTab = ref('local')
+const settingsTab = ref('general')
 const theme = ref(localStorage.getItem('env-theme') || 'light')
 const detailVisible = ref(false)
 const detailPlugin = ref(null)
@@ -69,6 +72,23 @@ const uninstallVisible = ref(false)
 const purgeData = ref(false)
 const iframeState = ref('idle')
 const iframeElement = ref(null)
+const sdkState = ref(null)
+const sdkSelection = ref({})
+const sdkLoading = ref(false)
+const sdkBusy = ref(false)
+const sdkCancelBusy = ref(false)
+const sdkError = ref('')
+const sdkPlanResult = ref(null)
+const sdkTaskState = ref(null)
+const toolchainState = ref(null)
+const toolchainLoading = ref(false)
+const toolchainBusy = ref(false)
+const toolchainEditorVisible = ref(false)
+const toolchainEditingName = ref(null)
+const toolchainForm = ref({ name: '', path: '', description: '' })
+const toolchainError = ref('')
+const contextMenuState = ref(null)
+const contextMenuBusy = ref(false)
 let iframeTimer
 
 const permissionLabels = {
@@ -96,6 +116,17 @@ const upgradeMismatch = computed(() => (
 const marketSourceLabel = computed(() => {
   if (!marketEnabled.value) return '未配置'
   return session.value.market.source === 'env' ? '环境变量' : '配置文件'
+})
+const sdkDirty = computed(() => {
+  if (!sdkState.value) return false
+  return sdkState.value.packages.some((item) => {
+    const selected = sdkSelection.value[item.name]
+    if (!selected) return false
+    const configChanged = selected.enabled !== item.enabled || (selected.enabled && selected.version !== item.expected_version)
+    // A package can be out of sync even when the UI selection mirrors .config:
+    // for example, after an interrupted download or a package removed manually.
+    return configChanged || item.state === 'selected_not_installed' || item.state === 'version_change' || item.state === 'pending_remove'
+  })
 })
 
 function iconFor(plugin) {
@@ -166,6 +197,110 @@ const stageLabels = {
   download: '下载插件包',
   inspect: '本机检查插件包',
   install: '写入本机安装状态',
+}
+
+const sdkStateLabels = {
+  disabled: '未启用',
+  selected_not_installed: '待安装',
+  installed: '已安装',
+  version_change: '待切换版本',
+  pending_remove: '待移除',
+  installing: '安装中',
+  extracting: '展开中',
+  failed: '失败',
+  cancelled: '已取消',
+}
+
+const sdkActionLabels = {
+  install: '安装',
+  switch: '切换版本',
+  remove: '移除',
+  disable: '禁用',
+  enable: '启用',
+  write_config: '写入配置',
+  refresh: '刷新状态',
+}
+
+const sdkTaskStageLabels = {
+  queued: '等待开始',
+  preparing: '准备操作',
+  downloading: '下载中',
+  downloaded: '下载完成',
+  extracting: '展开中',
+  staged: '已准备',
+  writing_config: '写入配置',
+  refreshing: '刷新状态',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
+}
+
+const sdkTaskOperationStatusLabels = {
+  pending: '等待中',
+  running: '进行中',
+  staged: '已准备',
+  succeeded: '已完成',
+  failed: '失败',
+  skipped: '未执行',
+  cancelled: '已取消',
+}
+
+function sdkStateLabel(state) {
+  return sdkStateLabels[state] || state
+}
+
+function sdkActionLabel(action) {
+  return sdkActionLabels[action] || action
+}
+
+function sdkTaskStageLabel(stage) {
+  return sdkTaskStageLabels[stage] || stage || '处理中'
+}
+
+function sdkTaskOperationStatusLabel(status) {
+  return sdkTaskOperationStatusLabels[status] || status || '等待中'
+}
+
+function sdkTaskOperationType(operation) {
+  if (operation?.status === 'failed') return 'danger'
+  if (operation?.status === 'succeeded') return 'success'
+  if (operation?.status === 'skipped' || operation?.status === 'cancelled') return 'info'
+  return 'warning'
+}
+
+function sdkTaskIsIndeterminate(task) {
+  return task?.status === 'running' && ['downloading', 'extracting'].includes(task.stage)
+}
+
+function sdkHasDownloadProgress(task) {
+  const downloadStage = ['downloading', 'downloaded', 'extracting', 'staged', 'completed', 'cancelled'].includes(task?.stage)
+  return downloadStage && (Number.isFinite(task?.downloaded_bytes) || Number.isFinite(task?.total_bytes))
+}
+
+function formatBytes(value) {
+  if (!Number.isFinite(value) || value < 0) return '未知'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let amount = value
+  let unit = 0
+  while (amount >= 1024 && unit < units.length - 1) {
+    amount /= 1024
+    unit += 1
+  }
+  const precision = unit === 0 || amount >= 10 || Number.isInteger(amount) ? 0 : 1
+  return `${amount.toFixed(precision)} ${units[unit]}`
+}
+
+function formatSpeed(value) {
+  if (!Number.isFinite(value) || value <= 0) return '计算中'
+  return `${formatBytes(value)}/s`
+}
+
+function sdkTaskTitle(task) {
+  if (task?.status === 'failed') return '更新失败'
+  if (task?.status === 'succeeded') return '更新完成'
+  if (task?.status === 'cancelled') return '更新已取消'
+  if (task?.status === 'queued') return '等待更新'
+  return '正在更新'
 }
 
 const marketReasonLabels = {
@@ -253,7 +388,265 @@ async function reloadAll() {
     const current = installedItems.find((item) => item.id === currentView.value)
     if (!current?.enabled || !current.webui) currentView.value = 'plugins'
   }
+  await loadSdk()
+  await Promise.all([loadToolchains(), loadContextMenu()])
   if (marketEnabled.value && pluginTab.value === 'online') await loadMarket()
+}
+
+async function loadToolchains() {
+  toolchainLoading.value = true
+  toolchainError.value = ''
+  try {
+    toolchainState.value = await api.toolchains()
+  } catch (error) {
+    toolchainError.value = error.message
+  } finally {
+    toolchainLoading.value = false
+  }
+}
+
+async function saveToolchain() {
+  if (toolchainBusy.value) return
+  const editing = Boolean(toolchainEditingName.value)
+  toolchainBusy.value = true
+  try {
+    toolchainState.value = toolchainEditingName.value
+      ? await api.updateToolchain(toolchainEditingName.value, { ...toolchainForm.value })
+      : await api.addToolchain({ ...toolchainForm.value })
+    toolchainEditorVisible.value = false
+    toolchainEditingName.value = null
+    toolchainForm.value = { name: '', path: '', description: '' }
+    ElMessage.success(editing ? '本地工具链已更新' : '本地工具链已添加')
+  } catch (error) {
+    ElMessage.error(error.message)
+  } finally {
+    toolchainBusy.value = false
+  }
+}
+
+function openToolchainEditor(entry = null) {
+  toolchainEditingName.value = entry?.name || null
+  toolchainForm.value = entry
+    ? { name: entry.name, path: entry.path, description: entry.description || '' }
+    : { name: '', path: '', description: '' }
+  toolchainEditorVisible.value = true
+}
+
+function closeToolchainEditor() {
+  if (toolchainBusy.value) return
+  toolchainEditorVisible.value = false
+  toolchainEditingName.value = null
+  toolchainForm.value = { name: '', path: '', description: '' }
+}
+
+function resetToolchainEditor() {
+  toolchainEditingName.value = null
+  toolchainForm.value = { name: '', path: '', description: '' }
+}
+
+async function removeToolchain(entry) {
+  if (toolchainBusy.value) return
+  try {
+    await ElMessageBox.confirm(
+      `将从 sdk_cfg.json 中删除“${entry.name}”，不会删除工具链目录，是否继续？`,
+      '确认删除工具链配置',
+      { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+  toolchainBusy.value = true
+  try {
+    toolchainState.value = await api.removeToolchain(entry.name)
+    ElMessage.success('工具链配置已删除')
+  } catch (error) {
+    ElMessage.error(error.message)
+  } finally {
+    toolchainBusy.value = false
+  }
+}
+
+function addDetectedToolchain(item) {
+  openToolchainEditor()
+  toolchainForm.value = {
+    name: item.config_name || '',
+    path: item.path || '',
+    description: item.name || '',
+  }
+}
+
+async function loadContextMenu() {
+  try {
+    contextMenuState.value = await api.fileContextMenu()
+  } catch (error) {
+    contextMenuState.value = { available: false, supported: false, error: error.message }
+  }
+}
+
+async function setContextMenu(enabled) {
+  if (contextMenuBusy.value || !contextMenuState.value?.supported) return
+  if (!enabled) {
+    try {
+      await ElMessageBox.confirm(
+        '将移除“Env终端中打开...”菜单，不会删除 Env 或工具链文件，是否继续？',
+        '确认移除文件资源管理器菜单',
+        { type: 'warning', confirmButtonText: '确认移除', cancelButtonText: '取消' },
+      )
+    } catch {
+      return
+    }
+  }
+  contextMenuBusy.value = true
+  try {
+    contextMenuState.value = enabled
+      ? await api.installFileContextMenu()
+      : await api.removeFileContextMenu()
+    ElMessage.success(enabled ? '文件资源管理器菜单已添加' : '文件资源管理器菜单已移除')
+  } catch (error) {
+    ElMessage.error(error.message)
+  } finally {
+    contextMenuBusy.value = false
+  }
+}
+
+async function loadSdk() {
+  if (sdkBusy.value) return
+  sdkLoading.value = true
+  sdkError.value = ''
+  try {
+    const state = await api.sdk()
+    sdkState.value = state
+    const selection = {}
+    for (const item of state.packages || []) {
+      selection[item.name] = {
+        enabled: item.enabled,
+        version: item.expected_version || item.versions?.[0]?.version || null,
+      }
+    }
+    sdkSelection.value = selection
+    sdkPlanResult.value = null
+    sdkTaskState.value = null
+  } catch (error) {
+    sdkError.value = error.message
+  } finally {
+    sdkLoading.value = false
+  }
+}
+
+function setSdkEnabled(item, enabled) {
+  const selected = sdkSelection.value[item.name]
+  if (!selected) return
+  selected.enabled = enabled
+  if (enabled && !selected.version) selected.version = item.versions?.[0]?.version || null
+  sdkPlanResult.value = null
+}
+
+function setSdkVersion(item, version) {
+  const selected = sdkSelection.value[item.name]
+  if (!selected) return
+  selected.version = version
+  sdkPlanResult.value = null
+}
+
+function sdkRequestPackages() {
+  return (sdkState.value?.packages || []).map((item) => {
+    const selected = sdkSelection.value[item.name] || {}
+    return { name: item.name, enabled: Boolean(selected.enabled), version: selected.enabled ? selected.version : null }
+  })
+}
+
+function sdkOperationText(operation) {
+  if (operation.action === 'remove') return `${operation.name} · 移除 ${operation.version}`
+  if (operation.action === 'switch') return `${operation.name} · ${operation.from_version} → ${operation.to_version}`
+  if (operation.action === 'install') return `${operation.name} · 安装 ${operation.to_version}`
+  if (operation.action === 'disable') return `${operation.name} · 禁用`
+  return `${operation.name} · 启用 ${operation.version || ''}`
+}
+
+async function previewSdkPlan() {
+  if (!sdkState.value || sdkBusy.value) return
+  sdkBusy.value = true
+  try {
+    sdkPlanResult.value = await api.sdkPlan(sdkRequestPackages())
+    sdkTaskState.value = null
+  } catch (error) {
+    sdkPlanResult.value = null
+    ElMessage.error(error.message)
+  } finally {
+    sdkBusy.value = false
+  }
+}
+
+async function applySdkPlan() {
+  if (!sdkPlanResult.value || sdkBusy.value) return
+  const removals = sdkPlanResult.value.remove_confirmation || []
+  if (removals.length) {
+    try {
+      await ElMessageBox.confirm(
+        `本次操作将删除 ${removals.join('、')} 的已安装目录，是否继续？`,
+        '确认删除 SDK 包',
+        { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' },
+      )
+    } catch {
+      return
+    }
+  }
+  sdkBusy.value = true
+  sdkTaskState.value = null
+  try {
+    const task = await api.sdkApply(sdkPlanResult.value.plan_id, removals)
+    sdkTaskState.value = task
+    let current = task
+    while (current.status === 'queued' || current.status === 'running') {
+      await new Promise((resolve) => window.setTimeout(resolve, 180))
+      current = await api.sdkTask(task.task_id)
+      sdkTaskState.value = current
+    }
+    if (current.status === 'succeeded') {
+      sdkState.value = current.snapshot
+      const selection = {}
+      for (const item of current.snapshot.packages || []) {
+        selection[item.name] = { enabled: item.enabled, version: item.expected_version || item.versions?.[0]?.version || null }
+      }
+      sdkSelection.value = selection
+      sdkPlanResult.value = null
+      ElMessage.success('SDK 配置已更新')
+    } else if (current.status === 'cancelled') {
+      // The manager restores the original config and directories, and keeps
+      // the plan available so the user can retry without rebuilding it.
+      ElMessage.info('SDK 更新已取消，未应用变更')
+    } else {
+      sdkPlanResult.value = null
+      ElMessage.error(current.error?.message || 'SDK 更新失败')
+    }
+  } catch (error) {
+    if (sdkTaskState.value) {
+      sdkTaskState.value = {
+        ...sdkTaskState.value,
+        status: 'failed',
+        stage: 'failed',
+        message: `无法读取 SDK 更新进度：${error.message}`,
+        error: { code: error.code || 'task_poll_failed', message: error.message },
+      }
+    }
+    ElMessage.error(error.message)
+    if (error.code === 'stateerror') await loadSdk()
+  } finally {
+    sdkBusy.value = false
+  }
+}
+
+async function cancelSdkTask() {
+  const task = sdkTaskState.value
+  if (!task || !['queued', 'running'].includes(task.status) || sdkCancelBusy.value) return
+  sdkCancelBusy.value = true
+  try {
+    sdkTaskState.value = await api.sdkCancelTask(task.task_id)
+  } catch (error) {
+    ElMessage.error(error.message)
+  } finally {
+    sdkCancelBusy.value = false
+  }
 }
 
 async function loadMarket() {
@@ -826,21 +1219,203 @@ onBeforeUnmount(() => {
 
         <section v-else-if="currentView === 'settings'" class="content-scroll settings-view">
           <div class="page-header"><div><h1>设置</h1><p>Env WebUI 本机偏好</p></div></div>
-          <div class="settings-row">
-            <div><strong>界面主题</strong><span>应用到宿主和已打开的插件页面</span></div>
-            <el-segmented v-model="theme" :options="[{ label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }]" />
-          </div>
-          <div class="settings-row">
-            <div><strong>本机服务</strong><span>启动令牌、会话与写请求保护已启用</span></div>
-            <span class="healthy"><CircleCheck />已保护</span>
-          </div>
-          <div class="settings-row">
-            <div>
-              <strong>在线插件市场</strong>
-              <span>{{ marketEnabled ? `${session.market.url} · ${marketSourceLabel}` : '未配置时不显示在线插件页面' }}</span>
-            </div>
-            <span :class="marketEnabled ? 'healthy' : 'muted-status'">{{ marketEnabled ? '已启用' : '未配置' }}</span>
-          </div>
+          <el-tabs v-model="settingsTab" class="settings-tabs">
+            <el-tab-pane label="常规" name="general">
+              <div class="settings-row">
+                <div><strong>界面主题</strong><span>应用到宿主和已打开的插件页面</span></div>
+                <el-segmented v-model="theme" :options="[{ label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }]" />
+              </div>
+              <div class="settings-row">
+                <div><strong>本机服务</strong><span>启动令牌、会话与写请求保护已启用</span></div>
+                <span class="healthy"><CircleCheck />已保护</span>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <strong>在线插件市场</strong>
+                  <span>{{ marketEnabled ? `${session.market.url} · ${marketSourceLabel}` : '未配置时不显示在线插件页面' }}</span>
+                </div>
+                <span :class="marketEnabled ? 'healthy' : 'muted-status'">{{ marketEnabled ? '已启用' : '未配置' }}</span>
+              </div>
+              <div v-if="contextMenuState?.platform === 'Windows'" class="settings-row context-menu-setting">
+                <div>
+                  <strong>文件资源管理器右键菜单</strong>
+                  <span>在目录和目录空白区域增加“Env终端中打开...”</span>
+                </div>
+                <div class="context-menu-control">
+                  <span :class="contextMenuState?.installed ? 'healthy' : 'muted-status'">
+                    {{ contextMenuState?.installed ? '已添加' : contextMenuState?.supported ? '未添加' : '当前平台不支持' }}
+                  </span>
+                  <el-switch
+                    :model-value="Boolean(contextMenuState?.installed)"
+                    :loading="contextMenuBusy"
+                    :disabled="!contextMenuState?.supported || contextMenuBusy"
+                    @update:model-value="setContextMenu"
+                  />
+                </div>
+              </div>
+            </el-tab-pane>
+            <el-tab-pane label="本地工具链配置" name="toolchains">
+              <div class="toolchain-toolbar">
+                <div>
+                  <strong>本地工具链</strong>
+                  <span v-if="toolchainState">{{ toolchainState.platform }} · {{ toolchainState.config_path }}</span>
+                  <span v-else>读取 sdk_cfg.json</span>
+                  <span class="toolchain-toolbar-note">Env 会优先使用名称匹配的工具链。</span>
+                </div>
+                <div class="toolchain-toolbar-actions">
+                  <el-button :icon="Refresh" :loading="toolchainLoading" :disabled="toolchainBusy" @click="loadToolchains">刷新</el-button>
+                  <el-button class="sdk-primary-action sdk-action-button" type="primary" :icon="Plus" :disabled="toolchainBusy" @click="openToolchainEditor()">添加工具链</el-button>
+                </div>
+              </div>
+              <el-alert v-if="toolchainError" :title="toolchainError" type="error" :closable="false" show-icon />
+              <el-skeleton v-else-if="toolchainLoading && !toolchainState" :rows="4" animated />
+              <template v-else-if="toolchainState">
+                <div class="toolchain-list" v-if="toolchainState.entries?.length">
+                  <div class="toolchain-list-header" aria-hidden="true">
+                    <span>名称</span><span>路径</span><span>说明</span><span>操作</span>
+                  </div>
+                  <div v-for="entry in toolchainState.entries" :key="entry.name" class="toolchain-list-row">
+                    <strong>{{ entry.name }}</strong>
+                    <code>{{ entry.path }}</code>
+                    <span>{{ entry.description || '未填写' }}</span>
+                    <div class="toolchain-row-actions">
+                      <el-button size="small" :icon="Operation" :disabled="toolchainBusy" @click="openToolchainEditor(entry)">编辑</el-button>
+                      <el-button type="danger" plain size="small" :icon="Delete" :disabled="toolchainBusy" @click="removeToolchain(entry)">删除</el-button>
+                    </div>
+                  </div>
+                </div>
+                <el-empty v-else :image-size="48" description="尚未配置本地工具链" />
+                <div v-if="toolchainState.platform === 'Windows'" class="toolchain-detection">
+                  <div class="toolchain-detection-heading">
+                    <div><strong>Windows 工具链探测</strong><span>Keil MDK 和 IAR Embedded Workbench</span></div>
+                    <el-tag type="info" effect="plain">自动探测</el-tag>
+                  </div>
+                  <div v-if="toolchainState.detected?.length" class="toolchain-detected-list">
+                    <div v-for="item in toolchainState.detected" :key="item.id" class="toolchain-detected-row">
+                      <span class="toolchain-detected-icon"><FolderOpened /></span>
+                      <div><strong>{{ item.name }}</strong><small>{{ item.path }}</small></div>
+                      <el-tag v-if="item.configured" type="success" effect="plain">已配置</el-tag>
+                      <el-button v-else size="small" :icon="Plus" :disabled="toolchainBusy" @click="addDetectedToolchain(item)">加入配置</el-button>
+                    </div>
+                  </div>
+                  <el-empty v-else :image-size="42" description="未探测到 Keil MDK 或 IAR 工具链" />
+                </div>
+              </template>
+            </el-tab-pane>
+            <el-tab-pane label="SDK 管理" name="sdk">
+              <div class="sdk-toolbar">
+                <div>
+                  <strong>主机 SDK</strong>
+                  <span v-if="sdkState">{{ sdkState.platform }} · {{ sdkState.index_root }}</span>
+                  <span v-else>读取 SDK 索引</span>
+                  <span class="sdk-toolbar-note">Env 会根据使用的工具链命令名称，自动从已安装的工具链中探测并使用匹配项。</span>
+                </div>
+                <div class="sdk-toolbar-actions">
+                  <el-button :icon="Refresh" :loading="sdkLoading" :disabled="sdkBusy" @click="loadSdk">刷新</el-button>
+                  <el-button class="sdk-primary-action sdk-action-button" type="primary" :loading="sdkBusy" :disabled="!sdkState || !sdkDirty" @click="previewSdkPlan">预览变更</el-button>
+                </div>
+              </div>
+              <div v-if="sdkTaskState" class="sdk-task-status">
+                <div class="sdk-task-heading">
+                  <div class="sdk-task-title">
+                    <el-icon v-if="sdkTaskState.status === 'queued' || sdkTaskState.status === 'running'" class="is-loading"><Refresh /></el-icon>
+                    <strong>{{ sdkTaskTitle(sdkTaskState) }}</strong>
+                    <span v-if="sdkTaskState.operation_total">操作 {{ sdkTaskState.operation_index || 0 }} / {{ sdkTaskState.operation_total }}</span>
+                  </div>
+                  <div class="sdk-task-heading-actions">
+                    <span class="sdk-task-stage">{{ sdkTaskStageLabel(sdkTaskState.stage) }}</span>
+                    <el-button
+                      v-if="sdkTaskState.status === 'queued' || sdkTaskState.status === 'running'"
+                      class="sdk-cancel-action"
+                      :icon="Close"
+                      :loading="sdkCancelBusy"
+                      :disabled="sdkCancelBusy"
+                      size="small"
+                      plain
+                      type="danger"
+                      @click="cancelSdkTask"
+                    >取消更新</el-button>
+                  </div>
+                </div>
+                <p class="sdk-task-message">{{ sdkTaskState.message || sdkTaskStageLabel(sdkTaskState.stage) }}</p>
+                <div v-if="sdkTaskState.current_package" class="sdk-task-context">
+                  <span>当前包 <strong>{{ sdkTaskState.current_package }}</strong></span>
+                  <span v-if="sdkTaskState.current_version">版本 <strong>{{ sdkTaskState.current_version }}</strong></span>
+                  <span v-if="sdkTaskState.current_action">动作 <strong>{{ sdkActionLabel(sdkTaskState.current_action) }}</strong></span>
+                </div>
+                <div v-if="sdkHasDownloadProgress(sdkTaskState)" class="sdk-task-download">
+                  <span>下载 <strong>{{ formatBytes(sdkTaskState.downloaded_bytes) }}</strong><template v-if="sdkTaskState.total_bytes !== null && sdkTaskState.total_bytes !== undefined"> / {{ formatBytes(sdkTaskState.total_bytes) }}</template><template v-else> / 总大小未知</template></span>
+                  <span>速度 <strong>{{ formatSpeed(sdkTaskState.download_speed) }}</strong></span>
+                </div>
+                <el-progress
+                  :percentage="sdkTaskState.progress || 0"
+                  :indeterminate="sdkTaskIsIndeterminate(sdkTaskState)"
+                  :duration="2"
+                  :status="sdkTaskState.status === 'failed' ? 'exception' : sdkTaskState.status === 'succeeded' ? 'success' : undefined"
+                />
+                <div v-if="sdkTaskState.operations?.length" class="sdk-task-operations">
+                  <div v-for="(operation, index) in sdkTaskState.operations" :key="`${operation.name}-${operation.action}-${index}`" class="sdk-task-operation">
+                    <div class="sdk-task-operation-main">
+                      <span class="sdk-task-operation-index">{{ index + 1 }}</span>
+                      <span class="sdk-task-operation-name">{{ sdkOperationText(operation) }}</span>
+                    </div>
+                    <div class="sdk-task-operation-detail">
+                      <small v-if="sdkHasDownloadProgress(operation)">下载 {{ formatBytes(operation.downloaded_bytes) }}<template v-if="operation.total_bytes !== null && operation.total_bytes !== undefined"> / {{ formatBytes(operation.total_bytes) }}</template><template v-else> / 总大小未知</template> · {{ formatSpeed(operation.download_speed) }}</small>
+                      <small v-else>{{ operation.message || sdkTaskStageLabel(operation.stage) }}</small>
+                      <el-tag :type="sdkTaskOperationType(operation)" effect="plain" size="small">{{ sdkTaskOperationStatusLabel(operation.status) }}</el-tag>
+                    </div>
+                  </div>
+                </div>
+                <p v-if="sdkTaskState.error" class="sdk-task-error">{{ sdkTaskState.error.message }}</p>
+              </div>
+              <el-alert v-if="sdkError" :title="sdkError" type="error" :closable="false" show-icon />
+              <el-skeleton v-else-if="sdkLoading && !sdkState" :rows="5" animated />
+              <el-empty v-else-if="!sdkState" description="当前 Env 没有可用 SDK 索引" />
+              <template v-else>
+                <el-alert v-if="sdkState.available === false" :title="sdkState.error || '当前 Env 没有可用 SDK 索引'" type="warning" :closable="false" show-icon />
+                <el-empty v-if="sdkState.available === false" description="当前 Env 没有可用 SDK 索引" />
+                <div class="sdk-list">
+                  <div class="sdk-list-header" aria-hidden="true">
+                    <span>工具链</span><span>状态</span><span>启用</span><span>版本</span><span>安装状态</span>
+                  </div>
+                  <article v-for="item in sdkState.packages" :key="item.name" class="sdk-list-row">
+                    <div class="sdk-package-cell"><h2>{{ item.name }}</h2><p>{{ item.description }}</p></div>
+                    <div class="sdk-status-cell"><el-tag :type="item.state === 'installed' ? 'success' : item.state === 'disabled' ? 'info' : 'warning'" effect="plain">{{ sdkStateLabel(item.state) }}</el-tag></div>
+                    <div class="sdk-enable-cell">
+                      <el-checkbox
+                        :model-value="sdkSelection[item.name]?.enabled"
+                        :disabled="sdkBusy"
+                        @update:model-value="setSdkEnabled(item, $event)"
+                      >启用</el-checkbox>
+                    </div>
+                    <div class="sdk-version-cell">
+                      <el-select
+                        :model-value="sdkSelection[item.name]?.version"
+                        :disabled="!sdkSelection[item.name]?.enabled || sdkBusy"
+                        placeholder="选择版本"
+                        @update:model-value="setSdkVersion(item, $event)"
+                      >
+                        <el-option v-for="version in item.versions" :key="version.version" :label="version.version" :value="version.version" />
+                      </el-select>
+                    </div>
+                    <div class="sdk-meta-cell"><span>期望 {{ item.expected_version || '未选择' }}</span><span>实际 {{ item.installed_version || '未安装' }}</span></div>
+                  </article>
+                </div>
+                <div v-if="sdkPlanResult" class="sdk-plan">
+                  <div class="sdk-plan-heading"><strong>变更预览</strong><span>{{ sdkPlanResult.operations.length ? `${sdkPlanResult.operations.length} 项操作` : '无需变更' }}</span></div>
+                  <el-empty v-if="!sdkPlanResult.operations.length" :image-size="44" description="配置与已安装 SDK 一致" />
+                  <div v-else class="sdk-operation-list">
+                    <div v-for="operation in sdkPlanResult.operations" :key="`${operation.name}-${operation.action}`" class="sdk-operation">
+                      <span>{{ sdkOperationText(operation) }}</span>
+                      <el-tag :type="operation.action === 'remove' ? 'danger' : operation.action === 'switch' ? 'warning' : 'success'" effect="plain">{{ sdkActionLabel(operation.action) }}</el-tag>
+                    </div>
+                  </div>
+                  <el-alert v-if="sdkPlanResult.remove_confirmation.length" title="应用变更时将要求再次确认删除目录" type="warning" :closable="false" show-icon />
+                  <div class="sdk-plan-actions"><el-button :disabled="sdkBusy" @click="sdkPlanResult = null">取消</el-button><el-button class="sdk-primary-action sdk-action-button" type="primary" :loading="sdkBusy" :disabled="sdkBusy || !sdkPlanResult.operations.length" @click="applySdkPlan">应用更新</el-button></div>
+                </div>
+              </template>
+            </el-tab-pane>
+          </el-tabs>
         </section>
 
         <section v-else class="plugin-content">
@@ -869,6 +1444,24 @@ onBeforeUnmount(() => {
         </section>
       </main>
     </div>
+
+    <el-dialog v-model="toolchainEditorVisible" width="min(560px, calc(100vw - 28px))" :title="toolchainEditingName ? '编辑本地工具链' : '添加本地工具链'" align-center destroy-on-close @closed="resetToolchainEditor">
+      <el-form label-position="top" @submit.prevent="saveToolchain">
+        <el-form-item label="名称">
+          <el-input v-model="toolchainForm.name" placeholder="例如 arm-none-eabi-gcc" maxlength="120" />
+        </el-form-item>
+        <el-form-item label="工具链路径">
+          <el-input v-model="toolchainForm.path" placeholder="工具链 bin 目录或可执行文件所在目录" maxlength="2048" />
+        </el-form-item>
+        <el-form-item label="说明">
+          <el-input v-model="toolchainForm.description" type="textarea" :rows="2" maxlength="240" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button :disabled="toolchainBusy" @click="closeToolchainEditor">取消</el-button>
+        <el-button class="sdk-primary-action sdk-action-button" type="primary" :loading="toolchainBusy" :disabled="!toolchainForm.name.trim() || !toolchainForm.path.trim()" @click="saveToolchain">{{ toolchainEditingName ? '保存修改' : '保存配置' }}</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="detailVisible" width="min(680px, calc(100vw - 28px))" :show-close="false" align-center destroy-on-close>
       <template #header>
