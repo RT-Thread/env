@@ -13,7 +13,7 @@ import secrets
 import socket
 import threading
 import time
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from ..errors import PluginError, StateError, UsageError
 from ..backend import BackendUnavailableError
@@ -57,6 +57,7 @@ class WebUIApplication(object):
         static_root=None,
         launcher_dir=None,
         allow_remote_hosts=False,
+        initial_plugin=None,
     ):
         self.service = PluginService(env_root=env_root, launcher_dir=launcher_dir)
         self.service.paths.ensure()
@@ -71,6 +72,7 @@ class WebUIApplication(object):
         self.session_token = secrets.token_urlsafe(32)
         self.csrf_token = secrets.token_urlsafe(32)
         self.asset_token = secrets.token_urlsafe(32)
+        self.initial_plugin = initial_plugin.strip() if isinstance(initial_plugin, str) else None
         self.allow_remote_hosts = bool(allow_remote_hosts)
         self.uploads = {}
         self.upload_lock = threading.Lock()
@@ -383,6 +385,9 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
         self._dispatch('PUT')
 
+    def do_PATCH(self):
+        self._dispatch('PATCH')
+
     def do_DELETE(self):
         self._dispatch('DELETE')
 
@@ -399,12 +404,17 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 return
             parsed = urlparse(self.path)
             if parsed.path.startswith('/_launch/'):
-                self._launch(parsed.path)
+                self._launch(parsed)
                 return
             if method == 'GET' and parsed.path.startswith('/plugin-assets/') and not self._is_tokenized_backend_request(parsed.path):
                 self._tokenized_plugin_asset(parsed.path)
                 return
-            if not self.application.authenticated(self.headers.get('Cookie')):
+            authenticated = self.application.authenticated(self.headers.get('Cookie'))
+            # The tokenized asset URL is a session-scoped bearer capability.
+            # Sandboxed plugin frames cannot send Env's SameSite=Strict cookie,
+            # so allow their tokenized backend requests to reach the normal
+            # plugin and origin checks below.
+            if not authenticated and not self._is_tokenized_backend_request(parsed.path):
                 self._error(HTTPStatus.UNAUTHORIZED, 'authentication_required', 'open the URL printed by env webui')
                 return
             if method == 'GET' and self._is_backend_path(parsed.path) and self._is_websocket_request():
@@ -451,7 +461,8 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         except Exception:
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, 'internal_error', 'the WebUI request could not be completed')
 
-    def _launch(self, path):
+    def _launch(self, parsed):
+        path = parsed.path
         token = unquote(path[len('/_launch/'):])
         if not self.application.consume_launch(token):
             self._error(
@@ -461,7 +472,10 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             )
             return
         self.send_response(HTTPStatus.SEE_OTHER)
-        self.send_header('Location', '/')
+        location = '/'
+        if self.application.initial_plugin:
+            location += '?plugin=' + quote(self.application.initial_plugin, safe='')
+        self.send_header('Location', location)
         cookie = '%s=%s; HttpOnly; SameSite=Strict; Path=/' % (
             SESSION_COOKIE,
             self.application.session_token,
@@ -488,6 +502,10 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                     },
                 }
             )
+            return
+        if method == 'POST' and path == '/api/v1/shutdown':
+            self._json({'status': 'shutting_down'})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
             return
         if method == 'GET' and path == '/api/v1/market/status':
             self._json(self.application.market_status())
@@ -636,7 +654,14 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         return path.startswith('/plugins/') or path.startswith('/plugin-assets/')
 
     def _is_tokenized_backend_request(self, path):
-        return self._is_backend_request(path)
+        segments = [unquote(item) for item in path.split('/') if item]
+        return (
+            len(segments) >= 5
+            and segments[0] == 'plugin-assets'
+            and segments[3] == 'backend'
+            and hmac.compare_digest(segments[1], self.application.asset_token)
+            and self._is_backend_request(path)
+        )
 
     def _backend_target(self, parsed):
         segments = [unquote(item) for item in parsed.path.split('/') if item]
@@ -661,7 +686,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
     def _plugin_http_proxy(self, method, parsed):
         _plugin_id, port, target = self._backend_target(parsed)
         body = b''
-        if method in ('POST', 'PUT', 'DELETE'):
+        if method in ('POST', 'PUT', 'PATCH', 'DELETE'):
             body = self._read_body(256 * 1024 * 1024) if self.headers.get('Content-Length') else b''
         headers = {
             'Host': '127.0.0.1:%d' % port,
@@ -687,7 +712,12 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 continue
             self.send_header(name, value)
         self.send_header('Content-Length', str(len(content)))
+        # Sandboxed plugin iframes have an opaque origin. Chromium can omit the
+        # Origin header for a same-URL request from that iframe, while still
+        # requiring the response to opt into the serialized `null` origin.
         origin = self.headers.get('Origin')
+        if not origin:
+            origin = 'null'
         if origin in ('null', 'http://%s' % self.headers.get('Host')):
             self.send_header('Access-Control-Allow-Origin', origin)
             self.send_header('Access-Control-Allow-Credentials', 'true')
@@ -702,7 +732,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.NO_CONTENT)
         self.send_header('Access-Control-Allow-Origin', self.headers.get('Origin', 'null'))
         self.send_header('Access-Control-Allow-Credentials', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', self.headers.get('Access-Control-Request-Headers', 'content-type'))
         self.send_header('Access-Control-Max-Age', '300')
         self.send_header('Vary', 'Origin')
@@ -942,6 +972,8 @@ class WebUIServer(object):
         port=0,
         static_root=None,
         launcher_dir=None,
+        plugin_id=None,
+        initial_plugin=None,
     ):
         try:
             address = ipaddress.ip_address(host)
@@ -955,12 +987,15 @@ class WebUIServer(object):
                 raise UsageError("WebUI host must be a loopback address or 0.0.0.0")
         if int(port) < 0 or int(port) > 65535:
             raise UsageError("WebUI port must be between 0 and 65535")
+        if plugin_id is None:
+            plugin_id = initial_plugin
         self.application = WebUIApplication(
             env_root=env_root,
             workspace=workspace,
             static_root=static_root,
             launcher_dir=launcher_dir,
             allow_remote_hosts=allow_remote_hosts,
+            initial_plugin=plugin_id,
         )
         self.httpd = EnvWebUIHTTPServer((host, int(port)), self.application)
         bound_host, bound_port = self.httpd.server_address[:2]
@@ -969,6 +1004,8 @@ class WebUIServer(object):
         display_host = '[%s]' % bound_host if ':' in bound_host else bound_host
         self.url = 'http://%s:%d/' % (display_host, bound_port)
         self.launch_url = self.url + '_launch/' + self.application.launch_token
+        if self.application.initial_plugin:
+            self.launch_url += '?plugin=' + quote(self.application.initial_plugin, safe='')
         self.remote_access = allow_remote_hosts
         self._serving = False
 
