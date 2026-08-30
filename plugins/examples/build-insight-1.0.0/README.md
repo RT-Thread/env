@@ -36,9 +36,10 @@ wheel, static frontend resources, manifest, license and integrity inventory.
 ```text
 python env.py plugin install plugins/examples/prebuilt/org.rt-thread.build-insight-1.0.0-py3-none-any.epack --yes
 python env.py plugin doctor org.rt-thread.build-insight
-python env.py webui
+python env.py webui --plugin org.rt-thread.build-insight
 ```
 
 The package is unsigned, so interactive installation asks for confirmation.
 `--yes` is suitable for the documented local example only. After startup, open
-Build Insight from the installed-plugin navigation in Env WebUI.
+the Build Insight WebUI directly. Running `python env.py webui` without a
+plugin target opens the plugin center.

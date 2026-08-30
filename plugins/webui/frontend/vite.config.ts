@@ -12,9 +12,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@env-brand': fileURLToPath(new URL('../../../assets', import.meta.url)),
     },
   },
   test: {
-    include: ['src/**/*.test.js'],
+    include: ['src/**/*.test.ts'],
   },
 })

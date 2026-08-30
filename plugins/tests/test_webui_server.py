@@ -343,6 +343,26 @@ class WebUIServerTest(unittest.TestCase):
             build_opener(HTTPCookieProcessor(CookieJar())).open(self.server.launch_url)
         self.assertEqual(repeated.exception.code, 401)
 
+    def test_launch_target_redirects_to_plugin_view(self):
+        self.server.application.initial_plugin = 'org.example.build-insight'
+        with self.opener.open(self.server.launch_url) as response:
+            self.assertEqual(
+                response.geturl(),
+                self.server.url + '?plugin=org.example.build-insight',
+            )
+
+    def test_shutdown_endpoint_requires_csrf_and_stops_server(self):
+        self.authenticate()
+        with self.assertRaises(HTTPError) as denied:
+            self.request_json('/api/v1/shutdown', method='POST', body={}, csrf=False)
+        self.assertEqual(denied.exception.code, 403)
+
+        status, result = self.request_json('/api/v1/shutdown', method='POST', body={})
+        self.assertEqual(status, 200)
+        self.assertEqual(result, {'status': 'shutting_down'})
+        self.thread.join(timeout=2)
+        self.assertFalse(self.thread.is_alive())
+
     def test_host_and_upload_size_limits_are_enforced(self):
         host, port = self.server.httpd.server_address[:2]
         connection = HTTPConnection(host, port)
@@ -511,6 +531,31 @@ class WebUICommandTest(unittest.TestCase):
             port=args.port,
         )
         open_browser.assert_not_called()
+
+    def test_plugin_target_is_forwarded_to_server(self):
+        server = mock.Mock(
+            url='http://127.0.0.1:49152/',
+            launch_url='http://127.0.0.1:49152/_launch/token',
+            remote_access=False,
+        )
+        args = self.parse_webui('--plugin', 'org.example.build-insight', '--no-browser')
+        with mock.patch.object(cmd_webui, 'WebUIServer', return_value=server) as server_type:
+            args.func(args)
+        server_type.assert_called_once_with(
+            env_root=None,
+            workspace=os.getcwd(),
+            host='127.0.0.1',
+            port=0,
+            plugin_id='org.example.build-insight',
+        )
+
+    def test_installed_plugin_id_can_be_used_as_positional_target(self):
+        args = self.parse_webui('org.example.build-insight')
+        with mock.patch.object(cmd_webui, '_is_webui_plugin', return_value=True):
+            normalized = cmd_webui._normalize_args(args)
+        self.assertEqual(normalized.action, 'run')
+        self.assertEqual(normalized.plugin, 'org.example.build-insight')
+        self.assertEqual(normalized.workspace, os.getcwd())
 
     def test_start_status_stop_lifecycle(self):
         temporary = tempfile.TemporaryDirectory()

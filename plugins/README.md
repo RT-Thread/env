@@ -2,8 +2,9 @@
 
 For the Chinese documentation, see [README.zh-CN.md](README.zh-CN.md).
 
-This directory contains the Env plugin lifecycle, command runtime and local
-WebUI. Plugins are imported from local `.epack` files. Env validates, installs,
+RT-Thread Env is a command-line toolkit for RT-Thread development. This
+directory contains its plugin lifecycle, command runtime and local WebUI.
+Plugins are imported from local `.epack` files. Env validates, installs,
 upgrades, enables, disables, diagnoses and uninstalls them. CLI and browser
 operations share the same state and `PluginService` facade.
 
@@ -291,7 +292,10 @@ Starting an already running service prints its existing URL and does not start
 a second server. The service state is kept under
 `${ENV_ROOT}/var/plugins/runtime/`. The legacy `webui [workspace]` form remains
 available when a foreground process is desired. Use `--no-browser` to suppress
-browser launch, or `--browser` to force it in an SSH session.
+browser launch, or `--browser` to force it in an SSH session. To enter an
+installed and enabled WebUI plugin directly after startup, pass
+`--plugin <plugin-id>` (also supported as `webui <plugin-id>` and with
+`webui start`); without it, the plugin center is shown.
 
 Plugin pages run in an iframe without `allow-same-origin`. The host passes theme
 and language through versioned `postMessage` messages. Pages cannot read host

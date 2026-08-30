@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ArrowUp,
@@ -8,6 +8,8 @@ import {
   Cpu,
   DataAnalysis,
   Delete,
+  Expand,
+  Fold,
   Grid,
   InfoFilled,
   Lock,
@@ -28,83 +30,137 @@ import {
   WarningFilled,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { api, setCsrfToken } from './api.js'
+import { api, setCsrfToken } from './api'
+import {
+  permissionLabels,
+  stageLabels,
+} from './constants'
+import {
+  explainMarketError,
+  formatBytes,
+  formatSpeed,
+  reasonText,
+  requestedPluginId,
+  runtimeText,
+  sdkActionLabel,
+  sdkHasDownloadProgress,
+  sdkStateLabel,
+  sdkTaskIsIndeterminate,
+  sdkTaskOperationStatusLabel,
+  sdkTaskOperationType,
+  sdkTaskStageLabel,
+  sdkTaskTitle,
+  syncViewUrl,
+} from './utils/formatters'
+import {
+  blockingReasons,
+  canInstallFromMarket,
+  canUninstallFromMarket,
+  canUpgradeFromMarket,
+  capabilityLabel,
+  commandDescription,
+  commandNames,
+  compatibilityText,
+  diagnosisArtifacts,
+  diagnosisOf,
+  diagnosisReasons,
+  iconFor,
+  installedPluginFor as findInstalledPlugin,
+  marketActionLabel,
+  marketStateClass,
+  marketStateLabel,
+} from './utils/plugins'
+import type {
+  ContextMenuSnapshot,
+  DoctorResult,
+  EnvPlugin,
+  MarketCatalog,
+  MarketPrepareError,
+  MarketStatus,
+  Session,
+  ToolchainForm,
+  ToolchainSnapshot,
+  UploadSummary,
+} from './types/api'
+import { useSdk } from './composables/useSdk'
+import envLogo from '@env-brand/env.png'
 
-const session = ref(null)
-const installed = ref([])
+const session = ref<Session | null>(null)
+const installed = ref<EnvPlugin[]>([])
 const loading = ref(true)
 const actionBusy = ref(false)
 const sidebarOpen = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem('env-sidebar-collapsed') === 'true')
 const currentView = ref('plugins')
-const pluginTab = ref('local')
+const closing = ref(false)
+const pluginTab = ref('installed')
 const settingsTab = ref('general')
-const theme = ref(localStorage.getItem('env-theme') || 'light')
+const theme = ref<'light' | 'dark'>((localStorage.getItem('env-theme') as 'light' | 'dark') || 'light')
 const detailVisible = ref(false)
-const detailPlugin = ref(null)
+const detailPlugin = ref<EnvPlugin | null>(null)
 const marketQuery = ref('')
 const marketSort = ref('updated')
-const marketCatalog = ref({ items: [], total: 0 })
+const marketCatalog = ref<MarketCatalog>({ items: [], total: 0 })
 const marketLoading = ref(false)
 const marketError = ref('')
-const marketStatus = ref(null)
-const marketDetail = ref(null)
+const marketStatus = ref<MarketStatus | null>(null)
+const marketDetail = ref<EnvPlugin | null>(null)
 const marketDetailVisible = ref(false)
-const marketPrepare = ref(null)
+const marketPrepare = ref<UploadSummary | null>(null)
 const marketPrepareVisible = ref(false)
 const marketUnsignedConsent = ref(false)
 const marketPrepareStage = ref('准备在线插件包')
-const marketPrepareError = ref(null)
-const importFile = ref(null)
-const importSummary = ref(null)
+const marketPrepareError = ref<MarketPrepareError | null>(null)
+const importFile = ref<File | null>(null)
+const importSummary = ref<UploadSummary | null>(null)
 const importUnsignedConsent = ref(false)
 const importStage = ref('选择本地包')
 const upgradeVisible = ref(false)
-const upgradeTarget = ref(null)
-const upgradeFile = ref(null)
-const upgradeSummary = ref(null)
+const upgradeTarget = ref<EnvPlugin | null>(null)
+const upgradeFile = ref<File | null>(null)
+const upgradeSummary = ref<UploadSummary | null>(null)
 const upgradeUnsignedConsent = ref(false)
 const upgradeStage = ref('选择本地包')
 const manageVisible = ref(false)
-const managedPlugin = ref(null)
-const permissionSelection = ref([])
-const diagnostic = ref(null)
+const managedPlugin = ref<EnvPlugin | null>(null)
+const permissionSelection = ref<string[]>([])
+const diagnostic = ref<DoctorResult | null>(null)
 const uninstallVisible = ref(false)
 const purgeData = ref(false)
-const iframeState = ref('idle')
-const iframeElement = ref(null)
-const sdkState = ref(null)
-const sdkSelection = ref({})
-const sdkLoading = ref(false)
-const sdkBusy = ref(false)
-const sdkCancelBusy = ref(false)
-const sdkError = ref('')
-const sdkPlanResult = ref(null)
-const sdkTaskState = ref(null)
-const toolchainState = ref(null)
+const iframeState = ref<'idle' | 'checking' | 'loading' | 'ready' | 'timeout' | 'error'>('idle')
+const iframeElement = ref<HTMLIFrameElement | null>(null)
+const toolchainState = ref<ToolchainSnapshot | null>(null)
 const toolchainLoading = ref(false)
 const toolchainBusy = ref(false)
 const toolchainEditorVisible = ref(false)
-const toolchainEditingName = ref(null)
-const toolchainForm = ref({ name: '', path: '', description: '' })
+const toolchainEditingName = ref<string | null>(null)
+const toolchainForm = ref<ToolchainForm>({ name: '', path: '', description: '' })
 const toolchainError = ref('')
-const contextMenuState = ref(null)
+const contextMenuState = ref<ContextMenuSnapshot | null>(null)
 const contextMenuBusy = ref(false)
-let iframeTimer
+let iframeTimer: number | undefined
 
-const permissionLabels = {
-  'workspace.read': '读取工作区',
-  'workspace.write': '读写工作区',
-  'process.execute': '执行本机进程',
-  'network.access': '访问网络',
-  'credentials.use': '使用凭据',
-  'device.serial': '访问串行设备',
-}
+const {
+  sdkState,
+  sdkSelection,
+  sdkLoading,
+  sdkBusy,
+  sdkCancelBusy,
+  sdkError,
+  sdkPlanResult,
+  sdkTaskState,
+  sdkDirty,
+  loadSdk,
+  setSdkEnabled,
+  setSdkVersion,
+  sdkOperationText,
+  previewSdkPlan,
+  applySdkPlan,
+  cancelSdkTask,
+} = useSdk()
 
-const iconMap = {
-  'chart-no-axes-combined': DataAnalysis,
-  'shield-check': Lock,
-  cpu: Cpu,
-  tools: Tools,
+function installedPluginFor(plugin?: Partial<EnvPlugin> | null): EnvPlugin | undefined {
+  return findInstalledPlugin(installed.value, plugin)
 }
 
 const marketEnabled = computed(() => Boolean(session.value?.market?.enabled))
@@ -117,239 +173,55 @@ const marketSourceLabel = computed(() => {
   if (!marketEnabled.value) return '未配置'
   return session.value.market.source === 'env' ? '环境变量' : '配置文件'
 })
-const sdkDirty = computed(() => {
-  if (!sdkState.value) return false
-  return sdkState.value.packages.some((item) => {
-    const selected = sdkSelection.value[item.name]
-    if (!selected) return false
-    const configChanged = selected.enabled !== item.enabled || (selected.enabled && selected.version !== item.expected_version)
-    // A package can be out of sync even when the UI selection mirrors .config:
-    // for example, after an interrupted download or a package removed manually.
-    return configChanged || item.state === 'selected_not_installed' || item.state === 'version_change' || item.state === 'pending_remove'
-  })
-})
 
-function iconFor(plugin) {
-  return iconMap[plugin?.webui?.icon] || (plugin?.commands?.length ? Tools : Box)
+function toggleSidebarCollapsed() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  localStorage.setItem('env-sidebar-collapsed', String(sidebarCollapsed.value))
 }
 
-function compatibilityText(plugin) {
-  if (plugin.compatibility_issues?.length) return plugin.compatibility_issues[0]
-  const platforms = plugin.compatibility?.platforms || []
-  return platforms.includes('any') ? 'Windows · Linux · macOS' : platforms.join(' · ')
-}
-
-function commandNames(plugin) {
-  return (plugin.commands || []).map((command) => (
-    typeof command === 'string' ? command : command.name
-  ))
-}
-
-function commandDescription(command) {
-  return typeof command === 'string' ? '插件命令入口' : command.description
-}
-
-function capabilityLabel(name) {
-  return { cli: 'CLI', webui: 'WebUI', health_check: '健康检查' }[name] || name
-}
-
-function marketActionLabel(item) {
-  return {
-    install: '安装',
-    upgrade: '更新',
-    installed: '已安装',
-    incompatible: '当前环境无兼容制品',
-  }[item?.action] || '安装'
-}
-
-function installedPluginFor(plugin) {
-  return installed.value.find((item) => item.id === plugin?.id)
-}
-
-function canInstallFromMarket(plugin) {
-  return plugin?.action === 'install'
-}
-
-function canUpgradeFromMarket(plugin) {
-  return plugin?.installed && plugin.action === 'upgrade'
-}
-
-function canUninstallFromMarket(plugin) {
-  return Boolean(plugin?.installed)
-}
-
-function marketStateClass(item) {
-  if (item?.action === 'upgrade') return 'update'
-  if (item?.action === 'installed') return 'open'
-  if (item?.action === 'incompatible') return 'incompatible'
-  return 'disabled'
-}
-
-function marketStateLabel(item) {
-  if (item?.action === 'upgrade') return '可更新'
-  if (item?.action === 'installed') return '已安装'
-  if (item?.action === 'incompatible') return '不兼容'
-  return `v${item?.latest_version || ''}`
-}
-
-const stageLabels = {
-  resolve: '解析兼容制品',
-  download: '下载插件包',
-  inspect: '本机检查插件包',
-  install: '写入本机安装状态',
-}
-
-const sdkStateLabels = {
-  disabled: '未启用',
-  selected_not_installed: '待安装',
-  installed: '已安装',
-  version_change: '待切换版本',
-  pending_remove: '待移除',
-  installing: '安装中',
-  extracting: '展开中',
-  failed: '失败',
-  cancelled: '已取消',
-}
-
-const sdkActionLabels = {
-  install: '安装',
-  switch: '切换版本',
-  remove: '移除',
-  disable: '禁用',
-  enable: '启用',
-  write_config: '写入配置',
-  refresh: '刷新状态',
-}
-
-const sdkTaskStageLabels = {
-  queued: '等待开始',
-  preparing: '准备操作',
-  downloading: '下载中',
-  downloaded: '下载完成',
-  extracting: '展开中',
-  staged: '已准备',
-  writing_config: '写入配置',
-  refreshing: '刷新状态',
-  completed: '已完成',
-  failed: '失败',
-  cancelled: '已取消',
-}
-
-const sdkTaskOperationStatusLabels = {
-  pending: '等待中',
-  running: '进行中',
-  staged: '已准备',
-  succeeded: '已完成',
-  failed: '失败',
-  skipped: '未执行',
-  cancelled: '已取消',
-}
-
-function sdkStateLabel(state) {
-  return sdkStateLabels[state] || state
-}
-
-function sdkActionLabel(action) {
-  return sdkActionLabels[action] || action
-}
-
-function sdkTaskStageLabel(stage) {
-  return sdkTaskStageLabels[stage] || stage || '处理中'
-}
-
-function sdkTaskOperationStatusLabel(status) {
-  return sdkTaskOperationStatusLabels[status] || status || '等待中'
-}
-
-function sdkTaskOperationType(operation) {
-  if (operation?.status === 'failed') return 'danger'
-  if (operation?.status === 'succeeded') return 'success'
-  if (operation?.status === 'skipped' || operation?.status === 'cancelled') return 'info'
-  return 'warning'
-}
-
-function sdkTaskIsIndeterminate(task) {
-  return task?.status === 'running' && ['downloading', 'extracting'].includes(task.stage)
-}
-
-function sdkHasDownloadProgress(task) {
-  const downloadStage = ['downloading', 'downloaded', 'extracting', 'staged', 'completed', 'cancelled'].includes(task?.stage)
-  return downloadStage && (Number.isFinite(task?.downloaded_bytes) || Number.isFinite(task?.total_bytes))
-}
-
-function formatBytes(value) {
-  if (!Number.isFinite(value) || value < 0) return '未知'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let amount = value
-  let unit = 0
-  while (amount >= 1024 && unit < units.length - 1) {
-    amount /= 1024
-    unit += 1
+function closeBrowserWindow() {
+  try {
+    // Browsers only allow window.close() for script-opened windows. Opening the
+    // current browsing context first enables that path where supported.
+    window.open('', '_self')
+    window.close()
+  } catch {
+    // Fall through to the blank-page fallback below.
   }
-  const precision = unit === 0 || amount >= 10 || Number.isInteger(amount) ? 0 : 1
-  return `${amount.toFixed(precision)} ${units[unit]}`
+  window.setTimeout(() => {
+    if (window.closed) return
+    try {
+      window.location.replace('about:blank')
+    } catch {
+      // The browser may have closed the context between the checks.
+    }
+  }, 150)
 }
 
-function formatSpeed(value) {
-  if (!Number.isFinite(value) || value <= 0) return '计算中'
-  return `${formatBytes(value)}/s`
-}
-
-function sdkTaskTitle(task) {
-  if (task?.status === 'failed') return '更新失败'
-  if (task?.status === 'succeeded') return '更新完成'
-  if (task?.status === 'cancelled') return '更新已取消'
-  if (task?.status === 'queued') return '等待更新'
-  return '正在更新'
-}
-
-const marketReasonLabels = {
-  yanked: '插件或版本已从市场撤回，不能再下载',
-  incompatible: '当前环境没有可安装的制品',
-  no_versions: '市场中没有已发布版本',
-  already_latest: '本机已是当前环境可安装的最新版本',
-  ok: '当前环境可以安装',
-  checksum_mismatch: '下载文件校验失败，文件可能损坏或不完整',
-  market_unreachable: '无法连接插件市场',
-  payload_too_large: '插件包超过大小限制',
-  market_invalid_response: '插件市场返回了无法解析的数据',
-  market_redirect_denied: '插件市场重定向到了未配置的地址',
-  invalid_package: '下载到的插件包无法通过本机检查',
-  stateerror: '本机插件状态不允许这次安装或更新',
-  compatibilityerror: '插件包与当前 Env / Python / 平台不兼容',
-  packageerror: '插件包结构或完整性检查失败',
-  usageerror: '安装请求无效',
-}
-
-function explainMarketError(error) {
-  if (!error) return ''
-  return marketReasonLabels[error.code] || error.message || '操作失败'
-}
-
-function diagnosisOf(plugin) {
-  return plugin?.diagnosis || plugin?.details?.diagnosis || null
-}
-
-function diagnosisReasons(plugin) {
-  const diagnosis = diagnosisOf(plugin)
-  return diagnosis?.reasons || []
-}
-
-function blockingReasons(plugin) {
-  return diagnosisReasons(plugin).filter((reason) => reason.code !== 'already_latest')
-}
-
-function diagnosisArtifacts(plugin) {
-  return diagnosisOf(plugin)?.artifacts || []
-}
-
-function runtimeText(runtime) {
-  if (!runtime) return ''
-  return `Env ${runtime.env} · Python ${runtime.python} · ${runtime.platform}/${runtime.architecture} · ${runtime.implementation}/${runtime.abi}`
-}
-
-function reasonText(reason) {
-  return marketReasonLabels[reason?.code] || reason?.message || ''
+async function confirmCloseWebUI() {
+  if (closing.value) return
+  try {
+    await ElMessageBox.confirm(
+      '关闭后 Env WebUI 服务将退出，当前页面也会关闭。是否继续？',
+      '关闭 WebUI',
+      {
+        type: 'warning',
+        confirmButtonText: '关闭并退出',
+        cancelButtonText: '取消',
+        closeOnClickModal: false,
+      },
+    )
+  } catch {
+    return
+  }
+  closing.value = true
+  try {
+    await api.shutdown()
+    closeBrowserWindow()
+  } catch (error) {
+    closing.value = false
+    ElMessage.error(`关闭 WebUI 失败：${error.message}`)
+  }
 }
 
 function mergeCatalogItem(detail) {
@@ -372,7 +244,6 @@ async function bootstrap() {
   try {
     session.value = await api.session()
     setCsrfToken(session.value.csrf_token)
-    if (session.value.market?.enabled) pluginTab.value = 'online'
     await reloadAll()
   } catch (error) {
     ElMessage.error(error.message)
@@ -384,6 +255,11 @@ async function bootstrap() {
 async function reloadAll() {
   const installedItems = await api.plugins()
   installed.value = installedItems
+  if (currentView.value === 'plugins') {
+    const requested = installedItems.find((item) => item.id === requestedPluginId())
+    if (requested?.enabled && requested.webui) go(requested.id)
+    else if (requestedPluginId()) syncViewUrl('plugins')
+  }
   if (currentView.value !== 'plugins' && currentView.value !== 'settings') {
     const current = installedItems.find((item) => item.id === currentView.value)
     if (!current?.enabled || !current.webui) currentView.value = 'plugins'
@@ -509,146 +385,6 @@ async function setContextMenu(enabled) {
   }
 }
 
-async function loadSdk() {
-  if (sdkBusy.value) return
-  sdkLoading.value = true
-  sdkError.value = ''
-  try {
-    const state = await api.sdk()
-    sdkState.value = state
-    const selection = {}
-    for (const item of state.packages || []) {
-      selection[item.name] = {
-        enabled: item.enabled,
-        version: item.expected_version || item.versions?.[0]?.version || null,
-      }
-    }
-    sdkSelection.value = selection
-    sdkPlanResult.value = null
-    sdkTaskState.value = null
-  } catch (error) {
-    sdkError.value = error.message
-  } finally {
-    sdkLoading.value = false
-  }
-}
-
-function setSdkEnabled(item, enabled) {
-  const selected = sdkSelection.value[item.name]
-  if (!selected) return
-  selected.enabled = enabled
-  if (enabled && !selected.version) selected.version = item.versions?.[0]?.version || null
-  sdkPlanResult.value = null
-}
-
-function setSdkVersion(item, version) {
-  const selected = sdkSelection.value[item.name]
-  if (!selected) return
-  selected.version = version
-  sdkPlanResult.value = null
-}
-
-function sdkRequestPackages() {
-  return (sdkState.value?.packages || []).map((item) => {
-    const selected = sdkSelection.value[item.name] || {}
-    return { name: item.name, enabled: Boolean(selected.enabled), version: selected.enabled ? selected.version : null }
-  })
-}
-
-function sdkOperationText(operation) {
-  if (operation.action === 'remove') return `${operation.name} · 移除 ${operation.version}`
-  if (operation.action === 'switch') return `${operation.name} · ${operation.from_version} → ${operation.to_version}`
-  if (operation.action === 'install') return `${operation.name} · 安装 ${operation.to_version}`
-  if (operation.action === 'disable') return `${operation.name} · 禁用`
-  return `${operation.name} · 启用 ${operation.version || ''}`
-}
-
-async function previewSdkPlan() {
-  if (!sdkState.value || sdkBusy.value) return
-  sdkBusy.value = true
-  try {
-    sdkPlanResult.value = await api.sdkPlan(sdkRequestPackages())
-    sdkTaskState.value = null
-  } catch (error) {
-    sdkPlanResult.value = null
-    ElMessage.error(error.message)
-  } finally {
-    sdkBusy.value = false
-  }
-}
-
-async function applySdkPlan() {
-  if (!sdkPlanResult.value || sdkBusy.value) return
-  const removals = sdkPlanResult.value.remove_confirmation || []
-  if (removals.length) {
-    try {
-      await ElMessageBox.confirm(
-        `本次操作将删除 ${removals.join('、')} 的已安装目录，是否继续？`,
-        '确认删除 SDK 包',
-        { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' },
-      )
-    } catch {
-      return
-    }
-  }
-  sdkBusy.value = true
-  sdkTaskState.value = null
-  try {
-    const task = await api.sdkApply(sdkPlanResult.value.plan_id, removals)
-    sdkTaskState.value = task
-    let current = task
-    while (current.status === 'queued' || current.status === 'running') {
-      await new Promise((resolve) => window.setTimeout(resolve, 180))
-      current = await api.sdkTask(task.task_id)
-      sdkTaskState.value = current
-    }
-    if (current.status === 'succeeded') {
-      sdkState.value = current.snapshot
-      const selection = {}
-      for (const item of current.snapshot.packages || []) {
-        selection[item.name] = { enabled: item.enabled, version: item.expected_version || item.versions?.[0]?.version || null }
-      }
-      sdkSelection.value = selection
-      sdkPlanResult.value = null
-      ElMessage.success('SDK 配置已更新')
-    } else if (current.status === 'cancelled') {
-      // The manager restores the original config and directories, and keeps
-      // the plan available so the user can retry without rebuilding it.
-      ElMessage.info('SDK 更新已取消，未应用变更')
-    } else {
-      sdkPlanResult.value = null
-      ElMessage.error(current.error?.message || 'SDK 更新失败')
-    }
-  } catch (error) {
-    if (sdkTaskState.value) {
-      sdkTaskState.value = {
-        ...sdkTaskState.value,
-        status: 'failed',
-        stage: 'failed',
-        message: `无法读取 SDK 更新进度：${error.message}`,
-        error: { code: error.code || 'task_poll_failed', message: error.message },
-      }
-    }
-    ElMessage.error(error.message)
-    if (error.code === 'stateerror') await loadSdk()
-  } finally {
-    sdkBusy.value = false
-  }
-}
-
-async function cancelSdkTask() {
-  const task = sdkTaskState.value
-  if (!task || !['queued', 'running'].includes(task.status) || sdkCancelBusy.value) return
-  sdkCancelBusy.value = true
-  try {
-    sdkTaskState.value = await api.sdkCancelTask(task.task_id)
-  } catch (error) {
-    ElMessage.error(error.message)
-  } finally {
-    sdkCancelBusy.value = false
-  }
-}
-
 async function loadMarket() {
   if (!marketEnabled.value) return
   marketLoading.value = true
@@ -687,6 +423,7 @@ watch(pluginTab, (value) => {
 function go(view) {
   currentView.value = view
   sidebarOpen.value = false
+  syncViewUrl(view)
   if (view !== 'plugins' && view !== 'settings') {
     iframeState.value = 'checking'
     api.doctor(view).then((result) => {
@@ -1005,11 +742,22 @@ onBeforeUnmount(() => {
 
 <template>
   <el-config-provider>
-    <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen }" v-loading="loading">
-      <aside class="sidebar">
+    <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen, 'sidebar-collapsed': sidebarCollapsed }" v-loading="loading">
+      <aside id="env-sidebar" class="sidebar">
         <div class="brand">
-          <span class="brand-mark">RT</span>
-          <div><strong>RT-Thread Env</strong><small>Plugin Platform</small></div>
+          <img class="brand-logo" :src="envLogo" alt="RT-Thread Env" />
+          <el-tooltip :content="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'">
+            <el-button
+              class="sidebar-toggle"
+              text
+              circle
+              :icon="sidebarCollapsed ? Expand : Fold"
+              :aria-label="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'"
+              :aria-expanded="!sidebarCollapsed"
+              aria-controls="env-sidebar"
+              @click="toggleSidebarCollapsed"
+            />
+          </el-tooltip>
           <el-button class="mobile-close" text circle :icon="Close" aria-label="关闭导航" @click="sidebarOpen = false" />
         </div>
 
@@ -1020,6 +768,7 @@ onBeforeUnmount(() => {
             :key="plugin.id"
             class="nav-entry"
             :class="{ active: currentView === plugin.id }"
+            :title="sidebarCollapsed ? plugin.name : undefined"
             @click="go(plugin.id)"
           >
             <span class="nav-icon"><component :is="iconFor(plugin)" /></span>
@@ -1030,10 +779,10 @@ onBeforeUnmount(() => {
         </nav>
 
         <div class="sidebar-footer">
-          <button class="nav-entry footer-entry" :class="{ active: currentView === 'plugins' }" @click="go('plugins')">
+          <button class="nav-entry footer-entry" :class="{ active: currentView === 'plugins' }" aria-label="插件中心" @click="go('plugins')">
             <span class="nav-icon"><Grid /></span><span>插件中心</span>
           </button>
-          <button class="nav-entry" :class="{ active: currentView === 'settings' }" @click="go('settings')">
+          <button class="nav-entry" :class="{ active: currentView === 'settings' }" aria-label="设置" @click="go('settings')">
             <span class="nav-icon"><Setting /></span><span>设置</span>
           </button>
         </div>
@@ -1048,6 +797,9 @@ onBeforeUnmount(() => {
           <span class="core-status"><i></i>Env Core 已连接</span>
           <el-tooltip :content="theme === 'light' ? '切换深色主题' : '切换浅色主题'">
             <el-button text circle :icon="theme === 'light' ? Moon : Sunny" aria-label="切换主题" @click="theme = theme === 'light' ? 'dark' : 'light'" />
+          </el-tooltip>
+          <el-tooltip content="关闭 WebUI">
+            <el-button text circle :icon="Close" aria-label="关闭 WebUI" :loading="closing" :disabled="closing" @click="confirmCloseWebUI" />
           </el-tooltip>
           <span class="avatar">ENV</span>
         </header>
@@ -1064,6 +816,39 @@ onBeforeUnmount(() => {
           </div>
 
           <el-tabs v-model="pluginTab" class="plugin-tabs">
+            <el-tab-pane label="已安装" name="installed">
+              <div v-if="installed.length" class="plugin-grid installed-grid">
+                <article v-for="plugin in installed" :key="plugin.id" class="plugin-card installed-card">
+                  <div class="card-heading">
+                    <span class="plugin-icon"><component :is="iconFor(plugin)" /></span>
+                    <div><h2>{{ plugin.name }}</h2><p>{{ plugin.author.name }} · v{{ plugin.version }}</p></div>
+                    <span class="state" :class="plugin.enabled ? 'open' : 'disabled'">{{ plugin.enabled ? '已启用' : '已禁用' }}</span>
+                  </div>
+                  <p class="description">{{ plugin.description }}</p>
+                  <div class="metadata">
+                    <span>{{ plugin.webui ? 'WebUI' : 'CLI' }}</span>
+                    <span>{{ commandNames(plugin).join(' · ') || '无命令入口' }}</span>
+                    <span>{{ plugin.signing_status === 'unsigned' ? '未签名' : '签名已验证' }}</span>
+                  </div>
+                  <div class="card-actions">
+                    <el-button @click="showDetail(plugin)">详情</el-button>
+                    <el-button v-if="plugin.webui && plugin.enabled" :icon="Platform" @click="go(plugin.id)">打开</el-button>
+                    <el-button :icon="Operation" @click="openManage(plugin)">管理</el-button>
+                    <el-dropdown trigger="click">
+                      <el-button :icon="MoreFilled" circle aria-label="更多插件操作" />
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item :icon="SwitchButton" @click="togglePlugin(plugin)">{{ plugin.enabled ? '禁用' : '启用' }}</el-dropdown-item>
+                          <el-dropdown-item :icon="Delete" divided @click="confirmUninstall(plugin)">卸载</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
+                  </div>
+                </article>
+              </div>
+              <el-empty v-else description="当前没有已安装插件" />
+            </el-tab-pane>
+
             <el-tab-pane v-if="marketEnabled" label="在线插件" name="online">
               <div class="market-toolbar">
                 <el-input
@@ -1182,38 +967,6 @@ onBeforeUnmount(() => {
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="已安装" name="installed">
-              <div v-if="installed.length" class="plugin-grid installed-grid">
-                <article v-for="plugin in installed" :key="plugin.id" class="plugin-card installed-card">
-                  <div class="card-heading">
-                    <span class="plugin-icon"><component :is="iconFor(plugin)" /></span>
-                    <div><h2>{{ plugin.name }}</h2><p>{{ plugin.author.name }} · v{{ plugin.version }}</p></div>
-                    <span class="state" :class="plugin.enabled ? 'open' : 'disabled'">{{ plugin.enabled ? '已启用' : '已禁用' }}</span>
-                  </div>
-                  <p class="description">{{ plugin.description }}</p>
-                  <div class="metadata">
-                    <span>{{ plugin.webui ? 'WebUI' : 'CLI' }}</span>
-                    <span>{{ commandNames(plugin).join(' · ') || '无命令入口' }}</span>
-                    <span>{{ plugin.signing_status === 'unsigned' ? '未签名' : '签名已验证' }}</span>
-                  </div>
-                  <div class="card-actions">
-                    <el-button @click="showDetail(plugin)">详情</el-button>
-                    <el-button v-if="plugin.webui && plugin.enabled" :icon="Platform" @click="go(plugin.id)">打开</el-button>
-                    <el-button :icon="Operation" @click="openManage(plugin)">管理</el-button>
-                    <el-dropdown trigger="click">
-                      <el-button :icon="MoreFilled" circle aria-label="更多插件操作" />
-                      <template #dropdown>
-                        <el-dropdown-menu>
-                          <el-dropdown-item :icon="SwitchButton" @click="togglePlugin(plugin)">{{ plugin.enabled ? '禁用' : '启用' }}</el-dropdown-item>
-                          <el-dropdown-item :icon="Delete" divided @click="confirmUninstall(plugin)">卸载</el-dropdown-item>
-                        </el-dropdown-menu>
-                      </template>
-                    </el-dropdown>
-                  </div>
-                </article>
-              </div>
-              <el-empty v-else description="当前没有已安装插件" />
-            </el-tab-pane>
           </el-tabs>
         </section>
 

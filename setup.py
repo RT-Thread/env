@@ -5,7 +5,7 @@ env_name, env_ver = get_rt_env_version()
 setup(
     name='env',
     version=env_ver,
-    description=env_name,
+    description='A command-line toolkit for RT-Thread development.',
     url='https://github.com/RT-Thread/env.git',
     author='RT-Thread Development Team',
     author_email='rt-thread@rt-thread.org',

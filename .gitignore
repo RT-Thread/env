@@ -112,3 +112,6 @@ sdk_cfg.json
 plugins/webui/frontend/node_modules/
 plugins/webui/frontend/playwright-report/
 plugins/webui/frontend/test-results/
+
+docs
+documentation

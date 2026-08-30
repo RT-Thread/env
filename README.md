@@ -1,14 +1,21 @@
-# Python Scripts for RT-Thread Env
+<p align="center">
+  <img src="assets/env.png" alt="RT-Thread Env" width="406">
+</p>
+
+# RT-Thread Env
+
+> A command-line toolkit for RT-Thread development.
 
 > WARNING
-> 
+>
 > [env v2.0](https://github.com/RT-Thread/env/tree/master) and [env-windows v2.0](https://github.com/RT-Thread/env-windows/tree/v2.0.0) only **FULL SUPPORT** RT-Thread > v5.1.0 or [master](https://github.com/rt-thread/rt-thread) branch. if you work on RT-Thread <= v5.1.0, please use [env v1.5.x](https://github.com/RT-Thread/env/tree/v1.5.x) for linux, [env-windows v1.5.x](https://github.com/RT-Thread/env-windows/tree/v1.5.2) for windows
 >
 > env v2.0 has made the following important changes:
+>
 > - Upgrading Python version from v2 to v3
 > - Replacing kconfig-frontends with Python kconfiglib
 >
->  env v2.0 require python kconfiglib (install by `pip install kconfiglib`), but env v1.5.x confilt with kconfiglib (please run `pip uninstall kconfiglib`)
+> env v2.0 require python kconfiglib (install by `pip install kconfiglib`), but env v1.5.x confilt with kconfiglib (please run `pip uninstall kconfiglib`)
 
 ## Usage under Linux
 
@@ -49,7 +56,7 @@ prompt.
 
 ### Use Env
 
-Please see: <https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig>
+Please see: [https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig](https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig)
 
 ## Usage under Windows
 

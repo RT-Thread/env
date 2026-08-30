@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 from plugins.errors import PluginError, UsageError
 from plugins.paths import PluginPaths
+from plugins.service import PluginService
 from plugins.webui.server import WebUIServer
 
 
@@ -118,6 +119,16 @@ def _server_online(state):
         return False
 
 
+def _is_webui_plugin(plugin_id, env_root=None):
+    if not isinstance(plugin_id, str) or not plugin_id.strip():
+        return False
+    try:
+        plugin = PluginService(env_root=env_root).info(plugin_id.strip())
+    except (PluginError, OSError):
+        return False
+    return bool(plugin.get('enabled') and plugin.get('webui'))
+
+
 def _current_status(path):
     state = _load_state(path)
     if state is None:
@@ -135,17 +146,36 @@ def _current_status(path):
 def _normalize_args(args):
     target = getattr(args, 'target', None)
     extra_workspace = getattr(args, 'workspace_arg', None)
+    plugin = getattr(args, 'plugin', None)
+    env_root = getattr(args, 'env_root', None)
     if target in WEBUI_ACTIONS:
+        if plugin and target in ('stop', 'status'):
+            raise UsageError('%s does not accept a plugin target' % target)
         if extra_workspace is not None and target != 'start':
             raise UsageError('%s does not accept a workspace argument' % target)
         args.action = target
-        args.workspace = extra_workspace or os.getcwd()
+        if (
+            target == 'start'
+            and not plugin
+            and extra_workspace
+            and not os.path.isdir(extra_workspace)
+            and _is_webui_plugin(extra_workspace, env_root)
+        ):
+            plugin = extra_workspace.strip()
+            args.workspace = os.getcwd()
+        else:
+            args.workspace = extra_workspace or os.getcwd()
     else:
         if extra_workspace is not None:
             raise UsageError('WebUI accepts at most one workspace argument')
         args.action = 'run'
-        args.workspace = target or os.getcwd()
+        if target and not plugin and not os.path.isdir(target) and _is_webui_plugin(target, env_root):
+            plugin = target.strip()
+            args.workspace = os.getcwd()
+        else:
+            args.workspace = target or os.getcwd()
     args.workspace = os.path.abspath(args.workspace)
+    args.plugin = plugin
     return args
 
 
@@ -161,6 +191,9 @@ def _child_command(args):
     command.extend(['--host', args.host, '--port', str(args.port)])
     if args.env_root:
         command.extend(['--env-root', args.env_root])
+    plugin = getattr(args, 'plugin', None)
+    if plugin:
+        command.extend(['--plugin', plugin])
     return command
 
 
@@ -282,12 +315,15 @@ def _show_status(path):
 def _serve(args, path):
     server = None
     try:
-        server = WebUIServer(
-            env_root=args.env_root,
-            workspace=args.workspace,
-            host=args.host,
-            port=args.port,
-        )
+        options = {
+            'env_root': args.env_root,
+            'workspace': args.workspace,
+            'host': args.host,
+            'port': args.port,
+        }
+        if getattr(args, 'plugin', None):
+            options['plugin_id'] = args.plugin
+        server = WebUIServer(**options)
         _write_state(
             path,
             {
@@ -319,12 +355,15 @@ def _serve(args, path):
 def _run_foreground(args):
     server = None
     try:
-        server = WebUIServer(
-            env_root=args.env_root,
-            workspace=args.workspace,
-            host=args.host,
-            port=args.port,
-        )
+        options = {
+            'env_root': args.env_root,
+            'workspace': args.workspace,
+            'host': args.host,
+            'port': args.port,
+        }
+        if getattr(args, 'plugin', None):
+            options['plugin_id'] = args.plugin
+        server = WebUIServer(**options)
         print('Env WebUI: %s' % server.url, flush=True)
         print('Launch URL: %s' % server.launch_url, flush=True)
         if server.remote_access:
@@ -375,7 +414,7 @@ def add_arguments(parser):
         'target',
         nargs='?',
         default=None,
-        help='workspace path, or one of start, stop and status',
+        help='workspace path, installed WebUI plugin id, or one of start, stop and status',
     )
     parser.add_argument('workspace_arg', nargs='?', default=None, help=argparse.SUPPRESS)
     parser.set_defaults(workspace=os.getcwd())
@@ -395,6 +434,7 @@ def add_arguments(parser):
     )
     parser.add_argument('--port', type=int, default=0, help='listen port; 0 selects an available port')
     parser.add_argument('--env-root', help='override the Env data root')
+    parser.add_argument('--plugin', '--plugin-id', dest='plugin', help='open an installed WebUI plugin after startup')
     parser.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
     browser = parser.add_mutually_exclusive_group()
     browser.add_argument('--browser', action='store_true', help='open the default browser, even in an SSH session')

@@ -2,7 +2,7 @@
 
 英文文档见 [`README.md`](README.md)。
 
-`plugins/` 实现 Env 的本地插件生命周期、命令运行时和本机 WebUI。插件包从本地文件导入，Env 负责检查、安装、升级、启用、禁用、诊断和卸载。CLI 和 WebUI 使用同一套状态和 `PluginService`，不会各自维护一份插件状态。
+RT-Thread Env 是一套面向 RT-Thread 开发的命令行工具集。`plugins/` 实现 Env 的本地插件生命周期、命令运行时和本机 WebUI。插件包从本地文件导入，Env 负责检查、安装、升级、启用、禁用、诊断和卸载。CLI 和 WebUI 使用同一套状态和 `PluginService`，不会各自维护一份插件状态。
 
 本机生命周期仍从 `.epack` 安装。可选配置在线插件市场地址后，WebUI 会显示在线目录，并由本机 Host API 下载匹配制品。Env 不会按插件 ID 或任意 URL 直接安装。
 
@@ -247,7 +247,9 @@ webui stop
 如果服务已经启动，重复执行 `webui start` 只会提示当前 URL，不会再启动第二个服务。
 服务状态保存在 `${ENV_ROOT}/var/plugins/runtime/` 下。需要前台运行时仍可使用旧的
 `webui [workspace]` 形式；使用 `--no-browser` 禁止打开浏览器，在 SSH 会话中可用
-`--browser` 强制打开浏览器。
+`--browser` 强制打开浏览器。对于已安装且启用的 WebUI 插件，可以用
+`webui <plugin-id>`、`webui --plugin <plugin-id>` 或 `webui start --plugin <plugin-id>` 启动后直接进入该插件页面；
+未指定插件时仍进入插件中心。
 
 插件页面运行在不带 `allow-same-origin` 的 iframe 中，宿主通过版本化 `postMessage` 传递主题和语言。页面不能读取宿主 Cookie、会话或直接调用 Env 生命周期 API。完整示例见 [`examples/build-insight-1.0.0/README.md`](examples/build-insight-1.0.0/README.md)。
 
