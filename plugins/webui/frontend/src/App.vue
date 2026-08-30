@@ -779,10 +779,10 @@ onBeforeUnmount(() => {
         </nav>
 
         <div class="sidebar-footer">
-          <button class="nav-entry footer-entry" :class="{ active: currentView === 'plugins' }" @click="go('plugins')">
+          <button class="nav-entry footer-entry" :class="{ active: currentView === 'plugins' }" aria-label="插件中心" @click="go('plugins')">
             <span class="nav-icon"><Grid /></span><span>插件中心</span>
           </button>
-          <button class="nav-entry" :class="{ active: currentView === 'settings' }" @click="go('settings')">
+          <button class="nav-entry" :class="{ active: currentView === 'settings' }" aria-label="设置" @click="go('settings')">
             <span class="nav-icon"><Setting /></span><span>设置</span>
           </button>
         </div>

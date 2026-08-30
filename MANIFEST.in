@@ -3,11 +3,12 @@ recursive-include docs/prototypes *.html
 recursive-include plugins/bundled *
 recursive-include plugins/examples *
 recursive-include plugins/spec *.json *.md
-recursive-include plugins/webui/static *.html *.js *.css
+recursive-include plugins/webui/static *.html *.js *.css *.png
 include plugins/webui/frontend/index.html plugins/webui/frontend/package.json plugins/webui/frontend/package-lock.json
 include plugins/webui/frontend/vite.config.ts plugins/webui/frontend/playwright.config.ts plugins/webui/frontend/tsconfig.json
 recursive-include plugins/webui/frontend/src *.ts *.vue *.css
 recursive-include plugins/webui/frontend/e2e *.ts
+include assets/env.png
 prune plugins/webui/frontend/node_modules
 prune plugins/webui/frontend/playwright-report
 prune plugins/webui/frontend/test-results

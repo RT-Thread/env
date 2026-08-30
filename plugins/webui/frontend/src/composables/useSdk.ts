@@ -107,6 +107,7 @@ export function useSdk() {
     }
     sdkBusy.value = true
     sdkTaskState.value = null
+    let reloadAfterBusy = false
     try {
       const task = await api.sdkApply(sdkPlanResult.value.plan_id, removals)
       sdkTaskState.value = task
@@ -139,10 +140,11 @@ export function useSdk() {
         }
       }
       ElMessage.error(message)
-      if ((error as { code?: string })?.code === 'stateerror') await loadSdk()
+      reloadAfterBusy = (error as { code?: string })?.code === 'stateerror'
     } finally {
       sdkBusy.value = false
     }
+    if (reloadAfterBusy) await loadSdk()
   }
 
   async function cancelSdkTask(): Promise<void> {
