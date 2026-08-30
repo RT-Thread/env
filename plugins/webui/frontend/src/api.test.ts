@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { api, setCsrfToken } from './api.js'
+import { api, setCsrfToken } from './api'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -11,6 +11,7 @@ describe('local package API', () => {
     vi.stubGlobal('fetch', fetchMock)
     setCsrfToken('csrf-token')
 
+    await api.shutdown()
     await api.sdk()
     await api.sdkPlan([{ name: 'demo-gcc', enabled: true, version: 'v1' }])
     await api.sdkApply('plan-1', ['demo-gcc'])
@@ -25,6 +26,7 @@ describe('local package API', () => {
     await api.removeFileContextMenu()
 
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/shutdown',
       '/api/v1/sdk',
       '/api/v1/sdk/plan',
       '/api/v1/sdk/apply',
@@ -38,14 +40,15 @@ describe('local package API', () => {
       '/api/v1/settings/file-context-menu/install',
       '/api/v1/settings/file-context-menu/remove',
     ])
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({})
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
       packages: [{ name: 'demo-gcc', enabled: true, version: 'v1' }],
     })
-    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({
       plan_id: 'plan-1',
       confirm_remove: ['demo-gcc'],
     })
-    expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual({})
+    expect(JSON.parse(fetchMock.mock.calls[5][1].body)).toEqual({})
   })
 
   it('installs only from an upload id', async () => {
@@ -60,8 +63,9 @@ describe('local package API', () => {
     expect(options.method).toBe('POST')
     expect(options.headers.get('X-Env-CSRF')).toBe('csrf-token')
     expect(JSON.parse(options.body)).toEqual({ upload_id: 'upload-1', allow_unsigned: true })
-    expect(api.catalog).toBeUndefined()
-    expect(api.installCatalog).toBeUndefined()
+    const apiSurface = api as Record<string, unknown>
+    expect(apiSurface.catalog).toBeUndefined()
+    expect(apiSurface.installCatalog).toBeUndefined()
   })
 
   it('prepares an online plugin then still installs from an upload id', async () => {

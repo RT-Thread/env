@@ -104,13 +104,25 @@ test('desktop installs and opens a local WebUI package', async ({ browser }) => 
   })
   await page.goto(launchUrl)
   await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
+  const sidebarToggle = page.getByRole('button', { name: '折叠侧边栏' })
+  await expect(sidebarToggle).toBeVisible()
+  await sidebarToggle.click()
+  await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/)
+  await expect(page.getByRole('button', { name: '展开侧边栏' })).toBeVisible()
+  await page.getByRole('button', { name: '展开侧边栏' }).click()
+  await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/)
+  await expect(page.locator('.brand-logo')).toBeVisible()
+  await expect(page.locator('.brand-logo')).toHaveAttribute('alt', 'RT-Thread Env')
+  await expect(page.locator('.brand').getByText('RT-Thread Env', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: '本地安装' })).toBeVisible()
   await expect(page.getByRole('tab', { name: '在线插件' })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: '发现插件' })).toHaveCount(0)
+  expect(await page.locator('.plugin-tabs .el-tabs__item').allTextContents()).toEqual(['已安装', '本地安装'])
   await expect(page.getByText('工作台', { exact: true })).toHaveCount(0)
   await expect(page.getByText('终端', { exact: true })).toHaveCount(0)
   await expect(page.getByText('任务', { exact: true })).toHaveCount(0)
 
+  await page.getByRole('tab', { name: '本地安装' }).click()
   await page.locator('.local-upload-zone input[type="file"]').setInputFiles(buildInsightPackage)
   await expect(page.locator('.package-review').getByRole('heading', { name: 'Build Insight' })).toBeVisible()
   await page.locator('.package-review').getByText('我已确认来源并接受未签名包风险', { exact: true }).click()
@@ -125,11 +137,28 @@ test('desktop installs and opens a local WebUI package', async ({ browser }) => 
 
   const pluginFrame = page.locator('iframe[title="Build Insight"]')
   await expect(pluginFrame).toBeVisible()
+  await expect(page).toHaveURL(/plugin=org\.rt-thread\.build-insight/)
   await expect(pluginFrame.contentFrame().getByRole('heading', { name: '固件构建分析' })).toBeVisible()
   await expect(pluginFrame.contentFrame().getByText('SDK 1.0.0')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   expect(consoleErrors).toEqual([])
   authenticatedState = await context.storageState()
+  await context.close()
+})
+
+test('plugin center prioritizes installed plugins when the market is enabled', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
+  const page = await context.newPage()
+  await page.route('**/api/v1/session', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json()
+    body.data.market = { enabled: true, url: 'http://market.test', source: 'env' }
+    await route.fulfill({ response, json: body })
+  })
+  await page.goto(new URL('/', launchUrl).toString())
+  await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
+  expect(await page.locator('.plugin-tabs .el-tabs__item').allTextContents()).toEqual(['已安装', '在线插件', '本地安装'])
+  await expect(page.getByRole('tab', { name: '已安装' })).toHaveAttribute('aria-selected', 'true')
   await context.close()
 })
 
@@ -192,7 +221,7 @@ test('mobile navigation keeps local plugin management above settings', async ({ 
 })
 
 test('SDK settings previews and applies a toolchain change', async ({ browser }) => {
-  const contextOptions = { viewport: { width: 1440, height: 900 } }
+  const contextOptions: Parameters<typeof browser.newContext>[0] = { viewport: { width: 1440, height: 900 } }
   if (authenticatedState) contextOptions.storageState = authenticatedState
   const context = await browser.newContext(contextOptions)
   const page = await context.newPage()
@@ -449,5 +478,16 @@ test('local toolchain settings manage sdk_cfg.json', async ({ browser }) => {
   await expect(page.getByText('确认删除工具链配置')).toBeVisible()
   await page.getByRole('button', { name: '确认删除' }).click()
   await expect(page.getByText('尚未配置本地工具链')).toBeVisible()
+  await context.close()
+})
+
+test('close button confirms and shuts down the WebUI service', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
+  const page = await context.newPage()
+  await page.goto(new URL('/', launchUrl).toString())
+  await page.getByRole('button', { name: '关闭 WebUI' }).click()
+  await expect(page.getByText('关闭后 Env WebUI 服务将退出，当前页面也会关闭。是否继续？', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '关闭并退出' }).click()
+  await expect.poll(() => serverProcess.exitCode, { timeout: 5000 }).not.toBeNull()
   await context.close()
 })
