@@ -195,11 +195,11 @@ class EnvVenvTest(unittest.TestCase):
         self.assertTrue(layout['rt_env'].is_file())
 
     def test_country_detection_and_explicit_index_override(self):
-        with mock.patch.object(env_venv, 'urlopen', return_value=FakeResponse(b'CN\n')) as request:
+        with mock.patch.object(env_venv, '_open_without_proxy', return_value=FakeResponse(b'CN\n')) as request:
             self.assertEqual(env_venv.detect_country(), 'CN')
         self.assertEqual(request.call_args[1]['timeout'], 3)
 
-        with mock.patch.object(env_venv, 'urlopen', side_effect=OSError('offline')):
+        with mock.patch.object(env_venv, '_open_without_proxy', side_effect=OSError('offline')):
             self.assertIsNone(env_venv.detect_country())
 
         output = io.StringIO()
