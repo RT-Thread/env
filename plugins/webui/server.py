@@ -29,11 +29,16 @@ from ..market import (
 )
 from ..service import PluginService
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
-try:
+
+# The command-line compatibility entry point imports ``plugins`` as a
+# top-level package, while installed consumers import ``env.plugins``.
+# Select the matching manager imports explicitly instead of probing with a
+# relative import whose exception type differs between Python versions.
+if (__package__ or '').split('.', 1)[0] == 'env':
     from ...sdk_manager import SdkManager, SdkUsageError
     from ...toolchain_manager import ToolchainManager
     from ...file_context_menu import FileContextMenuManager
-except ImportError:
+else:
     from sdk_manager import SdkManager, SdkUsageError
     from toolchain_manager import ToolchainManager
     from file_context_menu import FileContextMenuManager

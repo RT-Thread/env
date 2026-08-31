@@ -626,6 +626,45 @@ class WebUICommandTest(unittest.TestCase):
         init_logger.assert_called_once_with(env_module.get_env_root())
         webui_main.assert_called_once_with()
 
+    def test_installed_package_context_uses_env_manager_imports(self):
+        import importlib.util
+        import types
+
+        import file_context_menu
+        import plugins.backend
+        import plugins.errors
+        import plugins.market
+        import plugins.service
+        import plugins.webui
+        import sdk_manager
+        import toolchain_manager
+
+        package = types.ModuleType('env')
+        package.__path__ = [REPOSITORY]
+        aliases = {
+            'env': package,
+            'env.plugins': sys.modules['plugins'],
+            'env.plugins.backend': sys.modules['plugins.backend'],
+            'env.plugins.errors': sys.modules['plugins.errors'],
+            'env.plugins.market': sys.modules['plugins.market'],
+            'env.plugins.service': sys.modules['plugins.service'],
+            'env.plugins.webui': sys.modules['plugins.webui'],
+            'env.sdk_manager': sdk_manager,
+            'env.toolchain_manager': toolchain_manager,
+            'env.file_context_menu': file_context_menu,
+        }
+        with mock.patch.dict(sys.modules, aliases):
+            spec = importlib.util.spec_from_file_location(
+                'env.plugins.webui.server_test',
+                sys.modules['plugins.webui.server'].__file__,
+            )
+            imported = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(imported)
+
+        self.assertIs(imported.SdkManager, sdk_manager.SdkManager)
+        self.assertIs(imported.ToolchainManager, toolchain_manager.ToolchainManager)
+        self.assertIs(imported.FileContextMenuManager, file_context_menu.FileContextMenuManager)
+
     def test_standalone_help_uses_short_program_name(self):
         output = io.StringIO()
         with mock.patch('sys.stdout', new=output):
