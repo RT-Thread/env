@@ -532,6 +532,23 @@ test('keep-alive plugin preserves iframe state while navigating', async ({ brows
   await page.locator('.sidebar-footer').getByText('插件中心', { exact: true }).click()
   await page.locator('.nav-entry').filter({ hasText: 'Quality Gate' }).click()
   await expect(stateInput).toHaveValue('保留此状态')
+
+  const retainedFrame = await qualityFrame.elementHandle()
+  expect(retainedFrame).not.toBeNull()
+  await page.locator('.sidebar-footer').getByText('插件中心', { exact: true }).click()
+  const qualityCardAfterNavigation = page.locator('.installed-card').filter({ hasText: 'Quality Gate' })
+  await qualityCardAfterNavigation.getByRole('button', { name: '更多插件操作' }).click()
+  await page.getByRole('menuitem', { name: '禁用' }).click()
+  await expect(qualityCardAfterNavigation.getByText('已禁用', { exact: true })).toBeVisible()
+  await expect(page.locator('iframe[title="Quality Gate"]')).toHaveCount(0)
+
+  await qualityCardAfterNavigation.getByRole('button', { name: '更多插件操作' }).click()
+  await page.getByRole('menuitem', { name: '启用' }).click()
+  await expect(qualityCardAfterNavigation.getByText('已启用', { exact: true })).toBeVisible()
+  await qualityCardAfterNavigation.getByRole('button', { name: '打开' }).click()
+  await expect(qualityFrame).toBeVisible()
+  expect(await page.evaluate((frame) => frame !== document.querySelector('iframe[title="Quality Gate"]'), retainedFrame)).toBe(true)
+
   await context.close()
 })
 

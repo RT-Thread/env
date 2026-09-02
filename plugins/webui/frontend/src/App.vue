@@ -143,6 +143,7 @@ const iframeStates = ref<Record<string, IframeState>>({})
 const mountedKeepAlivePluginIds = ref(new Set<string>())
 const iframeElements = new Map<string, HTMLIFrameElement>()
 const iframeTimers = new Map<string, number>()
+const iframeCheckGenerations = new Map<string, number>()
 
 const {
   sdkState,
@@ -466,7 +467,18 @@ function clearIframeTimer(pluginId: string) {
   }
 }
 
+function nextIframeCheckGeneration(pluginId: string) {
+  const generation = (iframeCheckGenerations.get(pluginId) || 0) + 1
+  iframeCheckGenerations.set(pluginId, generation)
+  return generation
+}
+
+function isCurrentIframeCheck(pluginId: string, generation: number) {
+  return iframeCheckGenerations.get(pluginId) === generation
+}
+
 function discardPluginFrame(pluginId: string) {
+  nextIframeCheckGeneration(pluginId)
   clearIframeTimer(pluginId)
   const nextStates = { ...iframeStates.value }
   delete nextStates[pluginId]
@@ -488,9 +500,11 @@ function setIframeElement(pluginId: string, element: unknown) {
 }
 
 function startPluginCheck(view: string) {
+  const generation = nextIframeCheckGeneration(view)
   clearIframeTimer(view)
   setIframeState(view, 'checking')
   api.doctor(view).then((result) => {
+    if (!isCurrentIframeCheck(view, generation)) return
     if (result.status !== 'ok') {
       setIframeState(view, 'error')
       return
@@ -498,11 +512,13 @@ function startPluginCheck(view: string) {
     setIframeState(view, 'loading')
     clearIframeTimer(view)
     const timer = window.setTimeout(() => {
+      if (!isCurrentIframeCheck(view, generation)) return
       if ((iframeStates.value[view] || 'idle') === 'loading') setIframeState(view, 'timeout')
       iframeTimers.delete(view)
     }, 8000)
     iframeTimers.set(view, timer)
   }).catch(() => {
+    if (!isCurrentIframeCheck(view, generation)) return
     clearIframeTimer(view)
     setIframeState(view, 'error')
   })
