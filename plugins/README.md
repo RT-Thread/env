@@ -266,10 +266,16 @@ files under `frontend/`:
   "webui": {
     "entry": "frontend/index.html",
     "icon": "puzzle",
-    "frontend_sdk": ">=1.0.0,<2.0.0"
+    "frontend_sdk": ">=1.0.0,<2.0.0",
+    "keep_alive": false
   }
 }
 ```
+
+`keep_alive` is optional and defaults to `false`. Set it to `true` when the
+plugin should keep its iframe mounted while navigating between WebUI pages,
+preserving browser-local page state. The iframe is released when the plugin is
+disabled, upgraded, uninstalled, or the WebUI exits.
 
 A WebUI-only plugin may omit `src/` and backend wheels. A plugin that declares
 commands, a health check, or a `service` must provide exactly one backend
@@ -297,9 +303,10 @@ installed and enabled WebUI plugin directly after startup, pass
 `--plugin <plugin-id>` (also supported as `webui <plugin-id>` and with
 `webui start`); without it, the plugin center is shown.
 
-Plugin pages run in an iframe without `allow-same-origin`. The host passes theme
-and language through versioned `postMessage` messages. Pages cannot read host
-cookies or sessions, or call Env lifecycle APIs. See the complete
+Plugin pages run in an iframe without `allow-same-origin`. The host passes theme,
+language, plugin identity, protocol version and optional backend URLs through
+versioned `postMessage` messages. Pages cannot read host cookies or sessions, or
+call Env lifecycle APIs. See the complete
 [`build-insight` example](examples/build-insight-1.0.0/README.md).
 
 A plugin that needs a local HTTP or WebSocket backend may declare a `service`
@@ -321,6 +328,25 @@ WebUI session API. `health_path` must be an absolute safe HTTP path, and
 uses Uvicorn, so `uvicorn` and its runtime dependencies must be available as
 backend dependency wheels. The process is stopped when the plugin is disabled,
 upgraded, uninstalled, or the WebUI exits.
+
+The session API returns a separate tokenized asset prefix for each enabled
+plugin. A plugin with a backend receives HTTP and WebSocket paths below its own
+prefix; a WebUI-only plugin receives `backend: null`:
+
+```json
+{
+  "base": "/plugin-assets/<token>/<plugin-id>/",
+  "backend": {
+    "http_base": "/plugin-assets/<token>/<plugin-id>/backend/",
+    "websocket_base": "/plugin-assets/<token>/<plugin-id>/backend/"
+  }
+}
+```
+
+Env provides transport and backend lifecycle only. Plugin authors may define
+request, event, cancellation, progress and binary-frame protocols over
+WebSocket; device and debugger semantics remain plugin-owned extensions rather
+than Env Host API methods.
 
 ## Build and publishing notes
 

@@ -322,7 +322,7 @@ def validate_manifest(data):
 
     if 'webui' in data:
         webui = _object(data['webui'], 'manifest.webui')
-        _keys(webui, ['entry', 'icon', 'frontend_sdk'], [], 'manifest.webui')
+        _keys(webui, ['entry', 'icon', 'frontend_sdk'], ['keep_alive'], 'manifest.webui')
         entry = _string(webui['entry'], 'manifest.webui.entry')
         if '\\' in entry or ':' in entry:
             raise ManifestError("manifest.webui.entry must use a safe POSIX path below frontend/")
@@ -338,6 +338,8 @@ def validate_manifest(data):
         if not ICON_RE.match(icon):
             raise ManifestError("manifest.webui.icon must be a lowercase icon identifier")
         _string(webui['frontend_sdk'], 'manifest.webui.frontend_sdk')
+        if 'keep_alive' in webui:
+            _boolean(webui['keep_alive'], 'manifest.webui.keep_alive')
 
     if not commands and 'webui' not in data and 'health_check' not in data and 'service' not in data:
         raise ManifestError("manifest must declare a command, WebUI page or health_check")

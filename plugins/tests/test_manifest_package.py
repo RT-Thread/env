@@ -79,6 +79,21 @@ class ManifestTest(unittest.TestCase):
         with self.assertRaisesRegex(ManifestError, 'health_path'):
             validate_manifest(data)
 
+    def test_webui_keep_alive_is_optional_and_boolean(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['webui'] = {
+            'entry': 'frontend/index.html',
+            'icon': 'puzzle',
+            'frontend_sdk': '>=1.0.0,<2.0.0',
+            'keep_alive': True,
+        }
+        manifest = validate_manifest(data)
+        self.assertTrue(manifest.webui['keep_alive'])
+
+        data['webui']['keep_alive'] = 'true'
+        with self.assertRaisesRegex(ManifestError, 'keep_alive'):
+            validate_manifest(data)
+
 
 class PackageTest(unittest.TestCase):
     def setUp(self):

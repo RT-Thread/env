@@ -225,10 +225,16 @@ WebUI 页面由 `manifest.webui` 声明，并以预构建静态资源放在 `fro
   "webui": {
     "entry": "frontend/index.html",
     "icon": "puzzle",
-    "frontend_sdk": ">=1.0.0,<2.0.0"
+    "frontend_sdk": ">=1.0.0,<2.0.0",
+    "keep_alive": false
   }
 }
 ```
+
+`keep_alive` 为可选字段，默认值为 `false`。设置为 `true` 后，Env 在不同
+WebUI 页面之间切换时会继续挂载该插件的 iframe，从而保留浏览器页面中的
+表单、滚动位置和临时状态。插件被禁用、升级、卸载或 WebUI 退出时会释放
+该 iframe。
 
 纯 WebUI 插件可以没有 `src/` 和后端 wheel；声明命令、健康检查或 `service` 的插件必须提供且只能提供一个 `plugin` 角色的后端制品。安装后启动本机 WebUI：
 
@@ -251,7 +257,7 @@ webui stop
 `webui <plugin-id>`、`webui --plugin <plugin-id>` 或 `webui start --plugin <plugin-id>` 启动后直接进入该插件页面；
 未指定插件时仍进入插件中心。
 
-插件页面运行在不带 `allow-same-origin` 的 iframe 中，宿主通过版本化 `postMessage` 传递主题和语言。页面不能读取宿主 Cookie、会话或直接调用 Env 生命周期 API。完整示例见 [`examples/build-insight-1.0.0/README.md`](examples/build-insight-1.0.0/README.md)。
+插件页面运行在不带 `allow-same-origin` 的 iframe 中，宿主通过版本化 `postMessage` 传递主题、语言、插件 ID、前端协议版本和可选 backend 地址。页面不能读取宿主 Cookie、会话或直接调用 Env 生命周期 API。完整示例见 [`examples/build-insight-1.0.0/README.md`](examples/build-insight-1.0.0/README.md)。
 
 需要 HTTP 或 WebSocket 后端的插件可以在 `manifest.json` 声明 `service`：
 
@@ -280,6 +286,22 @@ def create_service(context, host, port):
 安全的绝对 HTTP 路径，`start_timeout` 必须是 1 到 60 之间的整数。服务运行器使用
 Uvicorn，插件包必须通过 dependency wheel 提供 `uvicorn` 及其运行时依赖。插件禁用、
 升级、卸载或 WebUI 退出时，宿主会停止并回收服务进程。
+
+会话接口返回的 `plugin_assets` 为每个启用插件分配独立的资源前缀：
+
+```json
+{
+  "base": "/plugin-assets/<token>/<plugin-id>/",
+  "backend": {
+    "http_base": "/plugin-assets/<token>/<plugin-id>/backend/",
+    "websocket_base": "/plugin-assets/<token>/<plugin-id>/backend/"
+  }
+}
+```
+
+没有 `service` 的 WebUI-only 插件的 `backend` 为 `null`。Env 只负责 HTTP/WebSocket
+传输和进程生命周期，不解释插件业务消息。后续插件可以在 WebSocket 之上定义请求、事件、
+取消、进度和二进制帧协议，但设备或调试语义不属于 Env Host API。
 
 ## 构建和发布注意事项
 

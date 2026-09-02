@@ -14,9 +14,11 @@ layout without requiring Node.js or external frontend dependencies.
 - `LICENSE`: license copied into the package.
 
 The iframe sends `env.host.ready` after loading. Env replies with
-`env.host.context`, which contains the plugin id, frontend SDK version, theme
-and language. The example uses the theme value and does not access host cookies
-or lifecycle APIs.
+`env.host.context`, which contains the plugin id, frontend SDK version, theme,
+language and optional backend transport context. The example uses the theme
+value and does not access host cookies or lifecycle APIs. Backend context is
+versioned so future plugins can add their own WebSocket request and event
+protocols without adding domain-specific APIs to Env.
 
 ## Validate and build
 

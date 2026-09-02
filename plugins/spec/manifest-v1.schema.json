@@ -285,6 +285,11 @@
         "frontend_sdk": {
           "type": "string",
           "minLength": 1
+        },
+        "keep_alive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the WebUI iframe mounted while navigating in Env"
         }
       }
     }
