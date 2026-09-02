@@ -99,6 +99,10 @@ button, input, select { letter-spacing: 0; }
 .nav-empty { padding: 14px 10px; color: var(--sidebar-muted); font-size: 12px; }
 .sidebar-footer { padding: 8px; border-top: 1px solid rgba(255,255,255,.1); }
 .sidebar-footer .footer-entry { margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,.11); border-radius: 5px 5px 0 0; padding-bottom: 11px; }
+.sidebar-footer .exit-entry { margin-top: 8px; border-top: 1px solid rgba(255,255,255,.11); padding-top: 11px; color: #f0b0a8; }
+.sidebar-footer .exit-entry:hover { color: #ffd8d3; }
+.sidebar-footer .exit-entry .nav-icon { background: #51312f; color: #ffb5ac; }
+.sidebar-footer .exit-entry.is-busy { cursor: wait; opacity: .7; }
 .sidebar-collapsed .brand { justify-content: center; gap: 2px; padding-left: 4px; padding-right: 4px; }
 .sidebar-collapsed .brand-logo { width: 30px; height: 40px; max-width: none; object-fit: cover; object-position: left center; }
 .sidebar-collapsed .nav-heading { justify-content: center; padding-left: 4px; padding-right: 4px; }
@@ -110,14 +114,9 @@ button, input, select { letter-spacing: 0; }
 .sidebar-collapsed .nav-warning { display: none; }
 .sidebar-collapsed .nav-icon { width: 30px; height: 30px; }
 .sidebar-collapsed .sidebar-footer .footer-entry { padding-bottom: 11px; }
-.main-shell { display: grid; min-width: 0; grid-template-rows: 62px minmax(0, 1fr); overflow: hidden; }
-.topbar { z-index: 10; display: flex; min-width: 0; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding: 0 20px; background: var(--surface); }
+.main-shell { position: relative; display: grid; min-width: 0; min-height: 0; grid-template-rows: minmax(0, 1fr); overflow: hidden; }
 .sidebar-toggle { flex: 0 0 auto; }
-.topbar-spacer { flex: 1; }
 .mobile-menu { display: none !important; }
-.core-status { display: inline-flex; height: 28px; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 14px; padding: 0 10px; color: var(--muted); font-size: 11px; }
-.core-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-.avatar { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: #dce9e4; color: #245347; font-size: 10px; font-weight: 800; }
 .content-scroll { min-width: 0; overflow-y: auto; padding: 28px 32px 48px; }
 .plugin-center-view { max-width: 1280px; width: 100%; justify-self: center; }
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
@@ -275,7 +274,8 @@ button, input, select { letter-spacing: 0; }
 .sdk-operation > span { min-width: 0; overflow-wrap: anywhere; font-size: 12px; }
 .sdk-plan-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .plugin-content { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--canvas); }
-.plugin-frame { width: 100%; height: 100%; border: 0; background: var(--canvas); }
+.plugin-frame-stack { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.plugin-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--canvas); }
 .boundary-state { display: grid; width: min(520px, calc(100% - 32px)); min-height: 100%; place-content: center; justify-items: center; margin: auto; text-align: center; }
 .boundary-state > svg { width: 40px; color: var(--orange); }
 .boundary-state h1 { margin: 16px 0 7px; font-size: 21px; }
@@ -340,8 +340,8 @@ button, input, select { letter-spacing: 0; }
   .sidebar-toggle { display: none !important; }
   .mobile-scrim { position: fixed; z-index: 25; inset: 0; border: 0; background: rgba(8,12,10,.48); }
   .sidebar-open .mobile-scrim { display: block; }
-  .topbar { padding: 0 12px; }
-  .content-scroll { padding: 22px 16px 40px; }
+  .mobile-menu { position: absolute; z-index: 20; top: 12px; left: 12px; }
+  .content-scroll { padding: 62px 16px 40px; }
   .page-header { align-items: flex-start; }
   .local-install-panel { grid-template-columns: 1fr; }
   .local-upload-zone { min-height: 190px; }
@@ -363,8 +363,6 @@ button, input, select { letter-spacing: 0; }
 }
 
 @media (max-width: 520px) {
-  .core-status { max-width: 126px; overflow: hidden; text-overflow: ellipsis; }
-  .avatar { display: none; }
   .page-header { display: grid; }
   .page-actions { width: 100%; }
   .local-install-actions { align-items: stretch; flex-direction: column; }
