@@ -1,0 +1,104 @@
+name: RT-Thread Env Compatibility
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+      - '**/README.zh-CN.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+      - '**/README.zh-CN.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ENV_VENV_AUTO_UPGRADE: '1'
+
+jobs:
+  unit-tests:
+    name: Unit tests (${{ matrix.python-version }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install SCons requests psutil tqdm kconfiglib PyYAML
+
+      - name: Run Env unit tests
+        run: python -m unittest discover -s plugins/tests -t . -v
+
+  rt-thread-compat:
+    name: RT-Thread reference compatibility
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Env
+        uses: actions/checkout@v4
+        with:
+          path: env
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Install host build packages
+        run: sudo apt-get update && sudo apt-get -qq install -y git python3-venv
+
+      - name: Checkout RT-Thread
+        uses: actions/checkout@v4
+        with:
+          repository: RT-Thread/rt-thread
+          path: rt-thread
+          fetch-depth: 1
+
+      - name: Checkout packages index
+        uses: actions/checkout@v4
+        with:
+          repository: RT-Thread/packages
+          path: packages-index
+          fetch-depth: 1
+
+      - name: Checkout SDK index
+        uses: actions/checkout@v4
+        with:
+          repository: RT-Thread/sdk
+          path: sdk-index
+          fetch-depth: 1
+
+      - name: Prepare Env layout used by RT-Thread
+        run: |
+          chmod +x env/.github/scripts/*.sh env/pkgs env/menuconfig env/sdk
+          env/.github/scripts/prepare_env_layout.sh \
+            "$GITHUB_WORKSPACE/env" \
+            "$HOME/.env" \
+            "$GITHUB_WORKSPACE/packages-index" \
+            "$GITHUB_WORKSPACE/sdk-index"
+
+      - name: Run RT-Thread compatibility checks
+        env:
+          RTT_ROOT: ${{ github.workspace }}/rt-thread
+        run: |
+          export ENV_ROOT="$HOME/.env"
+          env/.github/scripts/rt_thread_compat.sh
