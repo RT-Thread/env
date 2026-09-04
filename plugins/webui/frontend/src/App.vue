@@ -14,7 +14,6 @@ import {
   InfoFilled,
   Lock,
   Menu,
-  Moon,
   MoreFilled,
   Operation,
   Plus,
@@ -22,7 +21,6 @@ import {
   Refresh,
   FolderOpened,
   Setting,
-  Sunny,
   SwitchButton,
   Tools,
   Search,
@@ -64,6 +62,7 @@ import {
   diagnosisArtifacts,
   diagnosisOf,
   diagnosisReasons,
+  hostBackendContext,
   iconFor,
   installedPluginFor as findInstalledPlugin,
   marketActionLabel,
@@ -77,6 +76,8 @@ import type {
   MarketCatalog,
   MarketPrepareError,
   MarketStatus,
+  PluginHostBackendContext,
+  PluginHostContext,
   Session,
   ToolchainForm,
   ToolchainSnapshot,
@@ -127,8 +128,6 @@ const permissionSelection = ref<string[]>([])
 const diagnostic = ref<DoctorResult | null>(null)
 const uninstallVisible = ref(false)
 const purgeData = ref(false)
-const iframeState = ref<'idle' | 'checking' | 'loading' | 'ready' | 'timeout' | 'error'>('idle')
-const iframeElement = ref<HTMLIFrameElement | null>(null)
 const toolchainState = ref<ToolchainSnapshot | null>(null)
 const toolchainLoading = ref(false)
 const toolchainBusy = ref(false)
@@ -138,7 +137,13 @@ const toolchainForm = ref<ToolchainForm>({ name: '', path: '', description: '' }
 const toolchainError = ref('')
 const contextMenuState = ref<ContextMenuSnapshot | null>(null)
 const contextMenuBusy = ref(false)
-let iframeTimer: number | undefined
+type IframeState = 'idle' | 'checking' | 'loading' | 'ready' | 'timeout' | 'error'
+const iframeState = ref<IframeState>('idle')
+const iframeStates = ref<Record<string, IframeState>>({})
+const mountedKeepAlivePluginIds = ref(new Set<string>())
+const iframeElements = new Map<string, HTMLIFrameElement>()
+const iframeTimers = new Map<string, number>()
+const iframeCheckGenerations = new Map<string, number>()
 
 const {
   sdkState,
@@ -166,6 +171,14 @@ function installedPluginFor(plugin?: Partial<EnvPlugin> | null): EnvPlugin | und
 const marketEnabled = computed(() => Boolean(session.value?.market?.enabled))
 const navigablePlugins = computed(() => installed.value.filter((item) => item.enabled && item.webui))
 const activePlugin = computed(() => installed.value.find((item) => item.id === currentView.value))
+const mountedFramePlugins = computed(() => navigablePlugins.value.filter((plugin) => {
+  if (plugin.missing_required_permissions?.length) return false
+  const state = iframeStates.value[plugin.id] || 'idle'
+  if (plugin.webui?.keep_alive) {
+    return mountedKeepAlivePluginIds.value.has(plugin.id) && ['loading', 'ready'].includes(state)
+  }
+  return plugin.id === activePlugin.value?.id && ['loading', 'ready'].includes(state)
+}))
 const upgradeMismatch = computed(() => (
   upgradeSummary.value && upgradeTarget.value && upgradeSummary.value.id !== upgradeTarget.value.id
 ))
@@ -242,8 +255,6 @@ function mergeCatalogItem(detail) {
 async function bootstrap() {
   loading.value = true
   try {
-    session.value = await api.session()
-    setCsrfToken(session.value.csrf_token)
     await reloadAll()
   } catch (error) {
     ElMessage.error(error.message)
@@ -253,8 +264,31 @@ async function bootstrap() {
 }
 
 async function reloadAll() {
+  const nextSession = await api.session()
+  session.value = nextSession
+  setCsrfToken(nextSession.csrf_token)
   const installedItems = await api.plugins()
+  const previousPlugins = new Map(installed.value.map((item) => [item.id, item]))
   installed.value = installedItems
+  const nextPlugins = new Map(installedItems.map((item) => [item.id, item]))
+  let activeFrameDiscarded = false
+  for (const [pluginId] of Object.entries(iframeStates.value)) {
+    const previous = previousPlugins.get(pluginId)
+    const next = nextPlugins.get(pluginId)
+    if (!next || !next.enabled || !next.webui || (
+      previous && (
+        previous.version !== next.version
+        || Boolean(previous.webui?.keep_alive) !== Boolean(next.webui?.keep_alive)
+        || previous.webui?.entry !== next.webui?.entry
+      )
+    )) {
+      if (currentView.value === pluginId) activeFrameDiscarded = true
+      discardPluginFrame(pluginId)
+    }
+  }
+  mountedKeepAlivePluginIds.value = new Set(
+    [...mountedKeepAlivePluginIds.value].filter((pluginId) => nextPlugins.get(pluginId)?.webui?.keep_alive),
+  )
   if (currentView.value === 'plugins') {
     const requested = installedItems.find((item) => item.id === requestedPluginId())
     if (requested?.enabled && requested.webui) go(requested.id)
@@ -262,7 +296,12 @@ async function reloadAll() {
   }
   if (currentView.value !== 'plugins' && currentView.value !== 'settings') {
     const current = installedItems.find((item) => item.id === currentView.value)
-    if (!current?.enabled || !current.webui) currentView.value = 'plugins'
+    if (!current?.enabled || !current.webui) {
+      currentView.value = 'plugins'
+      syncViewUrl('plugins')
+    } else if (activeFrameDiscarded) {
+      go(current.id)
+    }
   }
   await loadSdk()
   await Promise.all([loadToolchains(), loadContextMenu()])
@@ -413,34 +452,100 @@ async function loadMarket() {
 watch(theme, (value) => {
   document.documentElement.dataset.theme = value
   localStorage.setItem('env-theme', value)
-  sendPluginContext()
+  sendPluginContexts()
 }, { immediate: true })
 
 watch(pluginTab, (value) => {
   if (value === 'online' && marketEnabled.value) loadMarket()
 })
 
-function go(view) {
+function clearIframeTimer(pluginId: string) {
+  const timer = iframeTimers.get(pluginId)
+  if (timer !== undefined) {
+    window.clearTimeout(timer)
+    iframeTimers.delete(pluginId)
+  }
+}
+
+function nextIframeCheckGeneration(pluginId: string) {
+  const generation = (iframeCheckGenerations.get(pluginId) || 0) + 1
+  iframeCheckGenerations.set(pluginId, generation)
+  return generation
+}
+
+function isCurrentIframeCheck(pluginId: string, generation: number) {
+  return iframeCheckGenerations.get(pluginId) === generation
+}
+
+function discardPluginFrame(pluginId: string) {
+  nextIframeCheckGeneration(pluginId)
+  clearIframeTimer(pluginId)
+  const nextStates = { ...iframeStates.value }
+  delete nextStates[pluginId]
+  iframeStates.value = nextStates
+  mountedKeepAlivePluginIds.value = new Set(
+    [...mountedKeepAlivePluginIds.value].filter((id) => id !== pluginId),
+  )
+  if (currentView.value === pluginId) iframeState.value = 'idle'
+}
+
+function setIframeState(pluginId: string, state: IframeState) {
+  iframeStates.value = { ...iframeStates.value, [pluginId]: state }
+  if (currentView.value === pluginId) iframeState.value = state
+}
+
+function setIframeElement(pluginId: string, element: unknown) {
+  if (element instanceof HTMLIFrameElement) iframeElements.set(pluginId, element)
+  else iframeElements.delete(pluginId)
+}
+
+function startPluginCheck(view: string) {
+  const generation = nextIframeCheckGeneration(view)
+  clearIframeTimer(view)
+  setIframeState(view, 'checking')
+  api.doctor(view).then((result) => {
+    if (!isCurrentIframeCheck(view, generation)) return
+    if (result.status !== 'ok') {
+      setIframeState(view, 'error')
+      return
+    }
+    setIframeState(view, 'loading')
+    clearIframeTimer(view)
+    const timer = window.setTimeout(() => {
+      if (!isCurrentIframeCheck(view, generation)) return
+      if ((iframeStates.value[view] || 'idle') === 'loading') setIframeState(view, 'timeout')
+      iframeTimers.delete(view)
+    }, 8000)
+    iframeTimers.set(view, timer)
+  }).catch(() => {
+    if (!isCurrentIframeCheck(view, generation)) return
+    clearIframeTimer(view)
+    setIframeState(view, 'error')
+  })
+}
+
+function go(view: string, forceReload = false) {
   currentView.value = view
   sidebarOpen.value = false
   syncViewUrl(view)
-  if (view !== 'plugins' && view !== 'settings') {
-    iframeState.value = 'checking'
-    api.doctor(view).then((result) => {
-      if (currentView.value !== view) return
-      if (result.status !== 'ok') {
-        iframeState.value = 'error'
-        return
-      }
-      iframeState.value = 'loading'
-      window.clearTimeout(iframeTimer)
-      iframeTimer = window.setTimeout(() => {
-        if (iframeState.value === 'loading') iframeState.value = 'timeout'
-      }, 8000)
-    }).catch(() => {
-      if (currentView.value === view) iframeState.value = 'error'
-    })
+  if (view === 'plugins' || view === 'settings') {
+    iframeState.value = 'idle'
+    return
   }
+  const plugin = installed.value.find((item) => item.id === view)
+  if (!plugin?.webui) {
+    iframeState.value = 'idle'
+    return
+  }
+  if (plugin.webui.keep_alive) {
+    mountedKeepAlivePluginIds.value = new Set([...mountedKeepAlivePluginIds.value, view])
+    if (!forceReload && iframeStates.value[view] === 'ready') {
+      iframeState.value = 'ready'
+      nextTick(() => sendPluginContext(view))
+      return
+    }
+  }
+  startPluginCheck(view)
 }
 
 function showDetail(plugin) {
@@ -700,32 +805,48 @@ async function uninstallPlugin() {
   }
 }
 
-function sendPluginContext() {
-  if (!iframeElement.value?.contentWindow || !activePlugin.value) return
-  iframeElement.value.contentWindow.postMessage({
+function sendPluginContext(pluginId = activePlugin.value?.id) {
+  if (!pluginId) return
+  const frame = iframeElements.get(pluginId)
+  const plugin = installed.value.find((item) => item.id === pluginId)
+  if (!frame?.contentWindow || !plugin) return
+  const asset = session.value?.plugin_assets?.[pluginId]
+  const backend: PluginHostBackendContext | null = hostBackendContext(asset)
+  const payload: PluginHostContext = {
+    protocolVersion: 1,
+    pluginId,
+    sdkVersion: session.value?.frontend_sdk || '1.0.0',
+    theme: theme.value,
+    language: 'zh-CN',
+    backend,
+    features: backend ? ['backend.http', 'backend.websocket'] : [],
+  }
+  frame.contentWindow.postMessage({
     type: 'env.host.context',
-    payload: {
-      pluginId: activePlugin.value.id,
-      sdkVersion: session.value?.frontend_sdk || '1.0.0',
-      theme: theme.value,
-      language: 'zh-CN',
-    },
+    payload,
   }, '*')
 }
 
-function iframeLoaded() {
-  iframeState.value = 'ready'
-  window.clearTimeout(iframeTimer)
-  nextTick(sendPluginContext)
+function sendPluginContexts() {
+  iframeElements.forEach((_frame, pluginId) => sendPluginContext(pluginId))
+}
+
+function iframeLoaded(pluginId: string) {
+  setIframeState(pluginId, 'ready')
+  clearIframeTimer(pluginId)
+  nextTick(() => sendPluginContext(pluginId))
 }
 
 function receivePluginMessage(event) {
-  if (event.source !== iframeElement.value?.contentWindow) return
+  const frameEntry = [...iframeElements.entries()].find(([, frame]) => event.source === frame.contentWindow)
+  if (!frameEntry) return
+  const [pluginId] = frameEntry
   if (event.data?.type === 'env.host.ready') {
-    iframeState.value = 'ready'
-    sendPluginContext()
+    setIframeState(pluginId, 'ready')
+    clearIframeTimer(pluginId)
+    sendPluginContext(pluginId)
   } else if (event.data?.type === 'env.host.error') {
-    iframeState.value = 'error'
+    setIframeState(pluginId, 'error')
   }
 }
 
@@ -736,7 +857,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('message', receivePluginMessage)
-  window.clearTimeout(iframeTimer)
+  iframeTimers.forEach((timer) => window.clearTimeout(timer))
+  iframeTimers.clear()
 })
 </script>
 
@@ -785,24 +907,25 @@ onBeforeUnmount(() => {
           <button class="nav-entry" :class="{ active: currentView === 'settings' }" aria-label="设置" @click="go('settings')">
             <span class="nav-icon"><Setting /></span><span>设置</span>
           </button>
+          <button
+            class="nav-entry exit-entry"
+            :class="{ 'is-busy': closing }"
+            aria-label="退出 WebUI"
+            :aria-busy="closing"
+            :disabled="closing"
+            @click="confirmCloseWebUI"
+          >
+            <span class="nav-icon"><SwitchButton /></span><span>退出 WebUI</span>
+          </button>
         </div>
       </aside>
 
       <button class="mobile-scrim" aria-label="关闭导航" @click="sidebarOpen = false"></button>
 
       <main class="main-shell">
-        <header class="topbar">
+        <el-tooltip content="打开导航">
           <el-button class="mobile-menu" text circle :icon="Menu" aria-label="打开导航" @click="sidebarOpen = true" />
-          <div class="topbar-spacer"></div>
-          <span class="core-status"><i></i>Env Core 已连接</span>
-          <el-tooltip :content="theme === 'light' ? '切换深色主题' : '切换浅色主题'">
-            <el-button text circle :icon="theme === 'light' ? Moon : Sunny" aria-label="切换主题" @click="theme = theme === 'light' ? 'dark' : 'light'" />
-          </el-tooltip>
-          <el-tooltip content="关闭 WebUI">
-            <el-button text circle :icon="Close" aria-label="关闭 WebUI" :loading="closing" :disabled="closing" @click="confirmCloseWebUI" />
-          </el-tooltip>
-          <span class="avatar">ENV</span>
-        </header>
+        </el-tooltip>
 
         <section v-if="currentView === 'plugins'" class="content-scroll plugin-center-view">
           <div class="page-header">
@@ -1171,29 +1294,31 @@ onBeforeUnmount(() => {
           </el-tabs>
         </section>
 
-        <section v-else class="plugin-content">
-          <template v-if="activePlugin">
-            <div v-if="activePlugin.missing_required_permissions.length" class="boundary-state">
+        <section v-show="currentView !== 'plugins' && currentView !== 'settings'" class="plugin-content">
+          <div class="plugin-frame-stack">
+            <iframe
+              v-for="plugin in mountedFramePlugins"
+              :key="plugin.id"
+              :ref="(element) => setIframeElement(plugin.id, element)"
+              v-show="currentView === plugin.id"
+              class="plugin-frame"
+              :title="plugin.name"
+              :src="session?.plugin_assets?.[plugin.id]?.base || ''"
+              sandbox="allow-scripts"
+              @load="iframeLoaded(plugin.id)"
+            ></iframe>
+            <div v-if="activePlugin?.missing_required_permissions?.length" class="boundary-state">
               <WarningFilled /><h1>需要恢复权限</h1><p>{{ activePlugin.name }} 缺少运行所需的必需权限。</p>
-          <div><el-button @click="go('plugins'); pluginTab = 'installed'">返回插件中心</el-button><el-button type="primary" :icon="Lock" @click="openManage(activePlugin)">管理权限</el-button></div>
+              <div><el-button @click="go('plugins'); pluginTab = 'installed'">返回插件中心</el-button><el-button type="primary" :icon="Lock" @click="openManage(activePlugin)">管理权限</el-button></div>
             </div>
-            <div v-else-if="iframeState === 'checking'" class="boundary-state compact-state">
+            <div v-else-if="activePlugin && iframeState === 'checking'" class="boundary-state compact-state">
               <el-icon class="is-loading"><Refresh /></el-icon><p>检查插件状态</p>
             </div>
-            <div v-else-if="iframeState === 'timeout' || iframeState === 'error'" class="boundary-state">
+            <div v-else-if="activePlugin && (iframeState === 'timeout' || iframeState === 'error')" class="boundary-state">
               <WarningFilled /><h1>插件页面未能加载</h1><p>{{ activePlugin.name }} 的故障未影响 Env WebUI 和其他插件。</p>
-              <div><el-button @click="go('plugins'); pluginTab = 'installed'">返回插件中心</el-button><el-button :icon="Refresh" type="primary" @click="go(activePlugin.id)">重新加载</el-button></div>
+              <div><el-button @click="go('plugins'); pluginTab = 'installed'">返回插件中心</el-button><el-button :icon="Refresh" type="primary" @click="go(activePlugin.id, true)">重新加载</el-button></div>
             </div>
-            <iframe
-              v-else
-              ref="iframeElement"
-              class="plugin-frame"
-              :title="activePlugin.name"
-              :src="`${session.plugin_asset_base}${encodeURIComponent(activePlugin.id)}/`"
-              sandbox="allow-scripts"
-              @load="iframeLoaded"
-            ></iframe>
-          </template>
+          </div>
         </section>
       </main>
     </div>

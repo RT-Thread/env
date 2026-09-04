@@ -11,6 +11,7 @@ let authenticatedState
 let buildInsightPackage
 let buildInsightUpgradePackage
 let probePackage
+let keepAlivePackage
 
 test.describe.configure({ mode: 'serial' })
 
@@ -53,6 +54,21 @@ test.beforeAll(async () => {
     { cwd: repository },
   )
   probePackage = resolve(packages, 'org.rt-thread.probe-flash-0.9.6-py3-none-any.epack')
+
+  const keepAliveProject = resolve(temporaryRoot, 'quality-gate-keep-alive')
+  await cp(resolve(examples, 'quality-gate-1.0.0'), keepAliveProject, { recursive: true })
+  const keepAliveManifestPath = resolve(keepAliveProject, 'manifest.json')
+  const keepAliveManifest = JSON.parse(await readFile(keepAliveManifestPath, 'utf8'))
+  keepAliveManifest.compatibility.platforms = ['any']
+  keepAliveManifest.compatibility.architectures = ['any']
+  keepAliveManifest.webui.keep_alive = true
+  await writeFile(keepAliveManifestPath, `${JSON.stringify(keepAliveManifest, null, 2)}\n`)
+  await writeFile(resolve(keepAliveProject, 'frontend', 'index.html'), `<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>Quality Gate</title></head>
+<body><main><h1>Quality Gate</h1><label for="state-input">页面状态</label><input id="state-input" aria-label="页面状态"></main></body></html>
+`)
+  await run('python', ['-m', 'plugins.epack.cli', 'build', keepAliveProject, '-o', packages], { cwd: repository })
+  keepAlivePackage = resolve(packages, 'org.env-community.quality-gate-1.0.0-py3-none-any.epack')
 
   serverProcess = spawn('python', [
     envScript,
@@ -104,6 +120,8 @@ test('desktop installs and opens a local WebUI package', async ({ browser }) => 
   })
   await page.goto(launchUrl)
   await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
+  await expect(page.locator('.topbar')).toHaveCount(0)
+  await expect(page.locator('.sidebar-footer').getByRole('button', { name: '退出 WebUI' })).toBeVisible()
   const sidebarToggle = page.getByRole('button', { name: '折叠侧边栏' })
   await expect(sidebarToggle).toBeVisible()
   await sidebarToggle.click()
@@ -212,6 +230,7 @@ test('mobile navigation keeps local plugin management above settings', async ({ 
   const order = await footer.locator('.nav-entry').allTextContents()
   expect(order[0]).toContain('插件中心')
   expect(order[1]).toContain('设置')
+  expect(order[2]).toContain('退出 WebUI')
   await footer.getByText('插件中心', { exact: true }).click()
   await expect(page.getByRole('tab', { name: '本地安装' })).toBeVisible()
   await page.getByRole('tab', { name: '已安装' }).click()
@@ -423,7 +442,9 @@ test('SDK settings previews and applies a toolchain change', async ({ browser })
   await expect(applyButton).toHaveCSS('border-color', 'rgb(15, 118, 110)')
   await expect(applyButton).toHaveCSS('color', 'rgb(255, 255, 255)')
   await expect(applyButton).toHaveCSS('transition-property', 'background-color, border-color, box-shadow, opacity')
-  await page.getByRole('button', { name: '切换主题' }).click()
+  await page.getByRole('tab', { name: '常规' }).click()
+  await page.getByText('深色', { exact: true }).click()
+  await page.getByRole('tab', { name: 'SDK 管理' }).click()
   await expect(previewButton).toHaveCSS('background-color', 'rgb(115, 214, 203)')
   await expect(previewButton).toHaveCSS('color', 'rgb(16, 37, 34)')
   await expect(applyButton).toHaveCSS('background-color', 'rgb(115, 214, 203)')
@@ -481,11 +502,61 @@ test('local toolchain settings manage sdk_cfg.json', async ({ browser }) => {
   await context.close()
 })
 
-test('close button confirms and shuts down the WebUI service', async ({ browser }) => {
+test('keep-alive plugin preserves iframe state while navigating', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
   const page = await context.newPage()
   await page.goto(new URL('/', launchUrl).toString())
-  await page.getByRole('button', { name: '关闭 WebUI' }).click()
+  await page.getByRole('tab', { name: '本地安装' }).click()
+  await page.locator('.local-upload-zone input[type="file"]').setInputFiles(keepAlivePackage)
+  await expect(page.locator('.package-review').getByRole('heading', { name: 'Quality Gate' })).toBeVisible()
+  await page.locator('.package-review').getByText('我已确认来源并接受未签名包风险', { exact: true }).click()
+  await page.getByRole('button', { name: '安装本地包' }).click()
+
+  const qualityCard = page.locator('.installed-card').filter({ hasText: 'Quality Gate' })
+  await expect(qualityCard).toBeVisible()
+  await qualityCard.getByRole('button', { name: '打开' }).click()
+  const qualityFrame = page.locator('iframe[title="Quality Gate"]')
+  const stateInput = qualityFrame.contentFrame().getByLabel('页面状态')
+  await expect(stateInput).toBeVisible()
+  await stateInput.fill('保留此状态')
+
+  await page.locator('.nav-entry').filter({ hasText: 'Build Insight' }).click()
+  await expect(page.locator('iframe[title="Build Insight"]')).toBeVisible()
+  const firstDefaultFrame = await page.locator('iframe[title="Build Insight"]').elementHandle()
+  await page.locator('.nav-entry').filter({ hasText: 'Quality Gate' }).click()
+  await expect(stateInput).toHaveValue('保留此状态')
+  await page.locator('.nav-entry').filter({ hasText: 'Build Insight' }).click()
+  await expect(page.locator('iframe[title="Build Insight"]')).toBeVisible()
+  expect(await page.evaluate((frame) => frame !== document.querySelector('iframe[title="Build Insight"]'), firstDefaultFrame)).toBe(true)
+
+  await page.locator('.sidebar-footer').getByText('插件中心', { exact: true }).click()
+  await page.locator('.nav-entry').filter({ hasText: 'Quality Gate' }).click()
+  await expect(stateInput).toHaveValue('保留此状态')
+
+  const retainedFrame = await qualityFrame.elementHandle()
+  expect(retainedFrame).not.toBeNull()
+  await page.locator('.sidebar-footer').getByText('插件中心', { exact: true }).click()
+  const qualityCardAfterNavigation = page.locator('.installed-card').filter({ hasText: 'Quality Gate' })
+  await qualityCardAfterNavigation.getByRole('button', { name: '更多插件操作' }).click()
+  await page.getByRole('menuitem', { name: '禁用' }).click()
+  await expect(qualityCardAfterNavigation.getByText('已禁用', { exact: true })).toBeVisible()
+  await expect(page.locator('iframe[title="Quality Gate"]')).toHaveCount(0)
+
+  await qualityCardAfterNavigation.getByRole('button', { name: '更多插件操作' }).click()
+  await page.getByRole('menuitem', { name: '启用' }).click()
+  await expect(qualityCardAfterNavigation.getByText('已启用', { exact: true })).toBeVisible()
+  await qualityCardAfterNavigation.getByRole('button', { name: '打开' }).click()
+  await expect(qualityFrame).toBeVisible()
+  expect(await page.evaluate((frame) => frame !== document.querySelector('iframe[title="Quality Gate"]'), retainedFrame)).toBe(true)
+
+  await context.close()
+})
+
+test('sidebar exit confirms and shuts down the WebUI service', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
+  const page = await context.newPage()
+  await page.goto(new URL('/', launchUrl).toString())
+  await page.locator('.sidebar-footer').getByRole('button', { name: '退出 WebUI' }).click()
   await expect(page.getByText('关闭后 Env WebUI 服务将退出，当前页面也会关闭。是否继续？', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '关闭并退出' }).click()
   await expect.poll(() => serverProcess.exitCode, { timeout: 5000 }).not.toBeNull()

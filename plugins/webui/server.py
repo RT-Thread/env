@@ -76,11 +76,12 @@ class WebUIApplication(object):
         self.launch_token = secrets.token_urlsafe(32)
         self.session_token = secrets.token_urlsafe(32)
         self.csrf_token = secrets.token_urlsafe(32)
-        self.asset_token = secrets.token_urlsafe(32)
         self.initial_plugin = initial_plugin.strip() if isinstance(initial_plugin, str) else None
         self.allow_remote_hosts = bool(allow_remote_hosts)
         self.uploads = {}
         self.upload_lock = threading.Lock()
+        self.asset_tokens = {}
+        self.asset_token_lock = threading.Lock()
         self.market = load_market_config(self.service.paths)
         self.market_client = MarketClient(self.market['url']) if self.market['enabled'] else None
 
@@ -101,6 +102,40 @@ class WebUIApplication(object):
 
     def installed(self):
         return [self._public_plugin(self.service.info(item['id'])) for item in self.service.list()]
+
+    def plugin_asset_context(self):
+        result = {}
+        for item in self.installed():
+            if not item.get('enabled') or not item.get('webui'):
+                continue
+            if item.get('missing_required_permissions'):
+                continue
+            base = '/plugin-assets/%s/%s/' % (self.asset_token_for(item['id']), quote(item['id'], safe=''))
+            backend = None
+            if item.get('service'):
+                backend = {
+                    'http_base': base + 'backend/',
+                    'websocket_base': base + 'backend/',
+                }
+            result[item['id']] = {'base': base, 'backend': backend}
+        return result
+
+    def asset_token_for(self, plugin_id):
+        with self.asset_token_lock:
+            token = self.asset_tokens.get(plugin_id)
+            if token is None:
+                token = secrets.token_urlsafe(32)
+                self.asset_tokens[plugin_id] = token
+            return token
+
+    def plugin_for_asset_token(self, token):
+        if not isinstance(token, str) or not token:
+            return None
+        with self.asset_token_lock:
+            for plugin_id, candidate in self.asset_tokens.items():
+                if hmac.compare_digest(token, candidate):
+                    return plugin_id
+        return None
 
     def _public_plugin(self, item):
         result = dict(item)
@@ -415,7 +450,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 self._tokenized_plugin_asset(parsed.path)
                 return
             authenticated = self.application.authenticated(self.headers.get('Cookie'))
-            # The tokenized asset URL is a session-scoped bearer capability.
+            # The tokenized asset URL is a plugin-scoped bearer capability.
             # Sandboxed plugin frames cannot send Env's SameSite=Strict cookie,
             # so allow their tokenized backend requests to reach the normal
             # plugin and origin checks below.
@@ -499,7 +534,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                     'frontend_sdk': FRONTEND_SDK_VERSION,
                     'workspace': self.application.workspace,
                     'csrf_token': self.application.csrf_token,
-                    'plugin_asset_base': '/plugin-assets/%s/' % self.application.asset_token,
+                    'plugin_assets': self.application.plugin_asset_context(),
                     'market': {
                         'enabled': bool(self.application.market['enabled']),
                         'url': self.application.market.get('url') or '',
@@ -664,7 +699,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             len(segments) >= 5
             and segments[0] == 'plugin-assets'
             and segments[3] == 'backend'
-            and hmac.compare_digest(segments[1], self.application.asset_token)
+            and self.application.plugin_for_asset_token(segments[1]) == segments[2]
             and self._is_backend_request(path)
         )
 
@@ -674,7 +709,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             plugin_id = segments[1]
             target_parts = segments[3:]
         elif len(segments) >= 5 and segments[0] == 'plugin-assets' and segments[3] == 'backend':
-            if not hmac.compare_digest(segments[1], self.application.asset_token):
+            if self.application.plugin_for_asset_token(segments[1]) != segments[2]:
                 raise UsageError('invalid plugin backend path')
             plugin_id = segments[2]
             target_parts = segments[4:]
@@ -766,9 +801,15 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             'Connection: Upgrade',
             'Sec-WebSocket-Key: %s' % key,
             'Sec-WebSocket-Version: %s' % self.headers.get('Sec-WebSocket-Version', '13'),
-            '',
-            '',
         ]
+        for name in ('Sec-WebSocket-Protocol', 'Sec-WebSocket-Extensions'):
+            value = self.headers.get(name)
+            if value:
+                if '\r' in value or '\n' in value:
+                    upstream.close()
+                    raise UsageError('invalid WebSocket header')
+                request.append('%s: %s' % (name, value))
+        request.extend(['', ''])
         upstream.sendall('\r\n'.join(request).encode('ascii'))
         response = _read_http_headers(upstream)
         if not response.startswith(b'HTTP/1.1 101') and not response.startswith(b'HTTP/1.0 101'):
@@ -790,7 +831,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
 
     def _tokenized_plugin_asset(self, path):
         segments = [unquote(item) for item in path.split('/') if item]
-        if len(segments) < 3 or not hmac.compare_digest(segments[1], self.application.asset_token):
+        if len(segments) < 3 or self.application.plugin_for_asset_token(segments[1]) != segments[2]:
             self._error(HTTPStatus.NOT_FOUND, 'not_found', 'plugin resource was not found')
             return
         plugin_id = segments[2]
@@ -828,11 +869,13 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store' if path.endswith('index.html') else 'public, max-age=3600')
         if plugin:
             origin = 'http://%s' % self.headers.get('Host')
+            websocket_origin = 'ws://%s' % self.headers.get('Host')
+            secure_websocket_origin = 'wss://%s' % self.headers.get('Host')
             self.send_header(
                 'Content-Security-Policy',
                 "default-src 'none'; script-src %s; style-src %s 'unsafe-inline'; img-src %s data:; "
-                "connect-src %s; frame-ancestors %s; base-uri 'none'; form-action 'none'"
-                % (origin, origin, origin, origin, origin),
+                "connect-src %s %s %s; frame-ancestors %s; base-uri 'none'; form-action 'none'"
+                % (origin, origin, origin, origin, websocket_origin, secure_websocket_origin, origin),
             )
         else:
             self.send_header(

@@ -88,6 +88,7 @@ def default_manifest(
             'entry': 'frontend/index.html',
             'icon': 'puzzle',
             'frontend_sdk': '>=1.0.0,<2.0.0',
+            'keep_alive': False,
         }
     return manifest
 

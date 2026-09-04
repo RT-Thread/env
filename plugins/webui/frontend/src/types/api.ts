@@ -18,6 +18,32 @@ export interface PluginCommand {
 export interface PluginWebUi {
   entry: string
   icon?: string
+  keep_alive?: boolean
+}
+
+export interface PluginBackendContext {
+  http_base: string
+  websocket_base: string
+}
+
+export interface PluginAssetContext {
+  base: string
+  backend: PluginBackendContext | null
+}
+
+export interface PluginHostBackendContext {
+  httpBase: string
+  websocketBase: string
+}
+
+export interface PluginHostContext {
+  protocolVersion: number
+  pluginId: string
+  sdkVersion: string
+  theme: 'light' | 'dark'
+  language: string
+  backend: PluginHostBackendContext | null
+  features: string[]
 }
 
 export interface Compatibility {
@@ -105,6 +131,7 @@ export interface RuntimeProfile {
 export interface Session {
   csrf_token: string
   frontend_sdk?: string
+  plugin_assets?: Record<string, PluginAssetContext>
   market: {
     enabled: boolean
     url?: string

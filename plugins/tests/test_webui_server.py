@@ -2,6 +2,7 @@ import argparse
 from http.cookiejar import CookieJar
 from http.client import HTTPConnection
 from urllib.error import HTTPError
+from urllib.parse import urlparse
 from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
 import hashlib
 import io
@@ -18,7 +19,7 @@ from cmds import cmd_webui
 import env as env_module
 from plugins.epack.builder import build_project
 from plugins.tests.helpers import EXAMPLES, copy_project, update_manifest
-from plugins.webui.server import PACKAGE_LIMIT, WebUIServer
+from plugins.webui.server import EnvWebUIRequestHandler, PACKAGE_LIMIT, WebUIServer
 
 
 REPOSITORY = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -93,7 +94,7 @@ class WebUIServerTest(unittest.TestCase):
         self.assertEqual(unauthenticated.exception.code, 401)
         session = self.authenticate()
         self.assertEqual(session['frontend_sdk'], '1.0.0')
-        self.assertTrue(session['plugin_asset_base'].startswith('/plugin-assets/'))
+        self.assertEqual(session['plugin_assets'], {})
         self.assertEqual(session['market'], {'enabled': False, 'url': '', 'source': None})
 
         package = os.path.join(
@@ -123,6 +124,10 @@ class WebUIServerTest(unittest.TestCase):
         )
         self.assertEqual(status, 201)
         self.assertEqual(installed['id'], build['id'])
+        _, session = self.request_json('/api/v1/session')
+        asset = session['plugin_assets'][build['id']]
+        self.assertTrue(asset['base'].startswith('/plugin-assets/'))
+        self.assertEqual(asset['backend'], None)
         _, plugins = self.request_json('/api/v1/plugins')
         self.assertEqual(len(plugins), 1)
         self.assertEqual(plugins[0]['compatibility_issues'], [])
@@ -130,11 +135,18 @@ class WebUIServerTest(unittest.TestCase):
             self.assertIn('固件构建分析', response.read().decode('utf-8'))
         asset_url = (
             self.server.url
-            + session['plugin_asset_base'].lstrip('/')
-            + 'org.rt-thread.build-insight/styles.css'
+            + asset['base'].lstrip('/')
+            + 'styles.css'
         )
         with urlopen(asset_url) as response:
             self.assertIn(':root', response.read().decode('utf-8'))
+        cross_asset_url = asset_url.replace(
+            'org.rt-thread.build-insight/',
+            'org.example.other/',
+        )
+        with self.assertRaises(HTTPError) as cross_plugin:
+            self.opener.open(cross_asset_url)
+        self.assertEqual(cross_plugin.exception.code, 404)
 
         self.request_json(
             '/api/v1/plugins/org.rt-thread.build-insight/permissions',
@@ -342,6 +354,75 @@ class WebUIServerTest(unittest.TestCase):
         with self.assertRaises(HTTPError) as repeated:
             build_opener(HTTPCookieProcessor(CookieJar())).open(self.server.launch_url)
         self.assertEqual(repeated.exception.code, 401)
+
+    def test_asset_tokens_are_bound_to_plugin_ids(self):
+        first = self.server.application.asset_token_for('org.example.first')
+        second = self.server.application.asset_token_for('org.example.second')
+        self.assertNotEqual(first, second)
+        self.assertEqual(self.server.application.plugin_for_asset_token(first), 'org.example.first')
+        self.assertEqual(self.server.application.plugin_for_asset_token(second), 'org.example.second')
+        self.assertIsNone(self.server.application.plugin_for_asset_token('invalid-token'))
+
+    def test_plugin_asset_context_exposes_optional_backend_transport(self):
+        plugin = {
+            'id': 'org.example.service',
+            'enabled': True,
+            'webui': {'entry': 'frontend/index.html'},
+            'service': {'entry': 'package.service:create_service'},
+            'missing_required_permissions': [],
+        }
+        with mock.patch.object(self.server.application, 'installed', return_value=[plugin]):
+            context = self.server.application.plugin_asset_context()['org.example.service']
+        self.assertTrue(context['base'].startswith('/plugin-assets/'))
+        self.assertEqual(
+            context['backend'],
+            {
+                'http_base': context['base'] + 'backend/',
+                'websocket_base': context['base'] + 'backend/',
+            },
+        )
+
+    def test_websocket_proxy_forwards_standard_negotiation_headers(self):
+        handler = object.__new__(EnvWebUIRequestHandler)
+        handler.headers = {
+            'Sec-WebSocket-Key': 'test-key',
+            'Sec-WebSocket-Version': '13',
+            'Sec-WebSocket-Protocol': 'env.plugin.v1',
+            'Sec-WebSocket-Extensions': 'permessage-deflate',
+        }
+        handler.connection = mock.Mock()
+        handler.close_connection = False
+        handler._backend_target = mock.Mock(return_value=('org.example.service', 4321, '/events'))
+        upstream = mock.Mock()
+        with mock.patch('plugins.webui.server.socket.create_connection', return_value=upstream), mock.patch(
+            'plugins.webui.server._read_http_headers', return_value=b'HTTP/1.1 101 Switching Protocols\r\n\r\n'
+        ), mock.patch('plugins.webui.server._relay_stream'):
+            handler._plugin_websocket_proxy(urlparse('/plugins/org.example.service/backend/events'))
+        request = upstream.sendall.call_args[0][0].decode('ascii')
+        self.assertIn('Sec-WebSocket-Protocol: env.plugin.v1\r\n', request)
+        self.assertIn('Sec-WebSocket-Extensions: permessage-deflate\r\n', request)
+
+    def test_plugin_assets_allow_websocket_connections(self):
+        package = os.path.join(
+            EXAMPLES,
+            'build-insight-1.0.0',
+        )
+        built = build_project(package, os.path.join(self.temporary.name, 'dist'))
+        self.authenticate()
+        upload = self.upload_package(built)
+        self.request_json(
+            '/api/v1/plugins/install',
+            method='POST',
+            body={'upload_id': upload['upload_id'], 'allow_unsigned': True},
+        )
+        _, session = self.request_json('/api/v1/session')
+        asset = session['plugin_assets']['org.rt-thread.build-insight']
+        request = Request(self.server.url + asset['base'].lstrip('/') + 'index.html')
+        with self.opener.open(request) as response:
+            policy = response.headers['Content-Security-Policy']
+        self.assertIn('connect-src http://', policy)
+        self.assertIn('ws://', policy)
+        self.assertIn('wss://', policy)
 
     def test_launch_target_redirects_to_plugin_view(self):
         self.server.application.initial_plugin = 'org.example.build-insight'

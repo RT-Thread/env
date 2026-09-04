@@ -77,6 +77,7 @@ class EpackToolTest(unittest.TestCase):
         self.assertEqual(manifest['commands'], [])
         self.assertEqual(manifest['backend']['artifacts'], [])
         self.assertEqual(manifest['webui']['entry'], 'frontend/index.html')
+        self.assertFalse(manifest['webui']['keep_alive'])
         self.assertFalse(os.path.exists(os.path.join(project, 'src')))
         self.assertTrue(os.path.isfile(os.path.join(project, 'frontend', 'index.html')))
         validate_project(project)
@@ -93,6 +94,7 @@ class EpackToolTest(unittest.TestCase):
             manifest = json.load(manifest_file)
         self.assertEqual(len(manifest['commands']), 1)
         self.assertEqual(manifest['webui']['entry'], 'frontend/index.html')
+        self.assertFalse(manifest['webui']['keep_alive'])
         self.assertTrue(os.path.isfile(os.path.join(project, 'src', 'org_example_combined', 'cli.py')))
         self.assertTrue(os.path.isfile(os.path.join(project, 'frontend', 'index.html')))
 

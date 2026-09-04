@@ -5,6 +5,8 @@ import type {
   MarketArtifact,
   MarketDiagnosis,
   MarketDiagnosisReason,
+  PluginAssetContext,
+  PluginHostBackendContext,
   PluginCommand,
 } from '../types/api'
 import { iconMap, marketActionLabels } from '../constants'
@@ -37,6 +39,19 @@ export function marketActionLabel(item?: Partial<EnvPlugin> | null): string {
 
 export function installedPluginFor(installed: EnvPlugin[], plugin?: Partial<EnvPlugin> | null): EnvPlugin | undefined {
   return installed.find((item) => item.id === plugin?.id)
+}
+
+export function hostBackendContext(
+  asset?: PluginAssetContext | null,
+  pageUrl?: string,
+): PluginHostBackendContext | null {
+  if (!asset?.backend) return null
+  const url = new URL(asset.backend.websocket_base, pageUrl || globalThis.location?.href || 'http://127.0.0.1/')
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return {
+    httpBase: asset.backend.http_base,
+    websocketBase: url.toString(),
+  }
 }
 
 export function canInstallFromMarket(plugin?: Partial<EnvPlugin> | null): boolean {
