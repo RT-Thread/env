@@ -58,6 +58,21 @@ class WorkspaceTest(unittest.TestCase):
         with self.assertRaises(PermissionDenied):
             workspace.write_text('private.key', 'secret')
 
+    def test_absolute_path_inside_workspace_is_accepted(self):
+        workspace = Workspace(self.root, ['workspace.write'])
+        target = os.path.join(self.root, 'nested', 'output.txt')
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        resolved = workspace.resolve(target)
+        self.assertEqual(os.path.normcase(resolved), os.path.normcase(os.path.realpath(target)))
+        workspace.write_text(os.path.join('nested', 'output.txt'), 'inside')
+        self.assertEqual(workspace.read_text(target), 'inside')
+
+    def test_absolute_path_outside_workspace_is_rejected(self):
+        workspace = Workspace(self.root, ['workspace.write'])
+        outside = os.path.join(os.path.dirname(self.root), 'outside.txt')
+        with self.assertRaises(WorkspaceBoundaryError):
+            workspace.resolve(outside)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,7 @@ COMMAND_RE = re.compile(r'^[a-z][a-z0-9-]{0,62}$')
 ENTRY_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_]*$')
 ABI_RE = re.compile(r'^(?:py3|cp[0-9]{2,3})$')
 ICON_RE = re.compile(r'^[a-z][a-z0-9-]{0,62}$')
+WINDOWS_RESERVED_COMMAND_RE = re.compile(r'^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$', re.IGNORECASE)
 
 ALLOWED_PERMISSIONS = frozenset(
     [
@@ -104,6 +105,11 @@ def _enum_list(value, allowed, path):
     if 'any' in seen and len(seen) != 1:
         raise ManifestError("%s cannot combine 'any' with other values" % path)
     return tuple(items)
+
+
+def is_windows_reserved_command(name):
+    normalized = name.rstrip(' .')
+    return bool(WINDOWS_RESERVED_COMMAND_RE.match(normalized))
 
 
 class Manifest(object):
@@ -245,6 +251,8 @@ def validate_manifest(data):
         name = _string(command['name'], path + '.name')
         if not COMMAND_RE.match(name):
             raise ManifestError("%s.name is not a valid command name" % path)
+        if is_windows_reserved_command(name):
+            raise ManifestError("%s.name is reserved on Windows: %s" % (path, name))
         if name in command_names:
             raise ManifestError("manifest.commands contains duplicate command: %s" % name)
         command_names.add(name)

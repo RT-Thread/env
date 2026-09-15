@@ -94,6 +94,12 @@ class ManifestTest(unittest.TestCase):
         with self.assertRaisesRegex(ManifestError, 'keep_alive'):
             validate_manifest(data)
 
+    def test_windows_reserved_command_name_is_rejected(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['commands'][0]['name'] = 'nul'
+        with self.assertRaisesRegex(ManifestError, 'reserved on Windows'):
+            validate_manifest(data)
+
 
 class PackageTest(unittest.TestCase):
     def setUp(self):

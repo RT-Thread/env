@@ -19,10 +19,12 @@ class FakeRunner:
         self.venv_root = Path(venv_root)
         self.source_root = Path(source_root).resolve()
         self.commands = []
+        self.environments = []
 
-    def __call__(self, command):
+    def __call__(self, command, env=None):
         command = [str(value) for value in command]
         self.commands.append(command)
+        self.environments.append(dict(env or {}))
         if command[1:3] == ['-m', 'venv']:
             layout = env_venv.venv_layout(self.venv_root)
             layout['python'].parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +117,13 @@ class EnvVenvTest(unittest.TestCase):
         pip_commands = [command for command in runner.commands if command[1:4] == ['-m', 'pip', 'install']]
         self.assertEqual(len(pip_commands), 2)
         self.assertTrue(all(env_venv.ALIYUN_INDEX_URL in command for command in pip_commands))
+        self.assertTrue(all(command[command.index('--proxy') + 1] == '' for command in pip_commands))
+        self.assertTrue(
+            all(
+                not any(key in environment for key in env_venv.PROXY_ENVIRONMENT_KEYS)
+                for environment in runner.environments
+            )
+        )
 
         with (self.venv / env_venv.STATE_FILENAME).open('r', encoding='utf-8') as source:
             state = json.load(source)
@@ -175,6 +184,7 @@ class EnvVenvTest(unittest.TestCase):
         pip_commands = [command for command in runner.commands if command[1:4] == ['-m', 'pip', 'install']]
         self.assertEqual(len(pip_commands), 1)
         self.assertNotIn('--index-url', pip_commands[0])
+        self.assertEqual(pip_commands[0][pip_commands[0].index('--proxy') + 1], '')
         self.assertEqual(env_venv.read_state(self.venv)['fingerprint'], env_venv.source_fingerprint(self.source))
 
     def test_missing_package_is_repaired_without_upgrade_prompt(self):
@@ -195,12 +205,25 @@ class EnvVenvTest(unittest.TestCase):
         self.assertTrue(layout['rt_env'].is_file())
 
     def test_country_detection_and_explicit_index_override(self):
-        with mock.patch.object(env_venv, 'urlopen', return_value=FakeResponse(b'CN\n')) as request:
+        with mock.patch.object(env_venv, 'build_opener') as build_opener:
+            opener = mock.MagicMock()
+            build_opener.return_value = opener
+            response = mock.MagicMock()
+            response.read.return_value = b'CN\n'
+            opener.open.return_value.__enter__.return_value = response
             self.assertEqual(env_venv.detect_country(), 'CN')
-        self.assertEqual(request.call_args[1]['timeout'], 3)
+        build_opener.assert_called_once()
+        self.assertEqual(build_opener.call_args.args[0].proxies, {})
+        opener.open.assert_called_once()
+        self.assertEqual(opener.open.call_args[1]['timeout'], 3)
 
-        with mock.patch.object(env_venv, 'urlopen', side_effect=OSError('offline')):
+        with mock.patch.object(env_venv, 'build_opener') as build_opener:
+            opener = mock.MagicMock()
+            build_opener.return_value = opener
+            opener.open.side_effect = OSError('offline')
             self.assertIsNone(env_venv.detect_country())
+        build_opener.assert_called_once()
+        self.assertEqual(build_opener.call_args.args[0].proxies, {})
 
         output = io.StringIO()
         with mock.patch('sys.stdout', new=output):
@@ -210,6 +233,57 @@ class EnvVenvTest(unittest.TestCase):
             )
         self.assertEqual(selected, 'https://user:secret@example.invalid/simple')
         self.assertNotIn('secret', output.getvalue())
+
+    def test_proxy_environment_is_removed_for_commands(self):
+        runner = FakeRunner(self.venv, self.source)
+        with mock.patch.dict(
+            os.environ,
+            {
+                'HTTP_PROXY': 'http://proxy.invalid:8080',
+                'HTTPS_PROXY': 'http://proxy.invalid:8443',
+                'ALL_PROXY': 'http://proxy.invalid:9000',
+            },
+            clear=False,
+        ):
+            env_venv.ensure_environment(
+                self.venv,
+                self.source,
+                self.activation,
+                command_runner=runner,
+                country_detector=lambda: 'US',
+            )
+
+        pip_environments = [environment for command, environment in zip(runner.commands, runner.environments) if command[1:4] == ['-m', 'pip', 'install']]
+        self.assertTrue(pip_environments)
+        for environment in pip_environments:
+            self.assertNotIn('HTTP_PROXY', environment)
+            self.assertNotIn('HTTPS_PROXY', environment)
+            self.assertNotIn('ALL_PROXY', environment)
+
+    def test_run_command_uses_proxy_free_environment(self):
+        with mock.patch.dict(
+            os.environ,
+            {
+                'HTTP_PROXY': 'http://proxy.invalid:8080',
+                'HTTPS_PROXY': 'http://proxy.invalid:8443',
+                'ALL_PROXY': 'http://proxy.invalid:9000',
+            },
+            clear=False,
+        ):
+            with mock.patch('env_venv.subprocess.check_call') as check_call:
+                env_venv.run_command(['python', '--version'])
+
+        self.assertEqual(check_call.call_count, 1)
+        _, kwargs = check_call.call_args
+        self.assertNotIn('HTTP_PROXY', kwargs['env'])
+        self.assertNotIn('HTTPS_PROXY', kwargs['env'])
+        self.assertNotIn('ALL_PROXY', kwargs['env'])
+
+        with mock.patch('env_venv.subprocess.check_call') as check_call:
+            env_venv.run_command(['python', '--version'], env={'PATH': 'bin', 'HTTP_PROXY': 'http://proxy.invalid'})
+        _, kwargs = check_call.call_args
+        self.assertEqual(kwargs['env']['PATH'], 'bin')
+        self.assertNotIn('HTTP_PROXY', kwargs['env'])
 
     def test_windows_layout_uses_scripts_directory(self):
         layout = env_venv.venv_layout(self.venv, platform_name='nt')
@@ -234,7 +308,7 @@ class EnvVenvTest(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(ensure.call_args.args[0], str(self.venv))
         self.assertEqual(ensure.call_args.args[1], Path(env_venv.__file__).resolve().parent)
-        self.assertEqual(ensure.call_args.args[2], self.root.resolve() / 'env.sh')
+        self.assertEqual(ensure.call_args.args[2], env_venv.default_activation_script(self.venv))
 
     def test_mark_current_legacy_argument_records_state_and_syncs_activation(self):
         layout = env_venv.venv_layout(self.venv)
@@ -242,6 +316,8 @@ class EnvVenvTest(unittest.TestCase):
         layout['python'].write_text('python\n', encoding='utf-8')
         layout['activate'].write_text('activate\n', encoding='utf-8')
         layout['rt_env'].write_text('rt-env\n', encoding='utf-8')
+        activation_target = env_venv.default_activation_script(self.venv)
+        activation_target.parent.mkdir(parents=True, exist_ok=True)
 
         result = env_venv.main(
             [
@@ -254,12 +330,13 @@ class EnvVenvTest(unittest.TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(self.activation.read_text(encoding='utf-8'), 'source activation v1\n')
+        self.assertEqual(activation_target.read_text(encoding='utf-8'), 'powershell activation v1\n')
         state = env_venv.read_state(self.venv)
         self.assertEqual(state['source'], str(self.source.resolve()))
         self.assertEqual(state['fingerprint'], env_venv.source_fingerprint(self.source))
         self.assertEqual(state['index'], 'existing')
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX shell test')
     def test_legacy_env_sh_can_call_new_helper_with_only_venv(self):
         env_root = self.root / 'legacy-env'
         scripts = env_root / 'tools' / 'scripts'
@@ -311,6 +388,7 @@ class EnvVenvTest(unittest.TestCase):
         )
         self.assertIsNotNone(env_venv.read_state(env_root / '.venv'))
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX shell test')
     def test_env_sh_attempts_activation_after_bootstrap_failure(self):
         env_root = self.root / 'shell-env'
         scripts = env_root / 'tools' / 'scripts'

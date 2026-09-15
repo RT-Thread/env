@@ -10,6 +10,7 @@ import threading
 import time
 from .compatibility import ensure_compatible
 from .errors import StateError, UsageError
+from .hostenv import copy_host_environment
 from .manifest import validate_manifest
 from .store import FileLock, StateStore
 
@@ -152,12 +153,9 @@ class BackendServiceManager(object):
 
 
 def _service_environment(site_packages, module_root):
-    environment = {}
-    for name in ('PATH', 'SYSTEMROOT', 'COMSPEC', 'PATHEXT', 'WINDIR', 'LANG', 'LC_ALL', 'TMP', 'TEMP', 'TMPDIR'):
-        if name in os.environ:
-            environment[name] = os.environ[name]
-    environment['PYTHONPATH'] = os.pathsep.join([site_packages, module_root])
-    return environment
+    return copy_host_environment(
+        extra={'PYTHONPATH': os.pathsep.join([site_packages, module_root])}
+    )
 
 
 def _free_port():

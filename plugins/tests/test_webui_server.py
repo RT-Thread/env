@@ -677,6 +677,35 @@ class WebUICommandTest(unittest.TestCase):
                 cleanup.func(cleanup)
             temporary.cleanup()
 
+    def test_stop_uses_shutdown_token(self):
+        state = {
+            'version': 1,
+            'pid': 4321,
+            'url': 'http://127.0.0.1:49152/',
+            'launch_url': 'http://127.0.0.1:49152/_launch/token',
+            'stop_token': 'stop-token',
+            'host': '127.0.0.1',
+            'port': 49152,
+            'workspace': os.getcwd(),
+            'remote_access': False,
+            'started_at': 0,
+        }
+        with mock.patch.object(
+            cmd_webui,
+            '_current_status',
+            side_effect=[('online', state), ('stopped', None)],
+        ), mock.patch.object(cmd_webui, '_request_shutdown', return_value=True) as request_shutdown, mock.patch.object(
+            cmd_webui,
+            '_pid_alive',
+            return_value=False,
+        ), mock.patch.object(
+            cmd_webui,
+            '_remove_state',
+        ) as remove_state, mock.patch('sys.stdout', new=io.StringIO()):
+            self.assertEqual(cmd_webui._stop_background('/tmp/webui-state.json'), 0)
+        request_shutdown.assert_called_once_with('http://127.0.0.1:49152/_shutdown/stop-token')
+        remove_state.assert_called_once_with('/tmp/webui-state.json')
+
     def test_start_opens_browser_for_local_service(self):
         temporary = tempfile.TemporaryDirectory()
         env_root = os.path.join(temporary.name, 'env')
@@ -691,6 +720,42 @@ class WebUICommandTest(unittest.TestCase):
             stop = self.parse_webui('stop', '--env-root', env_root)
             with mock.patch('sys.stdout', new=io.StringIO()):
                 stop.func(stop)
+            temporary.cleanup()
+
+    def test_background_status_does_not_trust_stale_pid(self):
+        temporary = tempfile.TemporaryDirectory()
+        env_root = os.path.join(temporary.name, 'env')
+        state_path = cmd_webui._state_path(env_root)
+        os.makedirs(os.path.dirname(state_path), exist_ok=True)
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        try:
+            with open(state_path, 'w', encoding='utf-8') as output:
+                json.dump(
+                    {
+                        'version': 1,
+                        'pid': process.pid,
+                        'url': 'http://127.0.0.1:9/',
+                        'launch_url': 'http://127.0.0.1:9/_launch/token',
+                        'host': '127.0.0.1',
+                        'port': 9,
+                        'workspace': temporary.name,
+                        'remote_access': False,
+                        'started_at': 0,
+                    },
+                    output,
+                    ensure_ascii=True,
+                    indent=2,
+                    sort_keys=True,
+                )
+                output.write('\n')
+            status, state = cmd_webui._current_status(state_path)
+            self.assertEqual(status, 'stopped')
+            self.assertIsNone(state)
+            self.assertFalse(os.path.exists(state_path))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
             temporary.cleanup()
 
     def test_standalone_entry_reuses_webui_subcommand(self):

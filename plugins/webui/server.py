@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from ..errors import PluginError, StateError, UsageError
 from ..backend import BackendUnavailableError
+from ..paths import path_is_within
 from ..market import (
     MarketClient,
     MarketError,
@@ -74,6 +75,7 @@ class WebUIApplication(object):
             raise UsageError("WebUI workspace is not a directory: %s" % self.workspace)
         self.static_root = os.path.abspath(static_root or os.path.join(os.path.dirname(__file__), 'static'))
         self.launch_token = secrets.token_urlsafe(32)
+        self.stop_token = secrets.token_urlsafe(32)
         self.session_token = secrets.token_urlsafe(32)
         self.csrf_token = secrets.token_urlsafe(32)
         self.initial_plugin = initial_plugin.strip() if isinstance(initial_plugin, str) else None
@@ -89,6 +91,12 @@ class WebUIApplication(object):
         if not self.launch_token or not hmac.compare_digest(token, self.launch_token):
             return False
         self.launch_token = None
+        return True
+
+    def consume_stop(self, token):
+        if not self.stop_token or not hmac.compare_digest(token, self.stop_token):
+            return False
+        self.stop_token = None
         return True
 
     def authenticated(self, cookie_header):
@@ -443,6 +451,9 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 self._error(HTTPStatus.BAD_REQUEST, 'invalid_host', 'request Host is not allowed')
                 return
             parsed = urlparse(self.path)
+            if method == 'GET' and parsed.path.startswith('/_shutdown/'):
+                self._shutdown(parsed.path)
+                return
             if parsed.path.startswith('/_launch/'):
                 self._launch(parsed)
                 return
@@ -523,6 +534,20 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Set-Cookie', cookie)
         self.send_header('Cache-Control', 'no-store')
         self.end_headers()
+
+    def _shutdown(self, path):
+        token = unquote(path[len('/_shutdown/'):])
+        if not self.application.consume_stop(token):
+            self._error(
+                HTTPStatus.UNAUTHORIZED,
+                'invalid_shutdown_token',
+                'shutdown URL is invalid or has already been used',
+            )
+            return
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        threading.Thread(target=self.server.shutdown, daemon=True).start()
 
     def _api(self, method, parsed):
         path = parsed.path
@@ -848,7 +873,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             raise UsageError("invalid static resource path")
         root = os.path.realpath(self.application.static_root)
         target = os.path.realpath(os.path.join(root, *parts))
-        if os.path.commonpath([root, target]) != root or not os.path.isfile(target):
+        if not path_is_within(root, target) or not os.path.isfile(target):
             if '.' not in os.path.basename(relative):
                 target = os.path.join(root, 'index.html')
             if not os.path.isfile(target):

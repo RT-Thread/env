@@ -9,8 +9,9 @@ from unittest import mock
 from plugins.epack.builder import build_project
 from plugins.epack import cli as epack_cli
 from plugins.epack.project import init_project, validate_project
-from plugins.errors import UsageError
+from plugins.errors import UsageError, WorkspaceBoundaryError
 from plugins.package import EpackArchive
+from plugins.sdk import Workspace
 from plugins.service import PluginService
 from plugins.tests.helpers import build_epack_plugin, build_example
 
@@ -152,6 +153,39 @@ class EpackToolTest(unittest.TestCase):
 
         self.assertFalse(os.path.exists(project))
 
+    def test_init_and_build_accept_absolute_workspace_paths(self):
+        project = os.path.join(self.temporary.name, 'abs-project')
+        output = os.path.join(self.temporary.name, 'abs-dist')
+
+        class Context(object):
+            def __init__(self, root):
+                self.workspace = Workspace(root, ['workspace.write'])
+
+        context = Context(self.temporary.name)
+        result = epack_cli.run(
+            ['init', project, '--id', 'org.example.abs-project', '--name', 'Abs Project'],
+            context=context,
+        )
+        self.assertEqual(result, 0)
+        built = epack_cli.run(['build', project, '-o', output, '--json'], context=context)
+        self.assertEqual(built, 0)
+        package = os.path.join(output, 'org.example.abs-project-0.1.0-py3-none-any.epack')
+        self.assertTrue(os.path.isfile(package))
+        inspected = epack_cli.run(['inspect', package, '--json'], context=context)
+        self.assertEqual(inspected, 0)
+
+    def test_absolute_path_outside_workspace_is_rejected(self):
+        class Context(object):
+            def __init__(self, root):
+                self.workspace = Workspace(root, ['workspace.write'])
+
+        outside = os.path.join(os.path.dirname(self.temporary.name), 'outside-plugin')
+        with self.assertRaises(WorkspaceBoundaryError):
+            epack_cli.run(
+                ['init', outside, '--id', 'org.example.outside', '--name', 'Outside'],
+                context=Context(self.temporary.name),
+            )
+
     def test_init_validate_and_source_build(self):
         project = os.path.join(self.temporary.name, 'project')
         init_project(project, 'org.example.demo', 'Demo')
@@ -217,6 +251,45 @@ class EpackToolTest(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertTrue(os.path.isfile(os.path.join(workspace, 'created', 'manifest.json')))
+        if os.name == 'nt':
+            with open(epack_launcher, 'rb') as launcher:
+                self.assertFalse(launcher.read(2) in (b'\xff\xfe', b'\xfe\xff'))
+            help_process = subprocess.run(
+                [os.environ.get('COMSPEC', 'cmd.exe'), '/d', '/s', '/c', epack_launcher, '--help'],
+                cwd=workspace,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+            )
+            self.assertEqual(help_process.returncode, 0, help_process.stderr)
+            self.assertIn('init', help_process.stdout)
+        validated = subprocess.run(
+            [epack_launcher, 'validate', 'created', '--json'],
+            cwd=workspace,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        self.assertEqual(validated.returncode, 0, validated.stderr)
+        output = os.path.join(workspace, 'dist')
+        built = subprocess.run(
+            [epack_launcher, 'build', os.path.join(workspace, 'created'), '--output', output, '--json'],
+            cwd=workspace,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        self.assertEqual(built.returncode, 0, built.stderr)
+        package = os.path.join(output, 'org.example.created-0.1.0-py3-none-any.epack')
+        self.assertTrue(os.path.isfile(package))
+        inspected = subprocess.run(
+            [epack_launcher, 'inspect', package, '--json'],
+            cwd=workspace,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+        self.assertEqual(inspected.returncode, 0, inspected.stderr)
         service.uninstall('org.rt-thread.epack')
         self.assertFalse(os.path.exists(epack_launcher))
         installed = service.install(hello_package, allow_unsigned=True)
