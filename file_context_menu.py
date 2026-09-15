@@ -22,9 +22,9 @@ class ContextMenuBusy(StateError):
 
 
 class FileContextMenuManager(object):
-    """Manage a reversible, per-user ``Env终端中打开...`` entry."""
+    """Manage a reversible, per-user RT-Thread Env terminal entry."""
 
-    MENU_LABEL = "Env终端中打开..."
+    MENU_LABEL = "在RT-Thread Env终端中打开"
 
     def __init__(self, env_root=None, platform_name=None):
         configured = env_root or os.environ.get("ENV_ROOT")
@@ -112,7 +112,14 @@ class FileContextMenuManager(object):
         winreg = self._windows_module()
         self._atomic_text(
             self.windows_helper,
-            """param([string]$TargetPath)\nif ([string]::IsNullOrWhiteSpace($TargetPath)) { $TargetPath = (Get-Location).Path }\nif (-not (Test-Path -LiteralPath $TargetPath -PathType Container)) { $TargetPath = Split-Path -Parent $TargetPath }\nSet-Location -LiteralPath $TargetPath\n. (Join-Path $PSScriptRoot 'env.ps1')\n""",
+            """param([string]$TargetPath)
+$EnvRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$env:ENV_ROOT = $EnvRoot
+if ([string]::IsNullOrWhiteSpace($TargetPath)) { $TargetPath = (Get-Location).Path }
+if (-not (Test-Path -LiteralPath $TargetPath -PathType Container)) { $TargetPath = Split-Path -Parent $TargetPath }
+Set-Location -LiteralPath $TargetPath
+. (Join-Path $PSScriptRoot 'env.ps1')
+""",
         )
         command = self._windows_command()
         for key_path in (

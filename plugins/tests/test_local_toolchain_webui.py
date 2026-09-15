@@ -146,7 +146,7 @@ class LocalSettingsApiTest(unittest.TestCase):
         self.assertEqual(state["entries"][0]["name"], "gcc-arm")
         _, menu = self.request("/api/v1/settings/file-context-menu")
         self.assertFalse(menu["installed"])
-        self.assertFalse(menu["supported"])
+        self.assertEqual(menu["supported"], os.name == "nt")
         self.request("/api/v1/settings/toolchains/gcc-arm", "DELETE")
         self.assertEqual(self.request("/api/v1/settings/toolchains")[1]["entries"], [])
 
