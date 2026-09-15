@@ -11,9 +11,11 @@ from pathlib import PurePosixPath
 
 from .compatibility import compare_versions, compatibility_issues, ensure_compatible
 from .errors import CommandConflictError, StateError, TransactionError, UsageError
+from .hostenv import copy_host_environment
 from .launchers import LauncherManager
 from .manifest import validate_manifest
 from .package import EpackArchive, canonical_json
+from .paths import path_is_within
 from .store import FileLock, StateStore
 
 
@@ -329,7 +331,7 @@ class PluginInstaller(object):
         install_dir = self.paths.from_root(active['install_dir'])
         frontend_root = os.path.realpath(os.path.join(install_dir, 'frontend'))
         target = os.path.realpath(os.path.join(frontend_root, *path.parts))
-        if os.path.commonpath([frontend_root, target]) != frontend_root or not os.path.isfile(target):
+        if not path_is_within(frontend_root, target) or not os.path.isfile(target):
             raise StateError("WebUI asset is missing: %s" % relative)
         return target
 
@@ -345,19 +347,19 @@ class PluginInstaller(object):
 
     def _run_health_check(self, stage, site_packages):
         manifest_path = os.path.join(stage, 'manifest.json')
-        module = __package__ + '.health_runner'
         package_dir = os.path.dirname(os.path.abspath(__file__))
-        if module.startswith('env.'):
+        package_name = __package__ or 'plugins'
+        if package_name.startswith('env.'):
+            health_module = 'env.plugins.health_runner'
             module_root = os.path.dirname(os.path.dirname(package_dir))
         else:
+            health_module = 'plugins.health_runner'
             module_root = os.path.dirname(package_dir)
-        environment = {}
-        for name in ('PATH', 'SYSTEMROOT', 'COMSPEC', 'PATHEXT', 'WINDIR', 'LANG', 'LC_ALL', 'TMP', 'TEMP', 'TMPDIR'):
-            if name in os.environ:
-                environment[name] = os.environ[name]
-        environment['PYTHONPATH'] = os.pathsep.join([site_packages, module_root])
+        environment = copy_host_environment(
+            extra={'PYTHONPATH': os.pathsep.join([site_packages, module_root])}
+        )
         process = subprocess.run(
-            [sys.executable, '-m', module, manifest_path, site_packages],
+            [sys.executable, '-m', health_module, manifest_path, site_packages],
             cwd=stage,
             env=environment,
             stdout=subprocess.PIPE,

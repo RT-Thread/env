@@ -6,30 +6,11 @@ import sys
 
 from .compatibility import ensure_compatible
 from .errors import DispatchError, PluginError
+from .hostenv import HOST_ENVIRONMENT_NAMES
 from .manifest import validate_manifest
-from .paths import PluginPaths
+from .paths import PluginPaths, path_is_within
 from .sdk import create_runtime_context
 from .store import FileLock, StateStore
-
-
-_SAFE_ENVIRONMENT = frozenset(
-    [
-        'COMSPEC',
-        'ENV_ROOT',
-        'HOME',
-        'LANG',
-        'LC_ALL',
-        'PATH',
-        'PATHEXT',
-        'SYSTEMROOT',
-        'TEMP',
-        'TERM',
-        'TMP',
-        'TMPDIR',
-        'USERPROFILE',
-        'WINDIR',
-    ]
-)
 
 
 def _load_command(state, command_name, paths):
@@ -92,12 +73,12 @@ def _execute(plugin_id, version, command, permissions, site_packages, paths, arg
     try:
         context = create_runtime_context(paths, plugin_id, version, permissions, workspace_root=workspace_root)
         for name in list(os.environ):
-            if name.upper() not in _SAFE_ENVIRONMENT:
+            if name.upper() not in HOST_ENVIRONMENT_NAMES:
                 del os.environ[name]
         module_name, attribute = command['entry'].split(':', 1)
         module = importlib.import_module(module_name)
         module_file = getattr(module, '__file__', None)
-        if not module_file or os.path.commonpath([site_packages, os.path.abspath(module_file)]) != site_packages:
+        if not module_file or not path_is_within(site_packages, os.path.abspath(module_file)):
             raise DispatchError("plugin entry module is outside its backend: %s" % command['entry'])
         entry = getattr(module, attribute, None)
         if not callable(entry):
@@ -115,11 +96,8 @@ def _execute(plugin_id, version, command, permissions, site_packages, paths, arg
             module = sys.modules.get(name)
             module_file = getattr(module, '__file__', None)
             if module_file:
-                try:
-                    if os.path.commonpath([site_packages, os.path.abspath(module_file)]) == site_packages:
-                        del sys.modules[name]
-                except ValueError:
-                    pass
+                if path_is_within(site_packages, os.path.abspath(module_file)):
+                    del sys.modules[name]
         try:
             sys.path.remove(site_packages)
         except ValueError:

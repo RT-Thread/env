@@ -6,6 +6,8 @@ import json
 import os
 import sys
 
+from .paths import path_is_within
+
 
 def _load_entry(entry, site_packages):
     module_name, attribute = entry.split(':', 1)
@@ -14,7 +16,7 @@ def _load_entry(entry, site_packages):
     if not callable(value):
         raise TypeError("entry is not callable: %s" % entry)
     module_file = getattr(module, '__file__', None)
-    if not module_file or os.path.commonpath([site_packages, os.path.abspath(module_file)]) != site_packages:
+    if not module_file or not path_is_within(site_packages, os.path.abspath(module_file)):
         raise TypeError("entry module is not provided by the plugin backend: %s" % entry)
     return value
 

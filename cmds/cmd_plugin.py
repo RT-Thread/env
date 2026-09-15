@@ -22,7 +22,11 @@ def _confirm(prompt, assume_yes):
         return
     if not sys.stdin.isatty():
         raise UsageError("confirmation requires an interactive terminal or --yes")
-    answer = input(prompt + ' [y/N] ').strip().lower()
+    try:
+        answer = input(prompt + ' [y/N] ').strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        raise UsageError("confirmation requires an interactive terminal or --yes")
     if answer not in ('y', 'yes'):
         raise UsageError('operation cancelled')
 

@@ -171,6 +171,29 @@ class LifecycleTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), 'hidden')
 
+    def test_dispatcher_keeps_windows_host_environment(self):
+        if os.name != 'nt':
+            self.skipTest('Windows host environment is only required on Windows')
+        project = copy_project(os.path.join(EXAMPLES, 'hello-1.0.0'), os.path.join(self.temporary.name, 'hostenv'))
+        source_path = os.path.join(project, 'src', 'env_plugin_hello', 'cli.py')
+        with open(source_path, 'w', encoding='utf-8') as source:
+            source.write(
+                'import os\n\n'
+                'def health_check():\n'
+                '    return 0\n\n'
+                'def main(argv, context):\n'
+                '    print(os.environ.get("SYSTEMDRIVE", "missing"))\n'
+                '    print(os.environ.get("USERPROFILE", "missing"))\n'
+                '    return 0\n'
+            )
+        package = build_example_project(project, self.packages)
+        self.service.install(package, allow_unsigned=True)
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        self.assertEqual(lines[0], os.environ.get('SYSTEMDRIVE'))
+        self.assertEqual(os.path.normcase(lines[1]), os.path.normcase(os.environ.get('USERPROFILE')))
+
     def test_failed_install_rolls_back_files_and_launcher(self):
         paths = PluginPaths(env_root=self.env_root, launcher_dir=self.launcher_dir)
         installer = PluginInstaller(paths, LauncherManager(paths), FailingStore(paths))

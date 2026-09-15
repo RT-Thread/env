@@ -8,6 +8,7 @@ import tempfile
 
 from ..compatibility import current_env_version
 from ..errors import PermissionDenied, WorkspaceBoundaryError
+from ..paths import path_is_within
 
 
 _SENSITIVE_PARTS = frozenset(['.git-credentials', '.gnupg', '.ssh'])
@@ -41,19 +42,21 @@ class Workspace(object):
         self.permissions = frozenset(permissions)
 
     def resolve(self, relative_path, sensitive=False):
-        if not isinstance(relative_path, str) or not relative_path or os.path.isabs(relative_path):
-            raise WorkspaceBoundaryError("workspace path must be a non-empty relative path")
-        normalized = os.path.normpath(relative_path)
-        if normalized == '..' or normalized.startswith('..' + os.sep):
-            raise WorkspaceBoundaryError("workspace path cannot contain parent traversal")
-        candidate = os.path.realpath(os.path.join(self.root, normalized))
-        try:
-            inside = os.path.commonpath([self.root, candidate]) == self.root
-        except ValueError:
-            inside = False
-        if not inside:
+        if not isinstance(relative_path, str) or not relative_path:
+            raise WorkspaceBoundaryError("workspace path must be a non-empty path")
+        if os.path.isabs(relative_path):
+            candidate = os.path.realpath(os.path.abspath(relative_path))
+        else:
+            if os.name == 'nt' and len(relative_path) >= 2 and relative_path[1] == ':' and relative_path[0].isalpha():
+                raise WorkspaceBoundaryError("workspace path cannot be a drive-relative path")
+            normalized = os.path.normpath(relative_path)
+            if normalized == '..' or normalized.startswith('..' + os.sep):
+                raise WorkspaceBoundaryError("workspace path cannot contain parent traversal")
+            candidate = os.path.realpath(os.path.join(self.root, normalized))
+        if not path_is_within(self.root, candidate):
             raise WorkspaceBoundaryError("workspace path resolves outside the workspace")
-        if not sensitive and self._is_sensitive(normalized):
+        relative_inside = os.path.relpath(candidate, self.root)
+        if not sensitive and self._is_sensitive(relative_inside):
             raise PermissionDenied("sensitive workspace path requires a future dedicated permission")
         return candidate
 

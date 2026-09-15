@@ -25,9 +25,10 @@ if os.name == 'nt':
         ]
 
     _LOCKFILE_EXCLUSIVE_LOCK = 0x00000002
+    _LOCKFILE_FAIL_IMMEDIATELY = 0x00000001
 
 
-def _lock_windows(handle, shared):
+def _lock_windows(handle, shared, blocking=True):
     import msvcrt
 
     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
@@ -42,6 +43,8 @@ def _lock_windows(handle, shared):
     kernel32.LockFileEx.restype = wintypes.BOOL
     overlapped = _Overlapped()
     flags = 0 if shared else _LOCKFILE_EXCLUSIVE_LOCK
+    if not blocking:
+        flags |= _LOCKFILE_FAIL_IMMEDIATELY
     file_handle = wintypes.HANDLE(msvcrt.get_osfhandle(handle))
     if not kernel32.LockFileEx(file_handle, flags, 0, 1, 0, ctypes.byref(overlapped)):
         raise ctypes.WinError(ctypes.get_last_error())
@@ -67,9 +70,10 @@ def empty_state():
 
 
 class FileLock(object):
-    def __init__(self, path, shared=False):
+    def __init__(self, path, shared=False, blocking=True):
         self.path = path
         self.shared = bool(shared)
+        self.blocking = bool(blocking)
         self.handle = None
         self._windows_lock = None
 
@@ -83,11 +87,13 @@ class FileLock(object):
                     self.handle.write(b'0')
                     self.handle.flush()
                     self.handle.seek(0)
-                self._windows_lock = _lock_windows(self.handle.fileno(), self.shared)
+                self._windows_lock = _lock_windows(self.handle.fileno(), self.shared, blocking=self.blocking)
             else:
                 import fcntl
 
                 mode = fcntl.LOCK_SH if self.shared else fcntl.LOCK_EX
+                if not self.blocking:
+                    mode |= fcntl.LOCK_NB
                 fcntl.flock(self.handle.fileno(), mode)
         except Exception:
             if self.handle is not None:

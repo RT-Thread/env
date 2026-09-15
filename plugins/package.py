@@ -11,6 +11,7 @@ import zipfile
 
 from .errors import IntegrityError, PackageError
 from .manifest import load_json_bytes, parse_manifest
+from .paths import path_is_within
 
 
 class PackageLimits(object):
@@ -209,7 +210,7 @@ class EpackArchive(object):
                     relative = PurePosixPath(name).relative_to('frontend')
                     destination = os.path.abspath(os.path.join(target, *relative.parts))
                     root = os.path.abspath(target)
-                    if os.path.commonpath([root, destination]) != root:
+                    if not path_is_within(root, destination):
                         raise PackageError("frontend member escapes install root: %s" % name)
                     os.makedirs(os.path.dirname(destination), exist_ok=True)
                     with open(destination, 'wb') as output:
@@ -236,7 +237,7 @@ class EpackArchive(object):
                         py_files.append(info.filename)
                     destination = os.path.abspath(os.path.join(target, *path.parts))
                     root = os.path.abspath(target)
-                    if os.path.commonpath([root, destination]) != root:
+                    if not path_is_within(root, destination):
                         raise PackageError("wheel member escapes install root: %s" % info.filename)
                     os.makedirs(os.path.dirname(destination), exist_ok=True)
                     member_content = _read_checked(wheel, info)

@@ -2,6 +2,7 @@
 """Manage and run the local Env WebUI."""
 
 import argparse
+import http.client
 import json
 import os
 import signal
@@ -17,12 +18,14 @@ from urllib.parse import urlparse
 from plugins.errors import PluginError, UsageError
 from plugins.paths import PluginPaths
 from plugins.service import PluginService
+from plugins.store import FileLock
 from plugins.webui.server import WebUIServer
 
 
 SSH_ENVIRONMENT_VARIABLES = ('SSH_CONNECTION', 'SSH_CLIENT', 'SSH_TTY')
 WEBUI_ACTIONS = frozenset(('start', 'stop', 'status'))
 WEBUI_STATE_FILE = 'webui-state-v1.json'
+WEBUI_LOCK_FILE = 'webui-state-v1.lock'
 START_TIMEOUT = 10.0
 STOP_TIMEOUT = 5.0
 
@@ -45,6 +48,10 @@ def _state_path(env_root=None):
     return os.path.join(paths.runtime, WEBUI_STATE_FILE)
 
 
+def _lock_path(state_path):
+    return os.path.join(os.path.dirname(state_path), WEBUI_LOCK_FILE)
+
+
 def _load_state(path):
     try:
         with open(path, 'r', encoding='utf-8') as source:
@@ -54,6 +61,8 @@ def _load_state(path):
     if not isinstance(state, dict) or not isinstance(state.get('pid'), int):
         return None
     if not isinstance(state.get('url'), str) or not isinstance(state.get('launch_url'), str):
+        return None
+    if 'stop_token' in state and not isinstance(state.get('stop_token'), str):
         return None
     return state
 
@@ -91,18 +100,15 @@ def _pid_alive(pid):
     return True
 
 
-def _process_matches(pid):
+def _process_matches(state, lock_path):
+    pid = state['pid']
     if not _pid_alive(pid):
         return False
-    if os.name == 'nt':
-        return True
-    command_path = '/proc/%d/cmdline' % pid
     try:
-        with open(command_path, 'rb') as source:
-            command = source.read().decode('utf-8', 'replace').split('\0')
+        with FileLock(lock_path, shared=True, blocking=False):
+            return False
     except OSError:
         return True
-    return '--serve' in command and any(item.endswith('cmd_webui.py') for item in command)
 
 
 def _server_online(state):
@@ -129,13 +135,44 @@ def _is_webui_plugin(plugin_id, env_root=None):
     return bool(plugin.get('enabled') and plugin.get('webui'))
 
 
+def _stop_url(state):
+    token = state.get('stop_token')
+    if not isinstance(token, str) or not token:
+        return None
+    return state['url'].rstrip('/') + '/_shutdown/' + token
+
+
+def _request_shutdown(stop_url):
+    if not stop_url:
+        return False
+    try:
+        parsed = urlparse(stop_url)
+        host = parsed.hostname
+        port = parsed.port
+        if not host or port is None:
+            return False
+        connection = http.client.HTTPConnection(host, port, timeout=1.0)
+        try:
+            path = parsed.path or '/'
+            if parsed.query:
+                path += '?' + parsed.query
+            connection.request('GET', path)
+            response = connection.getresponse()
+            response.read()
+            return 200 <= response.status < 300
+        finally:
+            connection.close()
+    except (OSError, TypeError, ValueError, http.client.HTTPException):
+        return False
+
+
 def _current_status(path):
     state = _load_state(path)
     if state is None:
         if os.path.exists(path):
             _remove_state(path)
         return 'stopped', None
-    if not _process_matches(state['pid']):
+    if not _process_matches(state, _lock_path(path)):
         _remove_state(path)
         return 'stopped', None
     if _server_online(state):
@@ -270,6 +307,13 @@ def _stop_background(path):
         return 0
 
     pid = state['pid']
+    stop_url = _stop_url(state)
+    if _request_shutdown(stop_url):
+        deadline = time.monotonic() + STOP_TIMEOUT
+        while time.monotonic() < deadline:
+            if not _pid_alive(pid) or _load_state(path) is None:
+                break
+            time.sleep(0.05)
     if _pid_alive(pid):
         try:
             os.kill(pid, signal.SIGTERM)
@@ -315,35 +359,37 @@ def _show_status(path):
 def _serve(args, path):
     server = None
     try:
-        options = {
-            'env_root': args.env_root,
-            'workspace': args.workspace,
-            'host': args.host,
-            'port': args.port,
-        }
-        if getattr(args, 'plugin', None):
-            options['plugin_id'] = args.plugin
-        server = WebUIServer(**options)
-        _write_state(
-            path,
-            {
-                'version': 1,
-                'pid': os.getpid(),
-                'url': server.url,
-                'launch_url': server.launch_url,
-                'host': args.host,
-                'port': server.httpd.server_address[1],
+        with FileLock(_lock_path(path), shared=False, blocking=False):
+            options = {
+                'env_root': args.env_root,
                 'workspace': args.workspace,
-                'remote_access': server.remote_access,
-                'started_at': time.time(),
-            },
-        )
+                'host': args.host,
+                'port': args.port,
+            }
+            if getattr(args, 'plugin', None):
+                options['plugin_id'] = args.plugin
+            server = WebUIServer(**options)
+            _write_state(
+                path,
+                {
+                    'version': 1,
+                    'pid': os.getpid(),
+                    'url': server.url,
+                    'launch_url': server.launch_url,
+                    'stop_token': server.application.stop_token,
+                    'host': args.host,
+                    'port': server.httpd.server_address[1],
+                    'workspace': args.workspace,
+                    'remote_access': server.remote_access,
+                    'started_at': time.time(),
+                },
+            )
 
-        def request_shutdown(signum, frame):
-            threading.Thread(target=server.httpd.shutdown, daemon=True).start()
+            def request_shutdown(signum, frame):
+                threading.Thread(target=server.httpd.shutdown, daemon=True).start()
 
-        signal.signal(signal.SIGTERM, request_shutdown)
-        server.serve_forever()
+            signal.signal(signal.SIGTERM, request_shutdown)
+            server.serve_forever()
     finally:
         if server is not None:
             server.shutdown()

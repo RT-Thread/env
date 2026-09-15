@@ -2,7 +2,6 @@
 
 import os
 import platform
-import sysconfig
 
 
 def default_env_root():
@@ -14,6 +13,15 @@ def default_env_root():
     else:
         base = os.environ.get('HOME') or os.path.expanduser('~')
     return os.path.abspath(os.path.join(base, '.env'))
+
+
+def path_is_within(root, candidate):
+    try:
+        root = os.path.normcase(os.path.abspath(root))
+        candidate = os.path.normcase(os.path.abspath(candidate))
+        return os.path.normcase(os.path.commonpath([root, candidate])) == root
+    except (OSError, ValueError):
+        return False
 
 
 class PluginPaths(object):
@@ -29,7 +37,11 @@ class PluginPaths(object):
         self.cache = os.path.join(self.root, 'cache')
         self.runtime = os.path.join(self.root, 'runtime')
         configured_launcher_dir = os.environ.get('ENV_PLUGIN_LAUNCHER_DIR')
-        self.launchers = os.path.abspath(launcher_dir or configured_launcher_dir or sysconfig.get_path('scripts'))
+        self.launchers = os.path.abspath(launcher_dir or configured_launcher_dir or self._default_launcher_dir())
+
+    def _default_launcher_dir(self):
+        suffix = 'Scripts' if os.name == 'nt' else 'bin'
+        return os.path.join(self.env_root, '.venv', suffix)
 
     def ensure(self):
         for path in (
@@ -55,6 +67,6 @@ class PluginPaths(object):
 
     def from_root(self, relative_path):
         result = os.path.abspath(os.path.join(self.root, relative_path))
-        if os.path.commonpath([self.root, result]) != self.root:
+        if not path_is_within(self.root, result):
             raise ValueError("path escapes plugin root: %s" % relative_path)
         return result

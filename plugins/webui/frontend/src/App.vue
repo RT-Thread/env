@@ -403,7 +403,7 @@ async function setContextMenu(enabled) {
   if (!enabled) {
     try {
       await ElMessageBox.confirm(
-        '将移除“Env终端中打开...”菜单，不会删除 Env 或工具链文件，是否继续？',
+        '将移除“在RT-Thread Env终端中打开”菜单，不会删除 Env 或工具链文件，是否继续？',
         '确认移除文件资源管理器菜单',
         { type: 'warning', confirmButtonText: '确认移除', cancelButtonText: '取消' },
       )
