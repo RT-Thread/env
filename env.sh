@@ -42,6 +42,11 @@ if [ -f "$ENV_ACTIVATE" ]; then
         echo "Failed to activate the RT-Thread Env Python venv." >&2
         activate_status=1
     fi
+
+    # Show welcome message using rt-env command
+    if command -v rt-env >/dev/null 2>&1; then
+        rt-env --info
+    fi
 else
     echo "Cannot activate the RT-Thread Env Python venv: $ENV_ACTIVATE was not found." >&2
     activate_status=1

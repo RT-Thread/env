@@ -21,12 +21,16 @@
 # Change Logs:
 # Date           Author          Notes
 # 2020-04-08     SummerGift      Optimize program structure
+# 2026-09-12     Dongly      Resolve packages/env repo URLs and statistics endpoint
+#                             via env.json (info.get_source / info.get_api_url); logical
+#                             repos no longer query the mirror server
 #
 
 import os
 import uuid
 from vars import Import
-from .cmd_package_utils import execute_command, git_pull_repo, get_url_from_mirror_server, find_bool_macro_in_config
+from info import get_source, get_api_url
+from .cmd_package_utils import execute_command, git_pull_repo, find_bool_macro_in_config
 from .cmd_package_update import need_using_mirror_download
 
 try:
@@ -49,16 +53,8 @@ def upgrade_packages_index(force_upgrade=False):
 
     pkgs_root = Import('pkgs_root')
 
-    if need_using_mirror_download():
-        get_package_url, get_ver_sha = get_url_from_mirror_server('packages', 'latest')
-
-        if get_package_url is not None:
-            git_repo = get_package_url
-        else:
-            print("Failed to get url from mirror server. Using default url.")
-            git_repo = 'https://gitee.com/RT-Thread-Mirror/packages.git'
-    else:
-        git_repo = 'https://github.com/RT-Thread/packages.git'
+    src = get_source('packages', use_mirror=need_using_mirror_download())
+    git_repo = src.url
 
     packages_root = pkgs_root
     pkgs_path = os.path.join(packages_root, 'packages')
@@ -70,7 +66,7 @@ def upgrade_packages_index(force_upgrade=False):
     else:
         if force_upgrade:
             execute_command('git fetch --all', cwd=pkgs_path)
-            execute_command('git reset --hard origin/master', cwd=pkgs_path)
+            execute_command('git reset --hard origin/%s' % src.branch, cwd=pkgs_path)
         print("Begin to upgrade env packages.")
         git_pull_repo(pkgs_path, git_repo)
         print("==============================>  Env packages upgrade done \n")
@@ -96,23 +92,14 @@ def upgrade_env_script(force_upgrade=False):
 
     env_root = Import('env_root')
 
-    if need_using_mirror_download():
-        get_package_url, get_ver_sha = get_url_from_mirror_server('env', 'latest')
-
-        if get_package_url is not None:
-            env_scripts_repo = get_package_url
-        else:
-            print("Failed to get url from mirror server. Using default url.")
-            env_scripts_repo = 'https://gitee.com/RT-Thread-Mirror/env.git'
-    else:
-        env_scripts_repo = 'https://github.com/RT-Thread/env.git'
+    src = get_source('env', use_mirror=need_using_mirror_download())
 
     env_scripts_root = os.path.join(env_root, 'tools', 'scripts')
     if force_upgrade:
         execute_command('git fetch --all', cwd=env_scripts_root)
-        execute_command('git reset --hard origin/master', cwd=env_scripts_root)
+        execute_command('git reset --hard origin/%s' % src.branch, cwd=env_scripts_root)
     print("Begin to upgrade env scripts.")
-    git_pull_repo(env_scripts_root, env_scripts_repo)
+    git_pull_repo(env_scripts_root, src.url)
     print("==============================>  Env scripts upgrade done \n")
 
 
@@ -130,7 +117,8 @@ def Information_statistics():
     if os.path.isfile(env_config_file) and find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
         response = requests.get(
-            'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
+            get_api_url('statistics')
+            + '?userid='
             + str(mac_addr)
             + '&username='
             + str(mac_addr)

@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2020-04-08     SummerGift      Optimize program structure
+# 2026-09-12     Dongly      Resolve mirror query endpoint via info.get_api_url
 #
 
 import json
@@ -34,6 +35,7 @@ import shutil
 import requests
 import logging
 from vars import Import
+from info import get_api_url
 
 
 def get_git_root_path(repo_path):
@@ -220,7 +222,7 @@ def get_url_from_mirror_server(package_name, package_version):
     payload["packages"][0]['name'] = package_name
 
     try:
-        r = requests.post("https://api.rt-thread.org/packages/queries", data=json.dumps(payload))
+        r = requests.post(get_api_url('mirror_query'), data=json.dumps(payload))
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)

@@ -42,6 +42,11 @@ if (Test-Path -Path $ActivateScript -PathType Leaf) {
         Write-Error "Failed to activate the RT-Thread Env Python venv: $_"
         $ActivateStatus = 1
     }
+
+    # Show welcome message using rt-env command
+    if (Get-Command rt-env -ErrorAction SilentlyContinue) {
+        rt-env --info
+    }
 } else {
     Write-Error "Cannot activate the RT-Thread Env Python venv: $ActivateScript was not found."
     $ActivateStatus = 1

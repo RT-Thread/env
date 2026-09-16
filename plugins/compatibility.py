@@ -101,10 +101,10 @@ def python_abi():
 
 def current_env_version():
     try:
-        from version import get_rt_env_version
+        from info import get_version
     except ImportError:
-        from env.version import get_rt_env_version
-    return get_rt_env_version()[1]
+        from env.info import get_version
+    return get_version()
 
 
 def compatibility_issues(manifest, env_version=None, system=None, architecture=None, implementation=None, abi=None):

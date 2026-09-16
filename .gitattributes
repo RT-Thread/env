@@ -3,17 +3,17 @@
 # Handle line endings automatically for files detected as text
 # and leave all files detected as binary untouched.
 # ============
-* text=auto
+* text=auto eol=lf
 
 # Source files
 # ============
-*.pxd    text eol=crlf diff=python
-*.py     text eol=crlf diff=python
-*.py3    text eol=crlf diff=python
-*.pyw    text eol=crlf diff=python
-*.pyx    text eol=crlf diff=python
-*.pyz    text eol=crlf diff=python
-*.pyi    text eol=crlf diff=python
+*.pxd    text diff=python
+*.py     text diff=python
+*.py3    text diff=python
+*.pyw    text diff=python
+*.pyx    text diff=python
+*.pyz    text diff=python
+*.pyi    text diff=python
 
 # Binary files
 # ============
@@ -26,7 +26,8 @@
 *.pyo    binary
 
 # MarkDown
-*.md     text eol=crlf
+*.md     text
 
 *.bat    text eol=crlf
+*.cmd    text eol=crlf
 *.ps1    text eol=crlf

@@ -1,3 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rt-env"
+dynamic = ["version", "description"]
+requires-python = ">=3.7"
+authors = [{ name = "RT-Thread Development Team", email = "rt-thread@rt-thread.org" }]
+keywords = ["rt-thread"]
+license = { text = "GPL-2.0-or-later" }
+urls = { Homepage = "https://github.com/RT-Thread/env", Repository = "https://github.com/RT-Thread/env" }
+dependencies = [
+    "SCons>=4.0.0",
+    "requests",
+    "psutil",
+    "tqdm",
+    "kconfiglib",
+    "pyyaml",
+    "windows-curses; sys_platform=='win32'",
+]
+
+[project.scripts]
+# 'rt-env' doubles as the argparse prog in env.py init_argparse()
+rt-env = "env.env:main"
+menuconfig = "env.env:menuconfig"
+pkgs = "env.env:pkgs"
+sdk = "env.env:sdk"
+system = "env.env:system"
+webui = "env.env:webui"
+
+[tool.setuptools]
+package-dir = { env = ".", "env.cmds" = "cmds", "env.cmds.cmd_package" = "cmds/cmd_package", "env.plugins" = "plugins", "env.plugins.sdk" = "plugins/sdk", "env.plugins.epack" = "plugins/epack", "env.plugins.spec" = "plugins/spec", "env.plugins.webui" = "plugins/webui" }
+include-package-data = false
+packages = [
+    "env",
+    "env.cmds",
+    "env.cmds.cmd_package",
+    "env.plugins",
+    "env.plugins.sdk",
+    "env.plugins.epack",
+    "env.plugins.spec",
+    "env.plugins.webui",
+]
+
+[tool.setuptools.package-data]
+"env" = ["*.*"]
+"env.plugins" = ["*.md", "bundled/**/*", "examples/**/*"]
+"env.plugins.spec" = ["*.json", "*.md"]
+"env.plugins.webui" = ["static/*", "static/assets/*"]
+
+[tool.setuptools.exclude-package-data]
+"env" = ["MANIFEST.in"]
+
 [tool.black]
 line-length = 128
 skip-string-normalization = true

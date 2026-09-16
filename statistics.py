@@ -21,6 +21,7 @@
 # Change Logs:
 # Date           Author          Notes
 # 2022-5-6      WuGenSheng      Add copyright information
+# 2026-09-12     Dongly      Resolve statistics endpoint via info.get_api_url
 #
 import os
 import uuid
@@ -28,6 +29,7 @@ import uuid
 import requests
 
 from vars import Import
+from info import get_api_url
 
 from cmds import *
 
@@ -48,7 +50,8 @@ def Information_statistics():
     if not os.path.isfile(env_config_file):
         try:
             response = requests.get(
-                'https://www.rt-thread.org/studio/statistics/api/envuse?userid='
+                get_api_url('statistics')
+                + '?userid='
                 + str(mac_addr)
                 + '&username='
                 + str(mac_addr)
