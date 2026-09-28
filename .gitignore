@@ -120,6 +120,7 @@ documentation
 tmp
 temp
 *.bak
+/.env-terminal.ps1
 
 # AI
 .omo/

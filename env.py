@@ -185,26 +185,7 @@ def get_package_root():
 
 
 def get_bsp_root():
-    bsp_root = os.getcwd()
-
-    # noinspection PyBroadException
-    try:
-        bsp_root.encode('utf-8').decode("ascii")
-    except Exception as e:
-        if platform.system() == "Windows":
-            os.system('chcp 65001  > nul')
-
-        print("\n\033[1;31;40m警告：\033[0m")
-        print("\033[1;31;40m当前路径不支持非英文字符，请修改当前路径为纯英文路径。\033[0m")
-        print("\033[1;31;40mThe current path does not support non-English characters.\033[0m")
-        print("\033[1;31;40mPlease modify the current path to a pure English path.\033[0m")
-
-        if platform.system() == "Windows":
-            os.system('chcp 437  > nul')
-
-        exit(1)
-
-    return bsp_root
+    return os.getcwd()
 
 
 def export_environment_variable():

@@ -106,7 +106,8 @@ class FileContextMenuManager(object):
 
     def _windows_command(self):
         helper = self.windows_helper.replace("/", "\\")
-        return 'powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "%s" "%%V"' % helper
+        # Keep the closing quote away from a drive root's trailing backslash.
+        return 'powershell.exe -NoLogo -NoExit -ExecutionPolicy Bypass -File "%s" "%%V\\."' % helper
 
     def _install_windows(self):
         winreg = self._windows_module()
@@ -116,8 +117,10 @@ class FileContextMenuManager(object):
 $EnvRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $env:ENV_ROOT = $EnvRoot
 if ([string]::IsNullOrWhiteSpace($TargetPath)) { $TargetPath = (Get-Location).Path }
-if (-not (Test-Path -LiteralPath $TargetPath -PathType Container)) { $TargetPath = Split-Path -Parent $TargetPath }
-Set-Location -LiteralPath $TargetPath
+if (-not (Test-Path -LiteralPath $TargetPath -PathType Container -ErrorAction Stop)) {
+    throw "Target path is not an existing directory: $TargetPath"
+}
+Set-Location -LiteralPath $TargetPath -ErrorAction Stop
 . (Join-Path $PSScriptRoot 'env.ps1')
 """,
         )
