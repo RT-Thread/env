@@ -330,7 +330,10 @@ class EnvVenvTest(unittest.TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(activation_target.read_text(encoding='utf-8'), 'powershell activation v1\n')
+        self.assertEqual(
+            activation_target.read_text(encoding='utf-8'),
+            (self.source / activation_target.name).read_text(encoding='utf-8'),
+        )
         state = env_venv.read_state(self.venv)
         self.assertEqual(state['source'], str(self.source.resolve()))
         self.assertEqual(state['fingerprint'], env_venv.source_fingerprint(self.source))

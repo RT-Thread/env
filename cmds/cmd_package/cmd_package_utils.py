@@ -36,6 +36,7 @@ import requests
 import logging
 from vars import Import
 from info import get_api_url
+import network
 
 
 def get_git_root_path(repo_path):
@@ -169,13 +170,13 @@ def execute_command(cmd_string, cwd=None, shell=True):
             return ''
 
     logging.debug('execute_command: %s' % cmd_string)
-    sub = subprocess.Popen(cmd_string, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, shell=shell, bufsize=4096)
-
-    stdout_str = ''
-    while sub.poll() is None:
-        stdout_str += str(sub.stdout.read())
-        time.sleep(0.1)
-
+    sub = subprocess.Popen(
+        cmd_string, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        shell=shell, universal_newlines=True, env=network.subprocess_environment(),
+    )
+    stdout_str, _ = sub.communicate()
+    if sub.returncode:
+        raise subprocess.CalledProcessError(sub.returncode, cmd_string, output=stdout_str)
     return stdout_str
 
 
@@ -222,7 +223,7 @@ def get_url_from_mirror_server(package_name, package_version):
     payload["packages"][0]['name'] = package_name
 
     try:
-        r = requests.post(get_api_url('mirror_query'), data=json.dumps(payload))
+        r = network.request('POST', get_api_url('mirror_query'), data=json.dumps(payload))
 
         if r.status_code == requests.codes.ok:
             package_info = json.loads(r.text)

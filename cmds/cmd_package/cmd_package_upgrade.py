@@ -27,7 +27,11 @@
 #
 
 import os
+import json
 import uuid
+import subprocess
+import sys
+import network
 from vars import Import
 from info import get_source, get_api_url
 from .cmd_package_utils import execute_command, git_pull_repo, find_bool_macro_in_config
@@ -116,7 +120,7 @@ def Information_statistics():
 
     if os.path.isfile(env_config_file) and find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
-        response = requests.get(
+        response = network.request('GET',
             get_api_url('statistics')
             + '?userid='
             + str(mac_addr)
@@ -125,7 +129,9 @@ def Information_statistics():
             + '&envversion=1.0&studioversion=2.0&ip=127.0.0.1'
         )
         if response.status_code != 200:
+            response.close()
             return
+        response.close()
     else:
         return
 
@@ -145,14 +151,17 @@ def package_upgrade(force_upgrade=False, upgrade_script=False):
 # upgrade python modules
 def package_upgrade_modules():
     try:
-        from subprocess import call
-
-        call('python -m pip install --upgrade pip', shell=True)
-
-        import pip
-        from pip._internal.utils.misc import get_installed_distributions
-
-        for dist in get_installed_distributions():
-            call('python -m pip install --upgrade ' + dist.project_name, shell=True)
-    except:
-        print('Fail to upgrade python modules!')
+        environment = network.subprocess_environment()
+        installed = json.loads(subprocess.check_output(
+            [sys.executable, '-m', 'pip', 'list', '--format=json'], env=environment, universal_newlines=True,
+        ))
+        index = network.pypi_index_url()
+        arguments = ['--index-url', index] if index else []
+        for name in ['pip'] + sorted(item['name'] for item in installed if item['name'].lower() != 'pip'):
+            subprocess.check_call(
+                [sys.executable, '-m', 'pip', 'install', '--upgrade'] + arguments + [name], env=environment,
+            )
+        return True
+    except (ImportError, OSError, subprocess.CalledProcessError) as exc:
+        print('Fail to upgrade python modules: %s' % exc, file=sys.stderr)
+        return False
