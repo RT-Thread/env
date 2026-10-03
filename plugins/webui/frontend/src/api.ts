@@ -12,6 +12,12 @@ import type {
   ToolchainEntry,
   ToolchainSnapshot,
   UploadSummary,
+  WorkspaceSnapshot,
+  WorkspaceDocument,
+  BuildTask,
+  NetworkConfig,
+  NetworkSnapshot,
+  NetworkTestResult,
 } from './types/api'
 import { ApiError } from './types/api'
 
@@ -61,6 +67,13 @@ export const api = {
   session: (): Promise<Session> => request('/api/v1/session'),
   shutdown: (): Promise<Record<string, unknown>> => request('/api/v1/shutdown', { method: 'POST', json: {} }),
   plugins: (): Promise<EnvPlugin[]> => request('/api/v1/plugins'),
+  workspace: (): Promise<WorkspaceSnapshot> => request('/api/v1/workspace'),
+  workspaceDocument: (path?: string): Promise<WorkspaceDocument | null> => request(
+    `/api/v1/workspace/document${path ? `?path=${encodeURIComponent(path)}` : ''}`,
+  ),
+  startBuild: (): Promise<BuildTask> => request('/api/v1/build', { method: 'POST', json: {} }),
+  clearBuild: (): Promise<BuildTask> => request('/api/v1/build/clean', { method: 'POST', json: {} }),
+  buildTask: (taskId: string): Promise<BuildTask> => request(`/api/v1/build/tasks/${encodeURIComponent(taskId)}`),
   sdk: (): Promise<SdkSnapshot> => request('/api/v1/sdk'),
   sdkPlan: (packages: SdkRequestPackage[]): Promise<SdkPlan> => request('/api/v1/sdk/plan', { method: 'POST', json: { packages } }),
   sdkApply: (planId: string, confirmRemove: string[] = []): Promise<SdkTask> => request('/api/v1/sdk/apply', { method: 'POST', json: { plan_id: planId, confirm_remove: confirmRemove } }),
@@ -71,6 +84,9 @@ export const api = {
   updateToolchain: (name: string, entry: ToolchainEntry): Promise<ToolchainSnapshot> => request(`/api/v1/settings/toolchains/${encodeURIComponent(name)}`, { method: 'PUT', json: entry }),
   removeToolchain: (name: string): Promise<ToolchainSnapshot> => request(`/api/v1/settings/toolchains/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   fileContextMenu: (): Promise<ContextMenuSnapshot> => request('/api/v1/settings/file-context-menu'),
+  network: (): Promise<NetworkSnapshot> => request('/api/v1/settings/network'),
+  saveNetwork: (settings: NetworkConfig): Promise<NetworkSnapshot> => request('/api/v1/settings/network', { method: 'PUT', json: { ...settings } }),
+  testNetwork: (target: string): Promise<NetworkTestResult> => request('/api/v1/settings/network/test', { method: 'POST', json: { target } }),
   installFileContextMenu: (): Promise<ContextMenuSnapshot> => request('/api/v1/settings/file-context-menu/install', { method: 'POST', json: {} }),
   removeFileContextMenu: (): Promise<ContextMenuSnapshot> => request('/api/v1/settings/file-context-menu/remove', { method: 'POST', json: {} }),
   plugin: (id: string): Promise<EnvPlugin> => request(`/api/v1/plugins/${encodeURIComponent(id)}`),

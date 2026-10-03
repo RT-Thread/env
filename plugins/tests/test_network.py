@@ -143,3 +143,57 @@ class NetworkSettingsTest(unittest.TestCase):
             self.assertIs(client._open('/api/v1/health'), response)
             self.assertIsNot(client.opener, previous)
             self.assertEqual(client.opener.open.call_args.kwargs['timeout'], 23)
+
+
+class NetworkWebUITest(unittest.TestCase):
+    def setUp(self):
+        from plugins.tests import test_webui_server
+
+        self.helpers = test_webui_server.WebUIServerTest
+        self.helpers.setUp(self)
+        self.helpers.authenticate(self)
+
+    def tearDown(self):
+        self.helpers.tearDown(self)
+
+    def request_json(self, *args, **kwargs):
+        return self.helpers.request_json(self, *args, **kwargs)
+
+    def test_save_reload_and_csrf(self):
+        from urllib.error import HTTPError
+
+        path = '/api/v1/settings/network'
+        _, original = self.request_json(path)
+        self.assertFalse(original['configured'])
+        with self.assertRaises(HTTPError) as denied:
+            self.request_json(path, method='PUT', body={'proxy_mode': 'direct'}, csrf=False)
+        self.assertEqual(denied.exception.code, 403)
+        _, saved = self.request_json(path, method='PUT', body={'proxy_mode': 'direct', 'timeout': 37})
+        _, loaded = self.request_json(path)
+        self.assertEqual(saved, loaded)
+        self.assertEqual(loaded['settings']['timeout'], 37)
+        with self.assertRaises(HTTPError) as invalid:
+            self.request_json(path, method='PUT', body={'timeout': 0})
+        self.assertEqual(invalid.exception.code, 400)
+
+    def test_connection_test_uses_saved_configuration_and_redacts_failures(self):
+        from urllib.error import HTTPError
+
+        path = '/api/v1/settings/network/test'
+        response = mock.Mock(status_code=200)
+        with mock.patch('network.request', return_value=response) as request:
+            _, result = self.request_json(path, method='POST', body={'target': 'github'})
+        self.assertTrue(result['reachable'])
+        self.assertEqual(request.call_args.kwargs['env_root'], self.server.application.network.env_root)
+        response.close.assert_called_once()
+        with mock.patch('network.request', side_effect=OSError('secret http://user:password@proxy')):
+            _, result = self.request_json(path, method='POST', body={'target': 'github'})
+        self.assertFalse(result['reachable'])
+        self.assertNotIn('password', json.dumps(result))
+        with self.assertRaises(HTTPError) as invalid:
+            self.request_json(path, method='POST', body={'target': 'http://arbitrary.invalid'})
+        self.assertEqual(invalid.exception.code, 400)
+
+
+if __name__ == '__main__':
+    unittest.main()
