@@ -1052,7 +1052,13 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
                 "img-src 'self' data: http: https:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'"
             )
-        cache = 'no-store' if path.endswith('index.html') else 'public, max-age=3600'
+        if path.endswith('index.html'):
+            cache = 'no-store'
+        elif plugin:
+            cache = 'public, max-age=3600'
+        else:
+            # Host assets use stable names, so revalidate them after each reload.
+            cache = 'no-cache'
         self._file_response(content, mime, policy, cache)
 
     def _file_response(self, content, mime, policy, cache):

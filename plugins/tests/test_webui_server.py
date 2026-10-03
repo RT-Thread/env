@@ -259,6 +259,11 @@ class WebUIServerTest(unittest.TestCase):
         self.assertIn("script-src 'self';", policy)
         self.assertIn("connect-src 'self';", policy)
 
+    def test_stable_host_assets_are_revalidated(self):
+        self.authenticate()
+        with self.opener.open(self.server.url + 'assets/index.js') as response:
+            self.assertEqual(response.headers['Cache-Control'], 'no-cache')
+
     def test_webui_launch_requirements_hide_navigation_only(self):
         self.authenticate()
         project = copy_project(
