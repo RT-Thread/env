@@ -8,13 +8,17 @@ from .store import StateStore
 
 
 class PluginService(object):
-    def __init__(self, env_root=None, launcher_dir=None, system=None, python_executable=None, dispatcher_module=None):
+    def __init__(
+        self, env_root=None, launcher_dir=None, system=None, python_executable=None,
+        dispatcher_module=None, check_host_path=True,
+    ):
         self.paths = PluginPaths(env_root=env_root, launcher_dir=launcher_dir)
         launchers = LauncherManager(
             self.paths,
             system=system,
             python_executable=python_executable,
             dispatcher_module=dispatcher_module,
+            check_host_path=check_host_path,
         )
         self.installer = PluginInstaller(self.paths, launcher_manager=launchers, store=StateStore(self.paths))
         self.backend = BackendServiceManager(self.paths, store=self.installer.store)

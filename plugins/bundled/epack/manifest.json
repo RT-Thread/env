@@ -6,14 +6,14 @@
     "artifacts": [
       {
         "format": "source-wheel",
-        "path": "backend/org_rt_thread_epack-1.0.0-py3-none-any.whl",
+        "path": "backend/org_rt_thread_epack-1.1.0-py3-none-any.whl",
         "role": "plugin"
       }
     ]
   },
   "commands": [
     {
-      "description": "Create and build Env plugins",
+      "description": "Develop, test and publish RT-Thread Env plugins",
       "entry": "rt_env_epack_plugin.cli:main",
       "name": "epack"
     }
@@ -34,20 +34,30 @@
     ],
     "python": ">=3.6.0,<4.0.0"
   },
-  "description": "Official developer tool for Env plugin projects and .epack packages",
+  "description": "Official toolkit for creating, validating, testing, packaging and publishing RT-Thread Env plugins.",
   "id": "org.rt-thread.epack",
   "license": {
     "file": "licenses/LICENSE",
     "spdx": "Apache-2.0"
   },
-  "name": "Env epack Developer Tool",
+  "name": "RT-Thread Env Plugin Development Kit",
   "permissions": [
     {
       "name": "workspace.write",
       "reason": "Create, validate and build plugin projects in the current workspace",
       "required": true
+    },
+    {
+      "name": "network.access",
+      "reason": "Publish plugin packages to the configured online plugin market",
+      "required": false
+    },
+    {
+      "name": "process.execute",
+      "reason": "Run plugin commands during isolated development tests",
+      "required": false
     }
   ],
   "schema_version": 1,
-  "version": "1.0.0"
+  "version": "1.1.0"
 }
