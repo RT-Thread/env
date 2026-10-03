@@ -745,6 +745,8 @@ def git_cmd_exec(cmd, cwd):
     except Exception as e:
         logging.warning('Error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
+        return False
+    return True
 
 
 def update_latest_packages(sys_value):
@@ -819,7 +821,9 @@ def update_latest_packages(sys_value):
                 logging.warning("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
-            git_pull_repo(repo_path)
+            if git_pull_repo(repo_path) is False:
+                result = False
+                continue
 
             # If the package has submodules, update the submodules.
             update_submodule(repo_path, pkgs_name_in_json == u"ESP-IDF")
@@ -1254,16 +1258,16 @@ def package_update(force_update=False):
 
     sys_value = pre_package_update()
     if not sys_value:
-        return
+        return False
 
     flag = True
 
     if not delete_useless_packages(sys_value):
-        return
+        return False
 
     # 1.in old and not in new : Software packages that need to be removed
     if not remove_packages(sys_value, force_update):
-        return
+        return False
 
     # 2.in new not in old : Software packages to be installed.
     if not install_packages(sys_value, force_update):
@@ -1281,3 +1285,4 @@ def package_update(force_update=False):
         print("Operation completed successfully.")
     else:
         print("Operation failed.")
+    return flag

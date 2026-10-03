@@ -500,8 +500,8 @@ def main(argv=None):
         argv = sys.argv[1:]
         if argv and argv[0] == 'webui':
             argv = argv[1:]
-    cmd(parser.parse_args(argv))
+    return cmd(parser.parse_args(argv))
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

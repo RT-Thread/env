@@ -40,6 +40,8 @@ def cmd(args):
     # change to sdk root directory
     tools_kconfig_path = os.path.join(Import('env_root'), 'tools', 'scripts')
     beforepath = os.getcwd()
+    before_argv = sys.argv
+    before_hostos = os.environ.get('HOSTOS')
     os.chdir(tools_kconfig_path)
 
     # set HOSTOS
@@ -50,34 +52,27 @@ def cmd(args):
     before_bsp_root = Import('bsp_root')
     Export('bsp_root')
 
-    # do menuconfig
-    sys.argv = ['menuconfig', 'Kconfig']
-    menuconfig._main()
-
-    # update package
-    package_update()
-
-    # update sdk list information
-    packages = get_packages()
-
-    sdk_packages = []
-    for item in packages:
-        sdk_item = {}
-        sdk_item['name'] = item['name']
-        sdk_item['path'] = item['name'] + '-' + item['ver']
-
-        sdk_packages.append(sdk_item)
-
-    # write sdk_packages to sdk_list.json
-    with open(os.path.join(tools_kconfig_path, 'sdk_list.json'), 'w', encoding='utf-8') as f:
-        json.dump(sdk_packages, f, ensure_ascii=False, indent=4)
-
-    # restore the old directory
-    os.chdir(beforepath)
-
-    # restore the old bsp_root
-    bsp_root = before_bsp_root
-    Export('bsp_root')
+    try:
+        sys.argv = ['menuconfig', 'Kconfig']
+        menuconfig._main()
+        if package_update() is False:
+            return False
+        sdk_packages = [
+            {'name': item['name'], 'path': item['name'] + '-' + item['ver']}
+            for item in get_packages()
+        ]
+        with open(os.path.join(tools_kconfig_path, 'sdk_list.json'), 'w', encoding='utf-8') as f:
+            json.dump(sdk_packages, f, ensure_ascii=False, indent=4)
+        return True
+    finally:
+        os.chdir(beforepath)
+        sys.argv = before_argv
+        if before_hostos is None:
+            os.environ.pop('HOSTOS', None)
+        else:
+            os.environ['HOSTOS'] = before_hostos
+        bsp_root = before_bsp_root
+        Export('bsp_root')
 
 
 def add_parser(sub):

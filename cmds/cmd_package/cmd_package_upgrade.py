@@ -72,7 +72,8 @@ def upgrade_packages_index(force_upgrade=False):
             execute_command('git fetch --all', cwd=pkgs_path)
             execute_command('git reset --hard origin/%s' % src.branch, cwd=pkgs_path)
         print("Begin to upgrade env packages.")
-        git_pull_repo(pkgs_path, git_repo)
+        if git_pull_repo(pkgs_path, git_repo) is False:
+            return False
         print("==============================>  Env packages upgrade done \n")
 
     for filename in os.listdir(packages_root):
@@ -87,8 +88,10 @@ def upgrade_packages_index(force_upgrade=False):
                 if force_upgrade:
                     execute_command('git fetch --all', cwd=package_path)
                     execute_command('git reset --hard origin/master', cwd=package_path)
-                git_pull_repo(package_path)
+                if git_pull_repo(package_path) is False:
+                    return False
                 print("==============================>  Env %s update done \n" % filename)
+    return True
 
 
 def upgrade_env_script(force_upgrade=False):
@@ -103,8 +106,10 @@ def upgrade_env_script(force_upgrade=False):
         execute_command('git fetch --all', cwd=env_scripts_root)
         execute_command('git reset --hard origin/%s' % src.branch, cwd=env_scripts_root)
     print("Begin to upgrade env scripts.")
-    git_pull_repo(env_scripts_root, src.url)
+    if git_pull_repo(env_scripts_root, src.url) is False:
+        return False
     print("==============================>  Env scripts upgrade done \n")
+    return True
 
 
 def get_mac_address():
@@ -140,12 +145,17 @@ def package_upgrade(force_upgrade=False, upgrade_script=False):
     """Update the package repository directory and env function scripts."""
 
     if os.environ.get('RTTS_PLATFROM') != 'STUDIO':  # not used in studio
-        Information_statistics()
+        try:
+            Information_statistics()
+        except requests.RequestException:
+            pass
 
-    upgrade_packages_index(force_upgrade=force_upgrade)
+    if upgrade_packages_index(force_upgrade=force_upgrade) is False:
+        return False
 
     if upgrade_script:
-        upgrade_env_script(force_upgrade=force_upgrade)
+        return upgrade_env_script(force_upgrade=force_upgrade)
+    return True
 
 
 # upgrade python modules
