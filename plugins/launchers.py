@@ -17,10 +17,11 @@ MARKER = 'ENV_PLUGIN_LAUNCHER_V1'
 
 
 class LauncherManager(object):
-    def __init__(self, paths, system=None, python_executable=None, dispatcher_module=None):
+    def __init__(self, paths, system=None, python_executable=None, dispatcher_module=None, check_host_path=True):
         self.paths = paths
         self.system = (system or ('windows' if os.name == 'nt' else 'posix')).lower()
         self.python_executable = os.path.abspath(python_executable or sys.executable)
+        self.check_host_path = check_host_path
         package_dir = os.path.dirname(os.path.abspath(__file__))
         # Source checkouts import ``plugins`` directly; installed wheels expose
         # the same files below the ``env.plugins`` package.
@@ -74,7 +75,7 @@ class LauncherManager(object):
             helper = self.helper_path(command)
             if os.path.exists(helper) and not (owned and self._is_managed_file(helper)):
                 raise CommandConflictError("launcher helper path already exists: %s" % helper)
-        discovered = shutil.which(command)
+        discovered = shutil.which(command) if self.check_host_path else None
         if discovered and os.path.normcase(os.path.abspath(discovered)) != os.path.normcase(os.path.abspath(path)):
             raise CommandConflictError("command already exists on PATH: %s (%s)" % (command, discovered))
 

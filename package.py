@@ -30,6 +30,7 @@ import logging
 import os
 import sys
 import requests
+import network
 import archive
 from tqdm import tqdm
 
@@ -192,8 +193,10 @@ class PackageOperation:
         print('downloading ' + filename + ' ...')
 
         while True:
+            r = None
             try:
-                r = requests.get(url_from_srv, stream=True, headers=headers)
+                r = network.request('GET', url_from_srv, stream=True, headers=headers)
+                r.raise_for_status()
                 total_size = int(r.headers.get('content-length', 0))
 
                 with open(path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True) as bar:
@@ -226,4 +229,7 @@ class PackageOperation:
                     if os.path.isfile(path):
                         os.remove(path)
                     return False
+            finally:
+                if r is not None:
+                    r.close()
         return ret

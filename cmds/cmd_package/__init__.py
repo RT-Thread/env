@@ -37,25 +37,25 @@ def run_env_cmd(args):
     """Run packages command."""
 
     if args.package_update_force:
-        package_update(True)
+        return package_update(True)
     elif args.package_update:
-        package_update()
+        return package_update()
     elif args.package_create:
-        package_wizard()
+        return package_wizard()
     elif args.list_packages:
-        list_packages()
+        return list_packages()
     elif args.package_upgrade:
-        package_upgrade()
+        return package_upgrade()
     elif args.package_upgrade_force:
-        package_upgrade(force_upgrade=True)
+        return package_upgrade(force_upgrade=True)
     elif args.package_upgrade_script_force:
-        package_upgrade(force_upgrade=True, upgrade_script=True)
+        return package_upgrade(force_upgrade=True, upgrade_script=True)
     elif args.package_upgrade_modules:
-        package_upgrade_modules()
+        return package_upgrade_modules()
     elif args.package_print_env:
-        package_print_env()
+        return package_print_env()
     else:
-        package_print_help()
+        return package_print_help()
 
 
 def add_parser(sub):

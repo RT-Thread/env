@@ -242,6 +242,11 @@ def validate_project(directory):
         entry = os.path.join(directory, *manifest.webui['entry'].split('/'))
         if not os.path.isfile(entry):
             raise PackageError("WebUI entry is missing: %s" % manifest.webui['entry'])
+        icon = manifest.webui['icon']
+        if isinstance(icon, dict):
+            icon_path = os.path.join(directory, *icon['path'].split('/'))
+            if not os.path.isfile(icon_path):
+                raise PackageError("WebUI icon is missing: %s" % icon['path'])
         _validate_resource_tree(frontend_root, 'plugin frontend')
     elif os.path.exists(frontend_root):
         raise PackageError("frontend directory requires manifest.webui")

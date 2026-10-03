@@ -100,14 +100,14 @@ var/plugins/
 
 ## 安装和使用 `epack`
 
-`epack` 是官方提供的可选开发工具，用于创建和发布其他 Env 插件。它不是 Env 生命周期管理器的必需组件；不安装 `epack` 也可以安装和运行已有的 `.epack` 插件。
+`epack` 的正式名称为 RT-Thread Env Plugin Development Kit，是官方提供的可选开发工具，用于创建、测试和发布 Env 插件。它不是 Env 生命周期管理器的必需组件；不安装 `epack` 也可以安装和运行已有的 `.epack` 插件。
 
 从 Env 源码树构建并安装官方 `epack` 插件：
 
 ```bash
 python -m plugins.epack.cli build plugins/bundled/epack
 python env.py plugin install \
-    plugins/bundled/epack/dist/org.rt-thread.epack-1.0.0-py3-none-any.epack \
+    plugins/bundled/epack/dist/org.rt-thread.epack-1.1.0-py3-none-any.epack \
     --yes
 ```
 
@@ -207,6 +207,31 @@ epack inspect dist/org.example.demo-0.1.0-py3-none-any.epack
 epack build demo -o dist --backend-format pyc-wheel
 ```
 
+### 直接测试与发布
+
+`epack test` 会构建工程，并将插件安装到临时 Env 目录。WebUI 插件会启动前台测试服务并打开浏览器，按 Ctrl+C 结束；只有命令的插件会运行其唯一命令。可用 `--command` 指定命令，参数放在 `--` 后：
+
+```bash
+epack test demo
+epack test demo --command org-example-demo -- --help
+epack test demo-web --no-browser
+epack test demo-web -g
+```
+
+测试 WebUI 时可用 `-g` 或 `--global` 监听所有 IPv4 网卡，与 `webui -g` 一致。
+
+测试结束会删除临时安装，不会替换本机已安装的插件。被测插件仍以当前用户身份在指定工作区运行。
+
+`epack push`（也可使用 `epack publish`）接受插件工程或已有的 `.epack` 包，先检查完整性，再上传到 `rt-env plugin market set` 配置的市场。`--market` 可以临时指定地址。若市场启用了认证，请把 Bearer token 放在本地文件，并通过 `--token-file` 读取。目标市场需要提供管理端发布接口。
+
+```bash
+rt-env plugin market set http://127.0.0.1:8800
+epack push demo --token-file ./market-token.txt --changelog "Initial release"
+epack push dist/org.example.demo-0.1.0-py3-none-any.epack --market http://127.0.0.1:8800
+```
+
+首次上传创建插件；后续上传创建新版本，或在已有版本下添加制品。`--changelog` 只适用于新插件或新版本。发布不会在本机安装插件。
+
 构建完成后，可以用 `epack inspect` 检查清单和完整性，而无需执行包内代码。随后用 Env 安装生成的包：
 
 ```bash
@@ -226,7 +251,16 @@ WebUI 页面由 `manifest.webui` 声明，并以预构建静态资源放在 `fro
     "entry": "frontend/index.html",
     "icon": "puzzle",
     "frontend_sdk": ">=1.0.0,<2.0.0",
-    "keep_alive": false
+    "keep_alive": false,
+    "launch_requirements": {
+      "all": [
+        {"type": "file", "pattern": "rtconfig.py"},
+        {"any": [
+          {"type": "directory", "pattern": "test_*"},
+          {"type": "file", "pattern": "test_*.md"}
+        ]}
+      ]
+    }
   }
 }
 ```
@@ -235,6 +269,22 @@ WebUI 页面由 `manifest.webui` 声明，并以预构建静态资源放在 `fro
 WebUI 页面之间切换时会继续挂载该插件的 iframe，从而保留浏览器页面中的
 表单、滚动位置和临时状态。插件被禁用、升级、卸载或 WebUI 退出时会释放
 该 iframe。
+
+`icon` 也可以引用插件包 `frontend/` 目录下的图片资源：
+
+```json
+{
+  "icon": {"type": "svg", "path": "frontend/icon.svg"}
+}
+```
+
+`type` 支持 `svg` 和 `png`。声明的文件会被打包进 `.epack`，并在左侧边栏、
+插件中心和插件详情等位置使用同一个图标。
+
+`launch_requirements` 为可选字段，用于声明插件显示在左侧导航前，当前工作区
+必须存在的文件或目录。`pattern` 使用安全的 POSIX 相对路径或 glob；`file` 和
+`directory` 分别限制匹配类型；多个条件可以用 `all`、`any` 和 `not` 组合。
+条件不满足时，插件只会从左侧导航隐藏，仍可在插件中心查看并打开。
 
 纯 WebUI 插件可以没有 `src/` 和后端 wheel；声明命令、健康检查或 `service` 的插件必须提供且只能提供一个 `plugin` 角色的后端制品。安装后启动本机 WebUI：
 
@@ -255,7 +305,22 @@ webui stop
 `webui [workspace]` 形式；使用 `--no-browser` 禁止打开浏览器，在 SSH 会话中可用
 `--browser` 强制打开浏览器。对于已安装且启用的 WebUI 插件，可以用
 `webui <plugin-id>`、`webui --plugin <plugin-id>` 或 `webui start --plugin <plugin-id>` 启动后直接进入该插件页面；
-未指定插件时仍进入插件中心。
+未指定插件时进入项目首页。
+
+WebUI 的“设置 - 网络”页面支持系统代理、直连、自定义 HTTP(S) 代理、绕过主机、
+GitHub/Gitee 下载服务器、PyPI 源和请求超时配置。配置保存在
+`${ENV_ROOT}/var/network.json`，只对 Env 启动的请求和子进程生效，不会改写全局 Git、pip
+或 Shell 配置。`ENV_PYPI_INDEX_URL` 仍然具有最高优先级。在 VS Code 终端中启动时，Env
+会优先调用编辑器的 URL 打开机制；不可用时保留启动 URL，避免在 Remote SSH 主机上误启动
+远程浏览器。
+
+通过 VS Code Remote SSH 打开的终端同样适用。Env 会使用 VS Code Server 自带的
+浏览器 helper 或 Remote CLI，把启动 URL 交给已连接的客户端 VS Code；helper 可用时，
+不要求 PATH 中存在 `code`。桥接失败不会在远程主机启动系统浏览器。
+要优先使用内置浏览器，请在 VS Code 中启用 `workbench.browser.openLocalhostLinks`。
+远程地址访问交由 VS Code 的 URL 打开及端口转发机制处理，Env 不修改编辑器设置，
+也不会为了打开页面而扩大服务监听范围。`--no-browser` 会跳过此尝试；
+`--browser` 则明确使用系统浏览器。
 
 插件页面运行在不带 `allow-same-origin` 的 iframe 中，宿主通过版本化 `postMessage` 传递主题、语言、插件 ID、前端协议版本和可选 backend 地址。页面不能读取宿主 Cookie、会话或直接调用 Env 生命周期 API。完整示例见 [`examples/build-insight-1.0.0/README.md`](examples/build-insight-1.0.0/README.md)。
 
@@ -302,6 +367,38 @@ Uvicorn，插件包必须通过 dependency wheel 提供 `uvicorn` 及其运行�
 没有 `service` 的 WebUI-only 插件的 `backend` 为 `null`。Env 只负责 HTTP/WebSocket
 传输和进程生命周期，不解释插件业务消息。后续插件可以在 WebSocket 之上定义请求、事件、
 取消、进度和二进制帧协议，但设备或调试语义不属于 Env Host API。
+
+## 项目首页文档
+
+在项目目录启动 `webui`（包括 `webui -g`）后，项目首页会优先显示 `index.md`，
+其次显示 `README.md`（也接受 `readme.md`）。文件使用 UTF-8 编码，可带 BOM。
+构建面板位于文档上方，开始构建后显示进度、日志和产物，确认结果后隐藏。
+首页直接渲染正文，不显示文件名或刷新工具栏。
+
+在独立段落中写入 `[toc]` 即可生成分层目录，点击目录项可跳转到对应标题。
+标识不区分大小写（也支持 `[TOC]`），代码中的标识不会被替换，目录颜色跟随 WebUI 主题。
+
+文档采用 GitHub 风格，支持标题锚点、表格、任务列表、emoji、HTML 表格的
+`rowspan`/`colspan`，以及代码高亮。文档样式、代码高亮和图表跟随 WebUI 主题。
+图片支持 SVG、PNG、JPEG、GIF、WebP 等格式；相对路径以引用它的文件为基准。
+项目内 Markdown 链接会在首页继续渲染，浏览器后退可以返回上一份文档。
+本地 SVG 中的链接也可打开项目内文档或外部地址，例如：
+
+```markdown
+![项目结构](images/architecture.svg)
+[开发指南](docs/guide.md#开发流程)
+```
+
+在 `images/architecture.svg` 中可以使用 `<a href="../docs/guide.md#开发流程">`。
+SVG 的脚本会被移除，样式只影响该图片，不影响 Env 界面。
+
+Mermaid 使用 `mermaid` 代码块，在浏览器本地渲染；PlantUML 使用 `plantuml`
+（或 `puml`、`uml`）代码块，通过 `https://www.plantuml.com/plantuml/svg/` 在线渲染。
+**PlantUML 图表源码会发送到外部服务，需要联网；敏感图表请改用本地 Mermaid。**
+图表加载失败时保留源码并显示错误，不影响其他页面内容。
+
+文档只能读取当前项目内的 `.md` 文件和图片，不开放任意文件访问。隐藏路径、
+越界路径和指向项目外的符号链接会被拒绝；Markdown 上限为 4 MiB，单张图片上限为 16 MiB。
 
 ## 构建和发布注意事项
 

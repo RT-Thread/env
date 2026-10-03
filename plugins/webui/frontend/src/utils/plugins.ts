@@ -12,7 +12,8 @@ import type {
 import { iconMap, marketActionLabels } from '../constants'
 
 export function iconFor(plugin?: Partial<EnvPlugin> | null): Component {
-  return iconMap[plugin?.webui?.icon || ''] || (plugin?.commands?.length ? iconMap.tools : Box)
+  const icon = plugin?.webui?.icon
+  return (typeof icon === 'string' && iconMap[icon]) || (plugin?.commands?.length ? iconMap.tools : Box)
 }
 
 export function compatibilityText(plugin: Pick<EnvPlugin, 'compatibility_issues' | 'compatibility'>): string {

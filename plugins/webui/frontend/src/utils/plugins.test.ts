@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { hostBackendContext } from './plugins'
+import { iconMap } from '../constants'
+import { hostBackendContext, iconFor } from './plugins'
 
 describe('hostBackendContext', () => {
   it('returns browser-ready HTTP and WebSocket endpoints', () => {
@@ -29,5 +30,24 @@ describe('hostBackendContext', () => {
 
   it('returns no backend for WebUI-only plugins', () => {
     expect(hostBackendContext({ base: '/plugin-assets/token/org.example.demo/', backend: null }, 'http://env/')).toBeNull()
+  })
+})
+
+describe('plugin icons', () => {
+  it('resolves the manifest icon through the shared icon helper', () => {
+    const plugin = { webui: { entry: 'frontend/index.html', icon: 'shield-check' } }
+    expect(iconFor(plugin)).toBe(iconMap['shield-check'])
+    expect(iconFor(plugin)).toBe(iconFor(plugin))
+  })
+
+  it('uses the same fallback for plugins without a known icon', () => {
+    const plugin = { webui: { entry: 'frontend/index.html', icon: 'unknown-icon' } }
+    expect(iconFor(plugin)).toBe(iconFor({ webui: { entry: 'frontend/index.html', icon: 'puzzle' } }))
+  })
+
+  it('falls back to the default component until an image asset URL is available', () => {
+    expect(iconFor({
+      webui: { entry: 'frontend/index.html', icon: { type: 'svg', path: 'frontend/icon.svg' } },
+    })).toBe(iconFor({}))
   })
 })

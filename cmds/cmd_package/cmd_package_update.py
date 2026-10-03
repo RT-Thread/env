@@ -38,6 +38,7 @@ except ImportError:
     from urlparse import urlparse
 
 import requests
+import network
 
 import archive
 import kconfig
@@ -388,7 +389,8 @@ def determine_url_valid(url_from_srv):
     # noinspection PyBroadException
     try:
         for i in range(0, 3):
-            r = requests.get(url_from_srv, stream=True, headers=headers)
+            r = network.request('GET', url_from_srv, stream=True, headers=headers)
+            r.close()
             if r.status_code == requests.codes.not_found:
                 if i == 2:
                     print("Warning : %s is invalid." % url_from_srv)
@@ -417,6 +419,7 @@ def is_user_mange_package(bsp_package_path, pkg):
 
 
 is_China_ip = None
+mirror_settings_revision = None
 
 
 def should_confirm_delete_disabled_git_package():
@@ -426,6 +429,16 @@ def should_confirm_delete_disabled_git_package():
 
 def need_using_mirror_download():
     global is_China_ip
+    global mirror_settings_revision
+
+    policy = network.NetworkSettings(Import('env_root'))
+    revision = policy.revision()
+    if revision != mirror_settings_revision:
+        is_China_ip = None
+        mirror_settings_revision = revision
+    server = policy.load()['download_server']
+    if policy.configured() and server != 'auto':
+        return server == 'gitee'
 
     if is_China_ip != None:
         return is_China_ip
@@ -445,9 +458,9 @@ def need_using_mirror_download():
     else:
         # env .config exists but no explicit server set: keep legacy auto decision
         try:
-            ip = requests.get('https://ifconfig.me/ip').content.decode()
+            ip = network.request('GET', 'https://ifconfig.me/ip', timeout=5).content.decode()
             url = 'http://www.ip-api.com/json/' + ip
-            if requests.get(url).json()['country'] == 'China':
+            if network.request('GET', url, timeout=5).json()['country'] == 'China':
                 is_China_ip = True
             else:
                 is_China_ip = False
@@ -732,6 +745,8 @@ def git_cmd_exec(cmd, cwd):
     except Exception as e:
         logging.warning('Error message:%s%s. %s \n\t' % (cwd.encode("utf-8"), " path doesn't exist", e))
         print("You can solve this problem by manually removing old packages and re-downloading them using env.")
+        return False
+    return True
 
 
 def update_latest_packages(sys_value):
@@ -806,7 +821,9 @@ def update_latest_packages(sys_value):
                 logging.warning("Failed to connect to the mirror server, using non-mirror server to update.")
 
             # Update the package repository from upstream.
-            git_pull_repo(repo_path)
+            if git_pull_repo(repo_path) is False:
+                result = False
+                continue
 
             # If the package has submodules, update the submodules.
             update_submodule(repo_path, pkgs_name_in_json == u"ESP-IDF")
@@ -1241,16 +1258,16 @@ def package_update(force_update=False):
 
     sys_value = pre_package_update()
     if not sys_value:
-        return
+        return False
 
     flag = True
 
     if not delete_useless_packages(sys_value):
-        return
+        return False
 
     # 1.in old and not in new : Software packages that need to be removed
     if not remove_packages(sys_value, force_update):
-        return
+        return False
 
     # 2.in new not in old : Software packages to be installed.
     if not install_packages(sys_value, force_update):
@@ -1268,3 +1285,4 @@ def package_update(force_update=False):
         print("Operation completed successfully.")
     else:
         print("Operation failed.")
+    return flag

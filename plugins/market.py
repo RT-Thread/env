@@ -20,6 +20,11 @@ from .compatibility import (
 )
 from .errors import PluginError, UsageError
 
+if (__package__ or '').startswith('env.'):
+    from env import network
+else:
+    import network
+
 
 MARKET_ENV = 'ENV_PLUGIN_MARKET_URL'
 MARKET_FILE = 'market.json'
@@ -370,11 +375,13 @@ class _OriginRedirectHandler(HTTPRedirectHandler):
 
 
 class MarketClient(object):
-    def __init__(self, base_url):
+    def __init__(self, base_url, env_root=None):
         self.base_url = normalize_market_url(base_url)
         parsed = urlparse(self.base_url)
         self.origin = '%s://%s' % (parsed.scheme.lower(), parsed.netloc)
-        self.opener = build_opener(_OriginRedirectHandler(self.origin))
+        self.network = network.NetworkSettings(env_root)
+        self._network_revision = self.network.revision()
+        self.opener = network.urllib_opener(_OriginRedirectHandler(self.origin), env_root=self.network.env_root)
 
     def health(self):
         payload = self._get_json('/api/v1/health')
@@ -467,12 +474,16 @@ class MarketClient(object):
             response.close()
 
     def _open(self, path, query=None, timeout=JSON_TIMEOUT):
+        revision = self.network.revision()
+        if revision != self._network_revision:
+            self.opener = network.urllib_opener(_OriginRedirectHandler(self.origin), env_root=self.network.env_root)
+            self._network_revision = revision
         url = self.base_url + path
         if query:
             url = url + '?' + urlencode(query)
         request = Request(url, headers={'Accept': '*/*', 'User-Agent': 'rt-env-webui'})
         try:
-            return self.opener.open(request, timeout=timeout)
+            return self.opener.open(request, timeout=self.network.timeout(timeout))
         except HTTPError as exc:
             payload = b''
             try:

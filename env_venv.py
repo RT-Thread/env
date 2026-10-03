@@ -16,6 +16,14 @@ import sys
 import tempfile
 from urllib.request import ProxyHandler, Request, build_opener
 
+try:
+    import network
+except ModuleNotFoundError as exc:
+    if exc.name != 'network':
+        raise
+    # Legacy activation scripts may copy this bootstrap helper on its own.
+    network = None
+
 
 ALIYUN_INDEX_URL = 'https://mirrors.aliyun.com/pypi/simple/'
 COUNTRY_URL = 'https://ipinfo.io/country'
@@ -254,12 +262,20 @@ def detect_country(timeout=3):
         return None
 
 
-def select_index_url(country_detector=None, environ=None):
+def select_index_url(country_detector=None, environ=None, env_root=None):
     environ = environ if environ is not None else os.environ
     configured = environ.get('ENV_PYPI_INDEX_URL', '').strip()
     if configured:
         print('Using the configured Python package index.')
         return configured
+
+    if network is not None:
+        selected = network.pypi_index_url(env_root=env_root, environ=environ)
+        if selected:
+            print('Using the Python package index saved in Env network settings.')
+            return selected
+        if network.NetworkSettings(env_root).load()['pypi_mode'] == 'default':
+            return None
 
     country_detector = country_detector or detect_country
     if country_detector() == 'CN':
@@ -283,7 +299,8 @@ def confirm_upgrade(stdin=None):
 
 
 def run_command(command, env=None):
-    subprocess.check_call([str(value) for value in command], env=_proxy_free_environment(env))
+    environment = network.subprocess_environment(env, bootstrap=True) if network else _proxy_free_environment(env)
+    subprocess.check_call([str(value) for value in command], env=environment)
 
 
 def _command_runner_supports_env(command_runner):
@@ -306,8 +323,17 @@ def _index_arguments(index_url):
     return ['--index-url', index_url] if index_url else []
 
 
-def _pip_network_arguments(index_url):
-    return _index_arguments(index_url) + ['--proxy', '']
+def _pip_network_arguments(index_url, env_root=None):
+    if network is None:
+        return _index_arguments(index_url) + ['--proxy', '']
+    policy = network.NetworkSettings(env_root)
+    settings = policy.load()
+    arguments = _index_arguments(index_url)
+    if not policy.configured() or settings['proxy_mode'] == 'direct':
+        arguments += ['--proxy', '']
+    elif settings['proxy_mode'] == 'custom':
+        arguments += ['--proxy', settings['proxy_url']]
+    return arguments
 
 
 def _index_label(index_url):
@@ -320,14 +346,16 @@ def _index_label(index_url):
 
 def install_env(layout, source_root, initial_install, index_url, command_runner=None):
     command_runner = command_runner or run_command
-    command_environment = _proxy_free_environment()
+    env_root = str(layout['python'].parent.parent.parent)
+    command_environment = (network.subprocess_environment(env_root=env_root, bootstrap=True)
+                           if network else _proxy_free_environment())
     python = str(layout['python'])
     _invoke_command(command_runner, [python, '-m', 'ensurepip', '--upgrade'], env=command_environment)
     if initial_install:
         _invoke_command(
             command_runner,
             [python, '-m', 'pip', 'install', '--disable-pip-version-check', '--upgrade']
-            + _pip_network_arguments(index_url)
+            + _pip_network_arguments(index_url, env_root)
             + ['pip'],
             env=command_environment,
         )
@@ -343,7 +371,7 @@ def install_env(layout, source_root, initial_install, index_url, command_runner=
             '--upgrade-strategy',
             'only-if-needed',
         ]
-        + _pip_network_arguments(index_url)
+        + _pip_network_arguments(index_url, env_root)
         + [str(_normalized(source_root))],
         env=command_environment,
     )
@@ -418,7 +446,7 @@ def ensure_environment(
     if not initial_install and not package_missing and not upgrade_required:
         return 'current'
 
-    index_url = select_index_url(country_detector=country_detector)
+    index_url = select_index_url(country_detector=country_detector, env_root=str(venv_root.parent))
     install_env(layout, source_root, initial_install, index_url, command_runner=command_runner)
     if not env_is_installed(layout):
         raise BootstrapError('local Env package installation did not create the rt-env command')
@@ -484,7 +512,7 @@ def main(argv=None):
         elif status == 'repaired':
             print('Env package installation repaired in the existing Python venv.')
         return 0
-    except (BootstrapError, OSError, subprocess.CalledProcessError) as exc:
+    except (BootstrapError, OSError, ValueError, subprocess.CalledProcessError) as exc:
         print('Failed to prepare the Env Python venv: %s' % exc, file=sys.stderr)
         return 1
 

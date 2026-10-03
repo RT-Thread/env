@@ -32,6 +32,7 @@ import argparse
 import logging
 import platform
 import json
+import subprocess
 
 script_path = os.path.abspath(__file__)
 mpath = os.path.dirname(script_path)
@@ -40,6 +41,27 @@ sys.path.insert(0, mpath)
 from cmds import *
 from vars import Export
 from info import get_name, get_version
+from plugins.errors import PluginError
+
+
+def run_command(args):
+    """Translate legacy boolean results and preserve explicit exit codes."""
+    try:
+        result = args.func(args)
+    except PluginError as exc:
+        print('rt-env: %s' % exc, file=sys.stderr)
+        return exc.exit_code
+    except subprocess.CalledProcessError as exc:
+        print('rt-env: command failed (exit %s): %s' % (exc.returncode, exc.cmd), file=sys.stderr)
+        return exc.returncode if exc.returncode > 0 else 1
+    except (OSError, ValueError) as exc:
+        print('rt-env: %s' % exc, file=sys.stderr)
+        return 1
+    if isinstance(result, bool):
+        return 0 if result else 1
+    if isinstance(result, int):
+        return result if result >= 0 else 1
+    return 0
 
 def show_version():
     rtt_ver = get_rtt_verion()
@@ -214,7 +236,7 @@ def exec_arg(arg):
 
     parser = init_argparse()
     args = parser.parse_args()
-    args.func(args)
+    return run_command(args)
 
 
 def cmd_env_info(args):
@@ -241,35 +263,35 @@ def main():
     export_environment_variable()
     init_logger(get_env_root())
 
-    args.func(args)
+    return run_command(args)
 
 
 def menuconfig():
     show_version_warning()
-    exec_arg('menuconfig')
+    return exec_arg('menuconfig')
 
 
 def pkgs():
     show_version_warning()
-    exec_arg('pkg')
+    return exec_arg('pkg')
 
 
 def sdk():
     show_version_warning()
-    exec_arg('sdk')
+    return exec_arg('sdk')
 
 
 def system():
     show_version_warning()
-    exec_arg('system')
+    return exec_arg('system')
 
 
 def webui():
     show_version_warning()
     export_environment_variable()
     init_logger(get_env_root())
-    cmd_webui.main()
+    return cmd_webui.main()
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

@@ -18,6 +18,7 @@ export const permissionLabels: Record<string, string> = {
 
 export const iconMap: Record<string, Component> = {
   'chart-no-axes-combined': DataAnalysis,
+  puzzle: Box,
   'shield-check': Lock,
   cpu: Cpu,
   tools: Tools,

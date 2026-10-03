@@ -27,7 +27,11 @@
 #
 
 import os
+import json
 import uuid
+import subprocess
+import sys
+import network
 from vars import Import
 from info import get_source, get_api_url
 from .cmd_package_utils import execute_command, git_pull_repo, find_bool_macro_in_config
@@ -68,7 +72,8 @@ def upgrade_packages_index(force_upgrade=False):
             execute_command('git fetch --all', cwd=pkgs_path)
             execute_command('git reset --hard origin/%s' % src.branch, cwd=pkgs_path)
         print("Begin to upgrade env packages.")
-        git_pull_repo(pkgs_path, git_repo)
+        if git_pull_repo(pkgs_path, git_repo) is False:
+            return False
         print("==============================>  Env packages upgrade done \n")
 
     for filename in os.listdir(packages_root):
@@ -83,8 +88,10 @@ def upgrade_packages_index(force_upgrade=False):
                 if force_upgrade:
                     execute_command('git fetch --all', cwd=package_path)
                     execute_command('git reset --hard origin/master', cwd=package_path)
-                git_pull_repo(package_path)
+                if git_pull_repo(package_path) is False:
+                    return False
                 print("==============================>  Env %s update done \n" % filename)
+    return True
 
 
 def upgrade_env_script(force_upgrade=False):
@@ -99,8 +106,10 @@ def upgrade_env_script(force_upgrade=False):
         execute_command('git fetch --all', cwd=env_scripts_root)
         execute_command('git reset --hard origin/%s' % src.branch, cwd=env_scripts_root)
     print("Begin to upgrade env scripts.")
-    git_pull_repo(env_scripts_root, src.url)
+    if git_pull_repo(env_scripts_root, src.url) is False:
+        return False
     print("==============================>  Env scripts upgrade done \n")
+    return True
 
 
 def get_mac_address():
@@ -116,7 +125,7 @@ def Information_statistics():
 
     if os.path.isfile(env_config_file) and find_bool_macro_in_config(env_config_file, 'SYS_PKGS_USING_STATISTICS'):
         mac_addr = get_mac_address()
-        response = requests.get(
+        response = network.request('GET',
             get_api_url('statistics')
             + '?userid='
             + str(mac_addr)
@@ -125,7 +134,9 @@ def Information_statistics():
             + '&envversion=1.0&studioversion=2.0&ip=127.0.0.1'
         )
         if response.status_code != 200:
+            response.close()
             return
+        response.close()
     else:
         return
 
@@ -134,25 +145,33 @@ def package_upgrade(force_upgrade=False, upgrade_script=False):
     """Update the package repository directory and env function scripts."""
 
     if os.environ.get('RTTS_PLATFROM') != 'STUDIO':  # not used in studio
-        Information_statistics()
+        try:
+            Information_statistics()
+        except requests.RequestException:
+            pass
 
-    upgrade_packages_index(force_upgrade=force_upgrade)
+    if upgrade_packages_index(force_upgrade=force_upgrade) is False:
+        return False
 
     if upgrade_script:
-        upgrade_env_script(force_upgrade=force_upgrade)
+        return upgrade_env_script(force_upgrade=force_upgrade)
+    return True
 
 
 # upgrade python modules
 def package_upgrade_modules():
     try:
-        from subprocess import call
-
-        call('python -m pip install --upgrade pip', shell=True)
-
-        import pip
-        from pip._internal.utils.misc import get_installed_distributions
-
-        for dist in get_installed_distributions():
-            call('python -m pip install --upgrade ' + dist.project_name, shell=True)
-    except:
-        print('Fail to upgrade python modules!')
+        environment = network.subprocess_environment()
+        installed = json.loads(subprocess.check_output(
+            [sys.executable, '-m', 'pip', 'list', '--format=json'], env=environment, universal_newlines=True,
+        ))
+        index = network.pypi_index_url()
+        arguments = ['--index-url', index] if index else []
+        for name in ['pip'] + sorted(item['name'] for item in installed if item['name'].lower() != 'pip'):
+            subprocess.check_call(
+                [sys.executable, '-m', 'pip', 'install', '--upgrade'] + arguments + [name], env=environment,
+            )
+        return True
+    except (ImportError, OSError, subprocess.CalledProcessError) as exc:
+        print('Fail to upgrade python modules: %s' % exc, file=sys.stderr)
+        return False

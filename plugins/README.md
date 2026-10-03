@@ -119,7 +119,7 @@ var/plugins/
 
 ## Installing and using `epack`
 
-`epack` is the official optional developer tool for creating and publishing
+`epack` (RT-Thread Env Plugin Development Kit) is the official optional tool for developing and publishing
 other Env plugins. It is not required to install or run an existing `.epack`
 plugin; it is only needed for the developer workflow.
 
@@ -128,7 +128,7 @@ Build and install the official `epack` plugin from an Env source checkout:
 ```bash
 python -m plugins.epack.cli build plugins/bundled/epack
 python env.py plugin install \
-    plugins/bundled/epack/dist/org.rt-thread.epack-1.0.0-py3-none-any.epack \
+    plugins/bundled/epack/dist/org.rt-thread.epack-1.1.0-py3-none-any.epack \
     --yes
 ```
 
@@ -245,6 +245,43 @@ bytecode package for the current CPython ABI, use:
 epack build demo -o dist --backend-format pyc-wheel
 ```
 
+### Test and publish
+
+`epack test` builds a project and installs it into a temporary Env root. A
+WebUI plugin opens in a foreground test server; stop it with Ctrl+C. A CLI-only
+plugin runs its sole command. Choose a command explicitly when needed and put
+its arguments after `--`:
+
+```bash
+epack test demo
+epack test demo --command org-example-demo -- --help
+epack test demo-web --no-browser
+epack test demo-web -g
+```
+
+Use `-g` or `--global` to listen on all IPv4 interfaces when testing a WebUI,
+as with `webui -g`.
+
+The temporary installation is removed when testing exits. It does not replace
+the installed plugin. Plugin code still runs as the current user in the chosen
+workspace.
+
+`epack push` (also `epack publish`) builds a project (or accepts an existing `.epack`), checks package
+integrity, and uploads it to the market configured by `rt-env plugin market set`.
+Use `--market` to override the URL. The market admin API requires a bearer token
+when authentication is enabled; put it in a local file and use `--token-file`.
+The configured market must support the admin publish endpoints.
+
+```bash
+rt-env plugin market set http://127.0.0.1:8800
+epack push demo --token-file ./market-token.txt --changelog "Initial release"
+epack push dist/org.example.demo-0.1.0-py3-none-any.epack --market http://127.0.0.1:8800
+```
+
+The first upload creates the plugin; later uploads create a version or add an
+artifact to an existing version. `--changelog` applies only to a new plugin or
+version. Publication is a remote operation and does not install the package.
+
 Use `epack inspect` to check the manifest and integrity without executing code
 from the package. Install the result through Env and run its registered
 command:
@@ -267,7 +304,16 @@ files under `frontend/`:
     "entry": "frontend/index.html",
     "icon": "puzzle",
     "frontend_sdk": ">=1.0.0,<2.0.0",
-    "keep_alive": false
+    "keep_alive": false,
+    "launch_requirements": {
+      "all": [
+        {"type": "file", "pattern": "rtconfig.py"},
+        {"any": [
+          {"type": "directory", "pattern": "test_*"},
+          {"type": "file", "pattern": "test_*.md"}
+        ]}
+      ]
+    }
   }
 }
 ```
@@ -276,6 +322,24 @@ files under `frontend/`:
 plugin should keep its iframe mounted while navigating between WebUI pages,
 preserving browser-local page state. The iframe is released when the plugin is
 disabled, upgraded, uninstalled, or the WebUI exits.
+
+The `icon` can also reference an image bundled below `frontend/`:
+
+```json
+{
+  "icon": {"type": "svg", "path": "frontend/icon.svg"}
+}
+```
+
+`type` supports `svg` and `png`; the declared file is included in the `.epack`
+and is used consistently in the sidebar, plugin center and plugin dialogs.
+
+`launch_requirements` is optional. It describes files or directories that must
+exist below the current workspace for the plugin to appear in the left
+navigation. `pattern` accepts a safe POSIX-relative path or glob, and `file` or
+`directory` restricts the match type. Combine conditions with `all`, `any` and
+`not`. A plugin whose conditions are not satisfied remains available from the
+plugin center and can still be opened there.
 
 A WebUI-only plugin may omit `src/` and backend wheels. A plugin that declares
 commands, a health check, or a `service` must provide exactly one backend
@@ -301,7 +365,25 @@ available when a foreground process is desired. Use `--no-browser` to suppress
 browser launch, or `--browser` to force it in an SSH session. To enter an
 installed and enabled WebUI plugin directly after startup, pass
 `--plugin <plugin-id>` (also supported as `webui <plugin-id>` and with
-`webui start`); without it, the plugin center is shown.
+`webui start`); without it, the project home is shown.
+
+The WebUI Settings page includes Network. It stores the policy under
+`${ENV_ROOT}/var/network.json` and supports system proxy, direct connection,
+custom HTTP(S) proxy, bypass hosts, GitHub/Gitee download selection, PyPI
+selection, and request timeout. Settings are process-local: Env does not
+rewrite global Git, pip, or shell configuration. `ENV_PYPI_INDEX_URL` remains
+the highest-priority PyPI override. In a VS Code terminal, Env first tries the
+editor URL opener; if that is unavailable, it keeps the launch URL available
+for manual opening instead of starting a browser on a remote SSH host.
+
+This also applies to terminals opened through VS Code Remote SSH. Env uses
+the VS Code Server browser helper or Remote CLI to hand the launch URL to
+the connected VS Code client. It does not require `code` on PATH when the
+helper is available, and a failed bridge does not start a remote system browser.
+To prefer the integrated browser, enable `workbench.browser.openLocalhostLinks`
+in VS Code. Remote access uses VS Code's URL and port-forwarding mechanism;
+Env does not change editor settings or expose the service on additional interfaces.
+`--no-browser` skips this attempt; `--browser` explicitly uses the system browser.
 
 Plugin pages run in an iframe without `allow-same-origin`. The host passes theme,
 language, plugin identity, protocol version and optional backend URLs through
@@ -347,6 +429,36 @@ Env provides transport and backend lifecycle only. Plugin authors may define
 request, event, cancellation, progress and binary-frame protocols over
 WebSocket; device and debugger semantics remain plugin-owned extensions rather
 than Env Host API methods.
+
+## Project Home Documents
+
+When starting `webui` (including `webui -g`) in a project directory, the project
+home prefers `index.md`, then `README.md` or `readme.md`. Documents use UTF-8,
+with an optional BOM. The build panel appears above the document while a task
+exists and disappears after acknowledging its result.
+The home document renders directly, without a filename or refresh toolbar.
+
+Put `[toc]` on its own paragraph to generate a nested table of contents with
+clickable heading links. The marker is case-insensitive (`[TOC]` also works),
+and is not expanded inside code. Directory colors follow the WebUI theme.
+
+GitHub-style rendering supports heading anchors, tables, task lists, emoji,
+HTML tables with `rowspan`/`colspan`, and syntax highlighting. Document styles,
+code colors and diagrams follow the WebUI theme. SVG, PNG, JPEG, GIF and WebP
+images resolve relative to the referring file. Project Markdown links render
+in the same home view and support browser history. Local SVG links also work;
+for example, `images/architecture.svg` can link to `../docs/guide.md#details`.
+SVG scripts are removed and its styles cannot affect the host UI.
+
+Use fenced `mermaid` blocks for local browser rendering and `plantuml`, `puml`
+or `uml` blocks for online rendering through
+`https://www.plantuml.com/plantuml/svg/`. **PlantUML sends diagram source to an
+external service and needs network access. Use local Mermaid for sensitive
+diagrams.** Failed diagrams retain their source without affecting the page.
+
+Only project `.md` files and images are accessible. Hidden paths, traversal and
+symlinks outside the workspace are rejected. Markdown is limited to 4 MiB and
+individual images to 16 MiB.
 
 ## Build and publishing notes
 

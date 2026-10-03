@@ -80,7 +80,7 @@ export function requestedPluginId(): string {
 
 export function syncViewUrl(view: string): void {
   const url = new URL(window.location.href)
-  if (view !== 'plugins' && view !== 'settings') url.searchParams.set('plugin', view)
+  if (view !== 'home' && view !== 'plugins' && view !== 'settings') url.searchParams.set('plugin', view)
   else url.searchParams.delete('plugin')
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
