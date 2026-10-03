@@ -145,6 +145,9 @@ class EpackArchive(object):
                 required_paths.update(artifact['path'] for artifact in manifest.artifacts)
                 if manifest.webui:
                     required_paths.add(manifest.webui['entry'])
+                    icon = manifest.webui['icon']
+                    if isinstance(icon, dict):
+                        required_paths.add(icon['path'])
                 missing_required = sorted(required_paths - actual_names)
                 if missing_required:
                     raise PackageError("manifest references missing files: %s" % ', '.join(missing_required))

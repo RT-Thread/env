@@ -287,6 +287,11 @@ class PluginInstaller(object):
                     frontend_entry = self._frontend_entry(install_dir, manifest)
                     if not os.path.isfile(frontend_entry):
                         issues.append('WebUI entry is missing')
+                    icon = manifest.webui['icon']
+                    if isinstance(icon, dict):
+                        icon_path = os.path.join(install_dir, *icon['path'].split('/'))
+                        if not os.path.isfile(icon_path):
+                            issues.append('WebUI icon is missing')
                 required = set(permission['name'] for permission in manifest.permissions if permission['required'])
                 missing_permissions = sorted(required - set(record['granted_permissions']))
                 if missing_permissions:

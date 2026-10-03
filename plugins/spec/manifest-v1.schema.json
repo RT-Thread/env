@@ -17,6 +17,59 @@
     "commands",
     "backend"
   ],
+  "$defs": {
+    "launchRequirement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "pattern"],
+          "properties": {
+            "type": {
+              "enum": ["file", "directory"]
+            },
+            "pattern": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?/)(?!.*\\\\)(?!.*:).+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["all"],
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/launchRequirement"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["any"],
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/launchRequirement"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["not"],
+          "properties": {
+            "not": {"$ref": "#/$defs/launchRequirement"}
+          }
+        }
+      ]
+    }
+  },
   "properties": {
     "schema_version": {
       "const": 1
@@ -279,8 +332,26 @@
           "pattern": "^frontend/(?!.*(?:^|/)\\.\\.?/).+\\.html$"
         },
         "icon": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,62}$"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "path"],
+              "properties": {
+                "type": {
+                  "enum": ["svg", "png"]
+                },
+                "path": {
+                  "type": "string",
+                  "pattern": "^frontend/(?!.*(?:^|/)\\.\\.?/).+\\.(?:svg|png)$"
+                }
+              }
+            }
+          ]
         },
         "frontend_sdk": {
           "type": "string",
@@ -290,6 +361,10 @@
           "type": "boolean",
           "default": false,
           "description": "Keep the WebUI iframe mounted while navigating in Env"
+        },
+        "launch_requirements": {
+          "$ref": "#/$defs/launchRequirement",
+          "description": "Workspace files or directories required for the WebUI to appear in navigation"
         }
       }
     }
