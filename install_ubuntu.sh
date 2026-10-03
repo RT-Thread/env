@@ -12,8 +12,8 @@ elif [ -z "$COUNTRY" ] && [ -t 0 ]; then
 fi
 
 sudo apt-get update
-sudo apt-get -qq install python3 python3-pip python3-venv gcc git libncurses5-dev -y
-pip install scons requests tqdm kconfiglib pyyaml
+# Python runtime dependencies are installed in the Env venv on first activation.
+sudo apt-get -qq install python3 python3-venv gcc git libncurses5-dev -y
 
 wget "$TOUCH_ENV_URL" -O touch_env.sh
 chmod 777 touch_env.sh

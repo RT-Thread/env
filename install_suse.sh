@@ -13,9 +13,8 @@ fi
 
 sudo zypper update -y
 
-sudo zypper install python3 python3-pip python3-venv gcc git ncurses-devel cross-arm-none-gcc11-bootstrap cross-arm-binutils qemu qemu-arm qemu-extra -y
-python3 -m pip install scons requests tqdm kconfiglib
-python3 -m pip install -U pyocd
+# Python runtime dependencies are installed in the Env venv on first activation.
+sudo zypper install python3 python3-venv gcc git ncurses-devel cross-arm-none-gcc11-bootstrap cross-arm-binutils qemu qemu-arm qemu-extra -y
 
 wget "$TOUCH_ENV_URL" -O touch_env.sh
 chmod 777 touch_env.sh

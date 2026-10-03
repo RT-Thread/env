@@ -149,6 +149,30 @@ class EnvVenvTest(unittest.TestCase):
         self.assertEqual(status, 'current')
         self.assertEqual(runner.commands, [])
 
+    def test_initial_install_runs_package_commands_only_inside_the_venv(self):
+        status, runner = self._install()
+        layout = env_venv.venv_layout(self.venv)
+        self.assertEqual(status, 'created')
+        self.assertEqual(
+            runner.commands[0],
+            [getattr(sys, '_base_executable', sys.executable), '-m', 'venv', str(self.venv.resolve())],
+        )
+        for command in runner.commands[1:]:
+            with self.subTest(command=command):
+                self.assertEqual(command[0], str(layout['python']))
+                self.assertIn(command[1:3], (['-m', 'ensurepip'], ['-m', 'pip']))
+                self.assertNotIn('pyocd', command)
+                self.assertNotIn('openocd', command)
+
+    def test_bootstrap_helper_runs_without_host_site_packages(self):
+        result = subprocess.run(
+            [sys.executable, '-S', str(REPOSITORY / 'env_venv.py'), '--help'],
+            env=dict(os.environ, ENV_ROOT=str(self.root)),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('virtual environment', result.stdout)
+
     def test_declined_upgrade_keeps_state_and_activation_copy(self):
         self._install()
         old_state = (self.venv / env_venv.STATE_FILENAME).read_text(encoding='utf-8')

@@ -31,36 +31,6 @@ brew list ncurses >/dev/null || {
     brew install ncurses
 }
 
-$RTT_PYTHON -m pip list >/dev/null || {
-    echo "Installing pip."
-    $RTT_PYTHON -m ensurepip --upgrade
-}
-
-if ! [ -x "$(command -v scons)" ]; then
-    echo "Installing scons."
-    $RTT_PYTHON -m pip install scons
-fi
-
-if ! [ -x "$(command -v tqdm)" ]; then
-    echo "Installing tqdm."
-    $RTT_PYTHON -m pip install tqdm
-fi
-
-if ! [ -x "$(command -v kconfiglib)" ]; then
-    echo "Installing kconfiglib."
-    $RTT_PYTHON -m pip install kconfiglib
-fi
-
-if ! [ -x "$(command -v pyocd)" ]; then
-    echo "Installing pyocd."
-    $RTT_PYTHON -m pip install -U pyocd
-fi
-
-if ! [[ $($RTT_PYTHON -m pip list | grep requests) ]]; then
-    echo "Installing requests."
-    $RTT_PYTHON -m pip install requests
-fi
-
 if ! [ -x "$(command -v arm-none-eabi-gcc)" ]; then
     echo "Installing GNU Arm Embedded Toolchain."
     brew install gnu-arm-embedded
