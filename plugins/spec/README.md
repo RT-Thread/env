@@ -42,7 +42,16 @@ Plugin WebUI declarations use this shape:
     "entry": "frontend/index.html",
     "icon": "chart-no-axes-combined",
     "frontend_sdk": ">=1.0.0,<2.0.0",
-    "keep_alive": false
+    "keep_alive": false,
+    "launch_requirements": {
+      "all": [
+        {"type": "file", "pattern": "rtconfig.py"},
+        {"any": [
+          {"type": "directory", "pattern": "test_*"},
+          {"type": "file", "pattern": "test_*.md"}
+        ]}
+      ]
+    }
   }
 }
 ```
@@ -51,6 +60,26 @@ Plugin WebUI declarations use this shape:
 the plugin iframe mounted while navigating between WebUI pages, preserving
 browser-local page state. It is released when the plugin is disabled, upgraded,
 uninstalled, or the WebUI exits.
+
+Instead of a registered icon identifier, `webui.icon` may reference a bundled
+image:
+
+```json
+{
+  "icon": {"type": "png", "path": "frontend/icon.png"}
+}
+```
+
+Only `svg` and `png` assets below `frontend/` are accepted. Env verifies that
+the declared file is present in the package and serves it through the same
+tokenized plugin asset prefix used by the WebUI.
+
+`launch_requirements` is optional and describes files or directories that must
+exist below the current WebUI workspace for the plugin to appear in the left
+navigation. `pattern` is a safe POSIX-relative path or glob. A `file` or
+`directory` node matches only that type; `all`, `any` and `not` combine nodes.
+The plugin remains available from the plugin center when requirements are not
+satisfied, so users can inspect or open it without changing the manifest.
 
 Plugins that provide a long-running local HTTP/WebSocket backend may declare a
 supervised service:
