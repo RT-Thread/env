@@ -164,7 +164,7 @@ button, input, select { letter-spacing: 0; }
 .plugin-card { display: flex; min-height: 230px; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; padding: 18px; background: var(--surface); transition: border-color .16s, box-shadow .16s; }
 .plugin-card:hover { border-color: var(--line-strong); box-shadow: 0 6px 18px rgba(28,39,34,.08); }
 .card-heading { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
-.plugin-icon { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border-radius: 6px; background: var(--orange-soft); color: var(--orange); }
+.plugin-icon { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border-radius: 6px; background: var(--surface-strong); color: var(--accent); }
 .plugin-icon svg { width: 22px; }
 .plugin-icon .plugin-image-icon { width: 28px; height: 28px; object-fit: contain; }
 .card-heading h2, .dialog-heading h2 { margin: 0; overflow-wrap: anywhere; font-size: 16px; letter-spacing: 0; }

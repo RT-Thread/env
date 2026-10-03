@@ -243,6 +243,33 @@ test('mobile navigation keeps local plugin management above settings', async ({ 
   await context.close()
 })
 
+for (const palette of [
+  { theme: 'light', background: 'rgb(233, 238, 236)', foreground: 'rgb(15, 118, 110)' },
+  { theme: 'dark', background: 'rgb(48, 56, 51)', foreground: 'rgb(56, 170, 160)' },
+]) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    test(`plugin icon palette matches ${palette.theme} theme at ${viewport.width}px`, async ({ browser }, testInfo) => {
+      const context = await browser.newContext({ viewport, storageState: authenticatedState })
+      await context.addInitScript((theme) => localStorage.setItem('env-theme', theme), palette.theme)
+      const page = await context.newPage()
+      await page.goto(new URL('/', launchUrl).toString())
+      if (viewport.width < 840) await page.getByRole('button', { name: '打开导航' }).click()
+      await page.getByRole('button', { name: '插件中心', exact: true }).click()
+      const icons = page.locator('.installed-card .plugin-icon')
+      await expect(icons).toHaveCount(2)
+      for (const icon of await icons.all()) {
+        await expect(icon).toHaveCSS('background-color', palette.background)
+        await expect(icon.locator('svg')).toHaveCSS('color', palette.foreground)
+      }
+      expect(await page.locator('.plugin-center-view').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath(`plugin-icons-${palette.theme}-${viewport.width}.png`), animations: 'disabled' })
+      await page.locator('.installed-card').first().getByRole('button', { name: '详情' }).click()
+      await expect(page.getByRole('dialog').locator('.plugin-icon')).toHaveCSS('background-color', palette.background)
+      await context.close()
+    })
+  }
+}
+
 test('SDK settings previews and applies a toolchain change', async ({ browser }) => {
   const contextOptions: Parameters<typeof browser.newContext>[0] = { viewport: { width: 1440, height: 900 } }
   if (authenticatedState) contextOptions.storageState = authenticatedState
