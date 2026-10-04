@@ -87,7 +87,7 @@ def list_packages():
         if platform.system() == "Windows":
             os.system('chcp 437  > nul')
 
-        return
+        return False
 
     packages = kconfig.parse(config_file)
 

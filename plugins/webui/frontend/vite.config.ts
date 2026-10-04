@@ -8,6 +8,13 @@ export default defineConfig({
     outDir: '../static',
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name][extname]',
+      },
+    },
   },
   resolve: {
     alias: {

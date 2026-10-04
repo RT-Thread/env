@@ -6,6 +6,35 @@ afterEach(() => {
 })
 
 describe('local package API', () => {
+  it('reads, saves and tests network settings with CSRF protection', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
+    vi.stubGlobal('fetch', fetchMock)
+    setCsrfToken('network-csrf')
+    const settings = {
+      proxy_mode: 'direct' as const, proxy_url: '', no_proxy: 'localhost',
+      download_server: 'auto' as const, pypi_mode: 'default' as const, pypi_url: '', timeout: 37,
+    }
+    await api.network()
+    await api.saveNetwork(settings)
+    await api.testNetwork('github')
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/settings/network', '/api/v1/settings/network', '/api/v1/settings/network/test',
+    ])
+    expect(fetchMock.mock.calls[1][1].method).toBe('PUT')
+    expect(fetchMock.mock.calls[1][1].headers.get('X-Env-CSRF')).toBe('network-csrf')
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(settings)
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ target: 'github' })
+  })
+  it('loads the preferred project document or an explicitly selected Markdown path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: null }) })
+    vi.stubGlobal('fetch', fetchMock)
+    await api.workspaceDocument()
+    await api.workspaceDocument('docs/guide.md')
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/workspace/document',
+      '/api/v1/workspace/document?path=docs%2Fguide.md',
+    ])
+  })
   it('exposes SDK snapshot, plan, apply and task endpoints', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
     vi.stubGlobal('fetch', fetchMock)

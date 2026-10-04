@@ -1,0 +1,40 @@
+.markdown-body {
+  min-width: 0;
+  color-scheme: inherit;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.65;
+  letter-spacing: 0;
+}
+.markdown-body h1 { font-size: 28px; }
+.markdown-body h2 { font-size: 23px; }
+.markdown-body h3 { font-size: 19px; }
+.markdown-body h4, .markdown-body h5, .markdown-body h6 { font-size: 16px; }
+.markdown-body h1, .markdown-body h2 { border-color: var(--line); }
+.markdown-body [id] { scroll-margin-top: 20px; }
+.markdown-body .markdown-toc { margin: 16px 0; overflow-wrap: anywhere; }
+.markdown-body .markdown-toc ul { padding-left: 20px; }
+.markdown-body .markdown-toc > ul { margin: 0; }
+.markdown-body .markdown-toc li + li { margin-top: 4px; }
+.markdown-body table { max-width: 100%; overflow-x: auto; }
+.markdown-body table tr { background: var(--surface); border-color: var(--line); }
+.markdown-body table tr:nth-child(2n) { background: var(--surface-subtle); }
+.markdown-body table th, .markdown-body table td { border-color: var(--line); }
+.markdown-body pre, .markdown-body .highlight pre { background: var(--surface-subtle); }
+.markdown-body pre code.hljs { display: block; background: transparent; padding: 0; }
+.markdown-body img { height: auto; vertical-align: middle; }
+.markdown-body svg { max-width: 100%; }
+.markdown-body .task-list-item-checkbox { margin-right: 8px; accent-color: var(--accent); }
+.markdown-body .markdown-diagram { min-width: 0; margin: 20px 0; overflow-x: auto; }
+.markdown-diagram > svg, .markdown-diagram > img { display: block; width: auto; max-width: 100%; height: auto; margin: 0 auto; }
+.markdown-diagram [hidden] { display: none !important; }
+.markdown-body .diagram-error { margin: 8px 0; color: var(--red); font-size: 13px; }
+.markdown-body .svg-image { display: inline-block; max-width: 100%; vertical-align: middle; }
+@media (max-width: 520px) {
+  .markdown-body { font-size: 14px; }
+  .markdown-body h1 { font-size: 25px; }
+  .markdown-body h2 { font-size: 21px; }
+  .markdown-body pre { padding: 12px; }
+  .markdown-body table th, .markdown-body table td { padding: 6px 10px; }
+}

@@ -94,6 +94,30 @@ class ManifestTest(unittest.TestCase):
         with self.assertRaisesRegex(ManifestError, 'keep_alive'):
             validate_manifest(data)
 
+    def test_webui_accepts_svg_and_png_icon_assets(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['webui'] = {
+            'entry': 'frontend/index.html',
+            'icon': {'type': 'svg', 'path': 'frontend/icon.svg'},
+            'frontend_sdk': '>=1.0.0,<2.0.0',
+        }
+        manifest = validate_manifest(data)
+        self.assertEqual(manifest.webui['icon']['type'], 'svg')
+
+        data['webui']['icon'] = {'type': 'png', 'path': 'frontend/icon.png'}
+        manifest = validate_manifest(data)
+        self.assertEqual(manifest.webui['icon']['path'], 'frontend/icon.png')
+
+    def test_webui_rejects_unsafe_icon_asset(self):
+        data = json.loads(self.content.decode('utf-8'))
+        data['webui'] = {
+            'entry': 'frontend/index.html',
+            'icon': {'type': 'svg', 'path': '../icon.svg'},
+            'frontend_sdk': '>=1.0.0,<2.0.0',
+        }
+        with self.assertRaisesRegex(ManifestError, 'icon.path'):
+            validate_manifest(data)
+
     def test_windows_reserved_command_name_is_rejected(self):
         data = json.loads(self.content.decode('utf-8'))
         data['commands'][0]['name'] = 'nul'

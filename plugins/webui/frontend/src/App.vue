@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ArrowUp,
   Box,
@@ -8,6 +8,7 @@ import {
   Cpu,
   DataAnalysis,
   Delete,
+  Document,
   Expand,
   Fold,
   Grid,
@@ -63,7 +64,6 @@ import {
   diagnosisOf,
   diagnosisReasons,
   hostBackendContext,
-  iconFor,
   installedPluginFor as findInstalledPlugin,
   marketActionLabel,
   marketStateClass,
@@ -82,9 +82,15 @@ import type {
   ToolchainForm,
   ToolchainSnapshot,
   UploadSummary,
+  WorkspaceSnapshot,
+  BuildTask,
 } from './types/api'
 import { useSdk } from './composables/useSdk'
+import PluginIcon from './components/PluginIcon.vue'
+import NetworkSettings from './components/NetworkSettings.vue'
 import envLogo from '@env-brand/env.png'
+
+const ProjectDocument = defineAsyncComponent(() => import('./components/ProjectDocument.vue'))
 
 const session = ref<Session | null>(null)
 const installed = ref<EnvPlugin[]>([])
@@ -92,7 +98,7 @@ const loading = ref(true)
 const actionBusy = ref(false)
 const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('env-sidebar-collapsed') === 'true')
-const currentView = ref('plugins')
+const currentView = ref('home')
 const closing = ref(false)
 const pluginTab = ref('installed')
 const settingsTab = ref('general')
@@ -144,6 +150,12 @@ const mountedKeepAlivePluginIds = ref(new Set<string>())
 const iframeElements = new Map<string, HTMLIFrameElement>()
 const iframeTimers = new Map<string, number>()
 const iframeCheckGenerations = new Map<string, number>()
+const workspace = ref<WorkspaceSnapshot | null>(null)
+const buildTask = ref<BuildTask | null>(null)
+const buildLogVisible = ref(false)
+const buildLogElement = ref<HTMLElement>()
+let buildPollTimer: number | undefined
+let buildPollGeneration = 0
 
 const {
   sdkState,
@@ -168,10 +180,34 @@ function installedPluginFor(plugin?: Partial<EnvPlugin> | null): EnvPlugin | und
   return findInstalledPlugin(installed.value, plugin)
 }
 
+function pluginAsset(plugin?: Partial<EnvPlugin> | null) {
+  const pluginId = plugin?.id
+  return pluginId ? session.value?.plugin_assets?.[pluginId] : undefined
+}
+
 const marketEnabled = computed(() => Boolean(session.value?.market?.enabled))
-const navigablePlugins = computed(() => installed.value.filter((item) => item.enabled && item.webui))
+const webuiPlugins = computed(() => installed.value.filter((item) => item.enabled && item.webui))
+const navigablePlugins = computed(() => webuiPlugins.value.filter((item) => item.workspace_ready !== false))
 const activePlugin = computed(() => installed.value.find((item) => item.id === currentView.value))
-const mountedFramePlugins = computed(() => navigablePlugins.value.filter((plugin) => {
+const buildRunning = computed(() => ['queued', 'running'].includes(buildTask.value?.status || ''))
+const buildStateLabel = computed(() => {
+  if (!buildTask.value) return ''
+  if (buildTask.value.status === 'succeeded') return '完成'
+  if (buildTask.value.status === 'failed') return '失败'
+  if (buildTask.value.status === 'cancelled') return '已停止'
+  return '进行中'
+})
+const buildProgressStatus = computed(() => {
+  if (buildTask.value?.status === 'failed') return 'exception'
+  if (buildTask.value?.status === 'succeeded') return 'success'
+  return undefined
+})
+const canClearBuild = computed(() => (
+  Boolean(buildTask.value)
+  && !buildRunning.value
+  && !(buildTask.value?.operation === 'clean' && buildTask.value.status === 'succeeded')
+))
+const mountedFramePlugins = computed(() => webuiPlugins.value.filter((plugin) => {
   if (plugin.missing_required_permissions?.length) return false
   const state = iframeStates.value[plugin.id] || 'idle'
   if (plugin.webui?.keep_alive) {
@@ -270,6 +306,7 @@ async function reloadAll() {
   const installedItems = await api.plugins()
   const previousPlugins = new Map(installed.value.map((item) => [item.id, item]))
   installed.value = installedItems
+  workspace.value = await api.workspace()
   const nextPlugins = new Map(installedItems.map((item) => [item.id, item]))
   let activeFrameDiscarded = false
   for (const [pluginId] of Object.entries(iframeStates.value)) {
@@ -289,12 +326,12 @@ async function reloadAll() {
   mountedKeepAlivePluginIds.value = new Set(
     [...mountedKeepAlivePluginIds.value].filter((pluginId) => nextPlugins.get(pluginId)?.webui?.keep_alive),
   )
-  if (currentView.value === 'plugins') {
-    const requested = installedItems.find((item) => item.id === requestedPluginId())
+  const requested = installedItems.find((item) => item.id === requestedPluginId())
+  if (currentView.value === 'home' || currentView.value === 'plugins') {
     if (requested?.enabled && requested.webui) go(requested.id)
-    else if (requestedPluginId()) syncViewUrl('plugins')
+    else syncViewUrl(currentView.value)
   }
-  if (currentView.value !== 'plugins' && currentView.value !== 'settings') {
+  if (currentView.value !== 'home' && currentView.value !== 'plugins' && currentView.value !== 'settings') {
     const current = installedItems.find((item) => item.id === currentView.value)
     if (!current?.enabled || !current.webui) {
       currentView.value = 'plugins'
@@ -306,6 +343,73 @@ async function reloadAll() {
   await loadSdk()
   await Promise.all([loadToolchains(), loadContextMenu()])
   if (marketEnabled.value && pluginTab.value === 'online') await loadMarket()
+}
+
+async function loadWorkspace() {
+  try { workspace.value = await api.workspace() } catch (error) { ElMessage.error(error.message) }
+}
+
+async function refreshBuildTask() {
+  const taskId = buildTask.value?.task_id
+  if (!taskId) return false
+  try {
+    const task = await api.buildTask(taskId)
+    if (buildTask.value?.task_id !== taskId) return false
+    buildTask.value = task
+    if (!buildRunning.value) {
+      stopBuildPolling()
+      await loadWorkspace()
+      return false
+    }
+    return true
+  } catch (error) {
+    stopBuildPolling()
+    ElMessage.error(error.message)
+    return false
+  }
+}
+
+function stopBuildPolling() {
+  buildPollGeneration += 1
+  if (buildPollTimer !== undefined) {
+    window.clearTimeout(buildPollTimer)
+    buildPollTimer = undefined
+  }
+}
+
+function startBuildPolling() {
+  stopBuildPolling()
+  const generation = buildPollGeneration
+  const poll = async () => {
+    if (generation !== buildPollGeneration) return
+    const active = await refreshBuildTask()
+    if (generation === buildPollGeneration && active) buildPollTimer = window.setTimeout(poll, 700)
+  }
+  buildPollTimer = window.setTimeout(poll, 700)
+}
+
+async function startBuild() {
+  if (!workspace.value?.build_available || buildRunning.value) return
+  try {
+    buildTask.value = await api.startBuild()
+    buildLogVisible.value = true
+    startBuildPolling()
+  } catch (error) { ElMessage.error(error.message) }
+}
+
+function confirmBuildResult() {
+  buildLogVisible.value = false
+  buildTask.value = null
+  stopBuildPolling()
+}
+
+async function clearBuild() {
+  if (!workspace.value?.build_available || !canClearBuild.value) return
+  try {
+    buildTask.value = await api.clearBuild()
+    buildLogVisible.value = true
+    startBuildPolling()
+  } catch (error) { ElMessage.error(error.message) }
 }
 
 async function loadToolchains() {
@@ -455,6 +559,13 @@ watch(theme, (value) => {
   sendPluginContexts()
 }, { immediate: true })
 
+watch(() => [buildTask.value?.logs.length, buildLogVisible.value], async () => {
+  const element = buildLogElement.value
+  const follow = !element || element.scrollHeight - element.scrollTop - element.clientHeight < 32
+  await nextTick()
+  if (follow && buildLogElement.value) buildLogElement.value.scrollTop = buildLogElement.value.scrollHeight
+})
+
 watch(pluginTab, (value) => {
   if (value === 'online' && marketEnabled.value) loadMarket()
 })
@@ -528,7 +639,7 @@ function go(view: string, forceReload = false) {
   currentView.value = view
   sidebarOpen.value = false
   syncViewUrl(view)
-  if (view === 'plugins' || view === 'settings') {
+  if (view === 'home' || view === 'plugins' || view === 'settings') {
     iframeState.value = 'idle'
     return
   }
@@ -859,6 +970,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('message', receivePluginMessage)
   iframeTimers.forEach((timer) => window.clearTimeout(timer))
   iframeTimers.clear()
+  stopBuildPolling()
 })
 </script>
 
@@ -884,6 +996,9 @@ onBeforeUnmount(() => {
         </div>
 
         <nav class="plugin-navigation" aria-label="已安装插件">
+          <button class="nav-entry" :class="{ active: currentView === 'home' }" @click="go('home')">
+            <span class="nav-icon"><DataAnalysis /></span><span>项目首页</span>
+          </button>
           <div class="nav-heading"><span>已安装插件</span><b>{{ navigablePlugins.length }}</b></div>
           <button
             v-for="plugin in navigablePlugins"
@@ -893,7 +1008,7 @@ onBeforeUnmount(() => {
             :title="sidebarCollapsed ? plugin.name : undefined"
             @click="go(plugin.id)"
           >
-            <span class="nav-icon"><component :is="iconFor(plugin)" /></span>
+            <span class="nav-icon"><PluginIcon :plugin="plugin" :asset="pluginAsset(plugin)" /></span>
             <span>{{ plugin.name }}</span>
             <i v-if="plugin.missing_required_permissions.length" class="nav-warning" title="需要恢复权限"></i>
           </button>
@@ -927,7 +1042,72 @@ onBeforeUnmount(() => {
           <el-button class="mobile-menu" text circle :icon="Menu" aria-label="打开导航" @click="sidebarOpen = true" />
         </el-tooltip>
 
-        <section v-if="currentView === 'plugins'" class="content-scroll plugin-center-view">
+        <section v-if="currentView === 'home'" class="content-scroll home-view">
+          <div class="home-hero">
+            <div>
+              <h1>项目首页</h1>
+              <p class="workspace-path">{{ workspace?.path || '读取工作区...' }}</p>
+            </div>
+            <div class="home-actions">
+              <el-button
+                v-if="workspace?.build_available"
+                type="primary"
+                :icon="Tools"
+                :loading="buildRunning"
+                @click="startBuild"
+              >{{ buildRunning ? '构建中' : '构建项目' }}</el-button>
+              <el-button
+                v-if="workspace?.kconfig_available && workspace.kconfig_plugin"
+                :icon="Setting"
+                @click="go(workspace.kconfig_plugin.id)"
+              >配置项目</el-button>
+            </div>
+          </div>
+          <section v-if="buildTask" class="home-result">
+            <div class="panel-heading">
+              <strong>构建结果</strong>
+              <span class="build-state">{{ buildStateLabel }}</span>
+            </div>
+            <p>{{ buildTask.message }}</p>
+            <el-progress
+              :percentage="buildTask.progress"
+              :status="buildProgressStatus"
+              :indeterminate="buildRunning"
+            />
+            <div v-if="buildTask.elf_files.length" class="elf-list">
+              <strong>ELF 文件</strong>
+              <span v-for="elf in buildTask.elf_files" :key="elf.path">
+                <code>{{ elf.path }}</code>
+                <small>{{ formatBytes(elf.size) }}</small>
+              </span>
+            </div>
+            <p v-else-if="buildTask.status === 'succeeded' && buildTask.operation !== 'clean'">
+              未检测到 ELF 输出文件
+            </p>
+            <pre v-if="buildLogVisible" ref="buildLogElement" class="build-log" aria-label="构建日志">{{ buildTask.logs.join('\n') || '等待构建输出...' }}</pre>
+            <div class="home-result-actions">
+              <el-button size="small" :icon="CircleCheck" :disabled="buildRunning" @click="confirmBuildResult">确认</el-button>
+              <el-button
+                v-if="buildTask.logs.length"
+                size="small"
+                :icon="Document"
+                @click="buildLogVisible = !buildLogVisible"
+              >{{ buildLogVisible ? '收起日志' : '构建日志' }}</el-button>
+              <el-button
+                size="small"
+                type="warning"
+                :icon="Delete"
+                plain
+                :loading="buildRunning"
+                :disabled="!canClearBuild"
+                @click="clearBuild"
+              >清除构建</el-button>
+            </div>
+          </section>
+          <ProjectDocument v-if="workspace?.home_document" :home-path="workspace.home_document" :theme="theme" />
+        </section>
+
+        <section v-else-if="currentView === 'plugins'" class="content-scroll plugin-center-view">
           <div class="page-header">
             <div>
               <h1>插件中心</h1>
@@ -943,15 +1123,19 @@ onBeforeUnmount(() => {
               <div v-if="installed.length" class="plugin-grid installed-grid">
                 <article v-for="plugin in installed" :key="plugin.id" class="plugin-card installed-card">
                   <div class="card-heading">
-                    <span class="plugin-icon"><component :is="iconFor(plugin)" /></span>
+                    <span class="plugin-icon"><PluginIcon :plugin="plugin" :asset="pluginAsset(plugin)" /></span>
                     <div><h2>{{ plugin.name }}</h2><p>{{ plugin.author.name }} · v{{ plugin.version }}</p></div>
-                    <span class="state" :class="plugin.enabled ? 'open' : 'disabled'">{{ plugin.enabled ? '已启用' : '已禁用' }}</span>
+                    <span
+                      class="state"
+                      :class="plugin.enabled ? (plugin.workspace_ready === false ? 'incompatible' : 'open') : 'disabled'"
+                    >{{ plugin.enabled ? (plugin.workspace_ready === false ? '当前工作区不适用' : '已启用') : '已禁用' }}</span>
                   </div>
                   <p class="description">{{ plugin.description }}</p>
                   <div class="metadata">
                     <span>{{ plugin.webui ? 'WebUI' : 'CLI' }}</span>
                     <span>{{ commandNames(plugin).join(' · ') || '无命令入口' }}</span>
                     <span>{{ plugin.signing_status === 'unsigned' ? '未签名' : '签名已验证' }}</span>
+                    <span v-if="plugin.workspace_ready === false">启动条件未满足，但仍可从插件中心打开</span>
                   </div>
                   <div class="card-actions">
                     <el-button @click="showDetail(plugin)">详情</el-button>
@@ -1000,7 +1184,7 @@ onBeforeUnmount(() => {
               <div v-else-if="marketCatalog.items.length" class="plugin-grid market-grid" v-loading="marketLoading">
                 <article v-for="plugin in marketCatalog.items" :key="plugin.id" class="plugin-card market-card">
                   <div class="card-heading">
-                    <span class="plugin-icon"><component :is="iconFor(plugin)" /></span>
+                    <span class="plugin-icon"><PluginIcon :plugin="plugin" :asset="pluginAsset(plugin)" /></span>
                     <div>
                       <h2>{{ plugin.name }}</h2>
                       <p>{{ plugin.id }} · v{{ plugin.latest_version }}</p>
@@ -1055,7 +1239,7 @@ onBeforeUnmount(() => {
                 </label>
                 <div v-if="importSummary" class="package-review">
                   <div class="package-review-heading">
-                    <span class="plugin-icon"><component :is="iconFor(importSummary)" /></span>
+                    <span class="plugin-icon"><PluginIcon :plugin="importSummary" :asset="pluginAsset(importSummary)" /></span>
                     <div>
                       <h2>{{ importSummary.name }}</h2>
                       <p>{{ importSummary.author.name }} · v{{ importSummary.version }}</p>
@@ -1129,6 +1313,9 @@ onBeforeUnmount(() => {
                   />
                 </div>
               </div>
+            </el-tab-pane>
+            <el-tab-pane label="网络" name="network" lazy>
+              <NetworkSettings :market-enabled="marketEnabled" />
             </el-tab-pane>
             <el-tab-pane label="本地工具链配置" name="toolchains">
               <div class="toolchain-toolbar">
@@ -1294,7 +1481,7 @@ onBeforeUnmount(() => {
           </el-tabs>
         </section>
 
-        <section v-show="currentView !== 'plugins' && currentView !== 'settings'" class="plugin-content">
+        <section v-show="currentView !== 'home' && currentView !== 'plugins' && currentView !== 'settings'" class="plugin-content">
           <div class="plugin-frame-stack">
             <iframe
               v-for="plugin in mountedFramePlugins"
@@ -1344,7 +1531,7 @@ onBeforeUnmount(() => {
     <el-dialog v-model="detailVisible" width="min(680px, calc(100vw - 28px))" :show-close="false" align-center destroy-on-close>
       <template #header>
         <div v-if="detailPlugin" class="dialog-heading">
-          <span class="plugin-icon"><component :is="iconFor(detailPlugin)" /></span>
+          <span class="plugin-icon"><PluginIcon :plugin="detailPlugin" :asset="pluginAsset(detailPlugin)" /></span>
           <div><h2>{{ detailPlugin.name }}</h2><p>{{ detailPlugin.author.name }} · v{{ detailPlugin.version }}</p></div>
           <el-button text circle :icon="Close" aria-label="关闭详情" @click="detailVisible = false" />
         </div>
@@ -1369,7 +1556,7 @@ onBeforeUnmount(() => {
     <el-dialog v-model="marketDetailVisible" width="min(680px, calc(100vw - 28px))" :show-close="false" align-center destroy-on-close>
       <template #header>
         <div v-if="marketDetail" class="dialog-heading">
-          <span class="plugin-icon"><component :is="iconFor(marketDetail)" /></span>
+          <span class="plugin-icon"><PluginIcon :plugin="marketDetail" :asset="pluginAsset(marketDetail)" /></span>
           <div><h2>{{ marketDetail.name }}</h2><p>{{ marketDetail.id }} · v{{ marketDetail.latest_version }}</p></div>
           <el-button text circle :icon="Close" aria-label="关闭详情" @click="marketDetailVisible = false" />
         </div>
@@ -1478,7 +1665,7 @@ onBeforeUnmount(() => {
 
     <el-dialog v-model="upgradeVisible" width="min(620px, calc(100vw - 28px))" title="从本地包更新" align-center :close-on-click-modal="!actionBusy">
       <div v-if="upgradeTarget" class="upgrade-target">
-        <span class="plugin-icon"><component :is="iconFor(upgradeTarget)" /></span>
+        <span class="plugin-icon"><PluginIcon :plugin="upgradeTarget" :asset="pluginAsset(upgradeTarget)" /></span>
         <div><strong>{{ upgradeTarget.name }}</strong><span>当前版本 v{{ upgradeTarget.version }}</span></div>
       </div>
       <label class="upload-zone">
@@ -1496,7 +1683,7 @@ onBeforeUnmount(() => {
 
     <el-dialog v-model="manageVisible" width="min(660px, calc(100vw - 28px))" title="插件管理" align-center>
       <template v-if="managedPlugin">
-        <div class="manage-heading"><span class="plugin-icon"><component :is="iconFor(managedPlugin)" /></span><div><strong>{{ managedPlugin.name }}</strong><span>v{{ managedPlugin.version }} · {{ managedPlugin.enabled ? '已启用' : '已禁用' }}</span></div></div>
+        <div class="manage-heading"><span class="plugin-icon"><PluginIcon :plugin="managedPlugin" :asset="pluginAsset(managedPlugin)" /></span><div><strong>{{ managedPlugin.name }}</strong><span>v{{ managedPlugin.version }} · {{ managedPlugin.enabled ? '已启用' : '已禁用' }}</span></div></div>
         <h3 class="manage-section-title">权限</h3>
         <el-checkbox-group v-model="permissionSelection" class="permission-controls">
           <el-checkbox v-for="permission in managedPlugin.permissions" :key="permission.name" :value="permission.name">

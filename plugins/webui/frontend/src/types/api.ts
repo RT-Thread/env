@@ -17,8 +17,36 @@ export interface PluginCommand {
 
 export interface PluginWebUi {
   entry: string
-  icon?: string
+  icon?: string | PluginIconAsset
   keep_alive?: boolean
+  launch_requirements?: PluginLaunchRequirement
+}
+
+export interface PluginIconAsset {
+  type: 'svg' | 'png'
+  path: string
+}
+
+export type PluginLaunchRequirement =
+  | { type: 'file' | 'directory'; pattern: string }
+  | { all: PluginLaunchRequirement[] }
+  | { any: PluginLaunchRequirement[] }
+  | { not: PluginLaunchRequirement }
+
+export interface PluginLaunchRequirementResult {
+  satisfied: boolean
+  message: string
+  tree: PluginLaunchRequirementResultNode | null
+}
+
+export interface PluginLaunchRequirementResultNode {
+  satisfied: boolean
+  message: string
+  type?: 'file' | 'directory'
+  operator?: 'all' | 'any' | 'not'
+  pattern?: string
+  matches?: string[]
+  children?: PluginLaunchRequirementResultNode[]
 }
 
 export interface PluginBackendContext {
@@ -29,6 +57,7 @@ export interface PluginBackendContext {
 export interface PluginAssetContext {
   base: string
   backend: PluginBackendContext | null
+  icon_url?: string | null
 }
 
 export interface PluginHostBackendContext {
@@ -65,6 +94,8 @@ export interface EnvPlugin {
   permissions: Permission[]
   granted_permissions: string[]
   missing_required_permissions?: string[]
+  workspace_ready?: boolean
+  launch_requirements_status?: PluginLaunchRequirementResult
   compatibility?: Compatibility
   compatibility_issues: string[]
   compatibility_message?: string
@@ -139,6 +170,61 @@ export interface Session {
     [key: string]: unknown
   }
   [key: string]: unknown
+}
+
+export interface WorkspaceSnapshot {
+  path: string
+  files: { rtconfig: boolean; sconstruct: boolean; kconfig: boolean }
+  build_available: boolean
+  kconfig_available: boolean
+  kconfig_plugin: EnvPlugin | null
+  home_document: string | null
+}
+
+export interface WorkspaceDocument {
+  path: string
+  content: string
+}
+
+export interface NetworkConfig {
+  proxy_mode: 'system' | 'direct' | 'custom'
+  proxy_url: string
+  no_proxy: string
+  download_server: 'auto' | 'github' | 'gitee'
+  pypi_mode: 'auto' | 'default' | 'aliyun' | 'custom'
+  pypi_url: string
+  timeout: number
+}
+
+export interface NetworkSnapshot {
+  settings: NetworkConfig
+  config_path: string
+  configured: boolean
+  pypi_overridden: boolean
+}
+
+export interface NetworkTestResult {
+  target: string
+  reachable: boolean
+  status: number | null
+  elapsed_ms: number
+  message: string
+}
+
+export type BuildTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+export type BuildOperation = 'build' | 'clean'
+
+export interface BuildTask {
+  task_id: string
+  status: BuildTaskStatus
+  progress: number
+  stage: string
+  message: string
+  summary: string[]
+  logs: string[]
+  elf_files: Array<{ path: string; size: number; mtime: number }>
+  returncode: number | null
+  operation: BuildOperation
 }
 
 export interface PackageVersion {

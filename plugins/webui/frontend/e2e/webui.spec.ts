@@ -119,6 +119,8 @@ test('desktop installs and opens a local WebUI package', async ({ browser }) => 
     if (message.type() === 'error') consoleErrors.push(message.text())
   })
   await page.goto(launchUrl)
+  await expect(page.getByRole('heading', { name: '项目首页', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '插件中心', exact: true }).click()
   await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
   await expect(page.locator('.topbar')).toHaveCount(0)
   await expect(page.locator('.sidebar-footer').getByRole('button', { name: '退出 WebUI' })).toBeVisible()
@@ -174,6 +176,7 @@ test('plugin center prioritizes installed plugins when the market is enabled', a
     await route.fulfill({ response, json: body })
   })
   await page.goto(new URL('/', launchUrl).toString())
+  await page.getByRole('button', { name: '插件中心', exact: true }).click()
   await expect(page.getByRole('heading', { name: '插件中心' })).toBeVisible()
   expect(await page.locator('.plugin-tabs .el-tabs__item').allTextContents()).toEqual(['已安装', '在线插件', '本地安装'])
   await expect(page.getByRole('tab', { name: '已安装' })).toHaveAttribute('aria-selected', 'true')
@@ -184,6 +187,7 @@ test('permissions, local upgrade and CLI package import stay synchronized', asyn
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
   const page = await context.newPage()
   await page.goto(new URL('/', launchUrl).toString())
+  await page.getByRole('button', { name: '插件中心', exact: true }).click()
   await page.getByRole('tab', { name: '已安装' }).click()
   let buildCard = page.locator('.installed-card').filter({ hasText: 'Build Insight' })
   await buildCard.getByRole('button', { name: '管理' }).click()
@@ -238,6 +242,33 @@ test('mobile navigation keeps local plugin management above settings', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   await context.close()
 })
+
+for (const palette of [
+  { theme: 'light', background: 'rgb(233, 238, 236)', foreground: 'rgb(15, 118, 110)' },
+  { theme: 'dark', background: 'rgb(48, 56, 51)', foreground: 'rgb(56, 170, 160)' },
+]) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    test(`plugin icon palette matches ${palette.theme} theme at ${viewport.width}px`, async ({ browser }, testInfo) => {
+      const context = await browser.newContext({ viewport, storageState: authenticatedState })
+      await context.addInitScript((theme) => localStorage.setItem('env-theme', theme), palette.theme)
+      const page = await context.newPage()
+      await page.goto(new URL('/', launchUrl).toString())
+      if (viewport.width < 840) await page.getByRole('button', { name: '打开导航' }).click()
+      await page.getByRole('button', { name: '插件中心', exact: true }).click()
+      const icons = page.locator('.installed-card .plugin-icon')
+      await expect(icons).toHaveCount(2)
+      for (const icon of await icons.all()) {
+        await expect(icon).toHaveCSS('background-color', palette.background)
+        await expect(icon.locator('svg')).toHaveCSS('color', palette.foreground)
+      }
+      expect(await page.locator('.plugin-center-view').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath(`plugin-icons-${palette.theme}-${viewport.width}.png`), animations: 'disabled' })
+      await page.locator('.installed-card').first().getByRole('button', { name: '详情' }).click()
+      await expect(page.getByRole('dialog').locator('.plugin-icon')).toHaveCSS('background-color', palette.background)
+      await context.close()
+    })
+  }
+}
 
 test('SDK settings previews and applies a toolchain change', async ({ browser }) => {
   const contextOptions: Parameters<typeof browser.newContext>[0] = { viewport: { width: 1440, height: 900 } }
@@ -506,6 +537,7 @@ test('keep-alive plugin preserves iframe state while navigating', async ({ brows
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
   const page = await context.newPage()
   await page.goto(new URL('/', launchUrl).toString())
+  await page.getByRole('button', { name: '插件中心', exact: true }).click()
   await page.getByRole('tab', { name: '本地安装' }).click()
   await page.locator('.local-upload-zone input[type="file"]').setInputFiles(keepAlivePackage)
   await expect(page.locator('.package-review').getByRole('heading', { name: 'Quality Gate' })).toBeVisible()

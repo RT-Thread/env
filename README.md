@@ -15,7 +15,27 @@
 > - Upgrading Python version from v2 to v3
 > - Replacing kconfig-frontends with Python kconfiglib
 >
-> env v2.0 require python kconfiglib (install by `pip install kconfiglib`), but env v1.5.x confilt with kconfiglib (please run `pip uninstall kconfiglib`)
+> Env v2.0 installs kconfiglib and its other runtime dependencies in a Python venv; do not preinstall them into the host Python environment.
+
+## Installation Dependencies
+
+安装脚本只准备宿主 Python、Git 和平台所需的系统构建工具，不再向宿主 Python
+安装或升级 pip、SCons、requests、psutil、tqdm、kconfiglib 等 Python 包。
+首次运行 `source ~/.env/env.sh` 或 `~/.env/env.ps1` 时，Env 创建
+`~/.env/.venv`，并根据 `pyproject.toml` 在其中安装运行依赖。
+
+The installers prepare the host Python, Git, and platform-specific system build
+tools only. They do not install or upgrade pip or Env runtime packages in the
+host Python environment. On first activation, Env creates `~/.env/.venv` and
+installs its runtime dependencies there from `pyproject.toml`.
+
+pyocd 和 OpenOCD 不属于基础安装，不会默认安装；需要时可由独立的可选 Env
+插件提供。Arch 安装入口使用受控的系统依赖列表，不再调用 AUR 元包或询问
+是否安装额外调试工具。
+
+pyocd and OpenOCD are not part of the base installation. They can be provided by
+optional Env plugins when needed. The Arch installer uses an explicit system
+dependency list instead of an AUR meta-package or debugger installation prompts.
 
 ## Usage under Linux
 

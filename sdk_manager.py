@@ -27,9 +27,11 @@ import requests
 if __package__ and __package__.startswith("env"):
     from env.plugins.errors import PackageError, PluginError, StateError, UsageError
     import env.kconfig as kconfig
+    import env.network as network
 else:
     from plugins.errors import PackageError, PluginError, StateError, UsageError
     import kconfig
+    import network
 
 
 class SdkError(PluginError):
@@ -759,26 +761,29 @@ class SdkManager(object):
     def _download_with_progress(self, url, destination, progress_callback=None):
         if not url:
             raise SdkPackageError("SDK package URL is empty")
-        response = requests.get(url, stream=True, timeout=60)
-        response.raise_for_status()
-        total = None
+        response = network.request('GET', url, env_root=self.env_root, stream=True, timeout=60)
         try:
-            candidate = int(response.headers.get("content-length"))
-            total = candidate if candidate >= 0 else None
-        except (AttributeError, TypeError, ValueError):
-            pass
-        downloaded = 0
-        started = time.monotonic()
-        if progress_callback:
-            progress_callback(downloaded, total, 0)
-        with open(destination, "wb") as output:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                if chunk:
-                    output.write(chunk)
-                    downloaded += len(chunk)
-                    elapsed = max(time.monotonic() - started, 0.001)
-                    if progress_callback:
-                        progress_callback(downloaded, total, downloaded / elapsed)
+            response.raise_for_status()
+            total = None
+            try:
+                candidate = int(response.headers.get("content-length"))
+                total = candidate if candidate >= 0 else None
+            except (AttributeError, TypeError, ValueError):
+                pass
+            downloaded = 0
+            started = time.monotonic()
+            if progress_callback:
+                progress_callback(downloaded, total, 0)
+            with open(destination, "wb") as output:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        output.write(chunk)
+                        downloaded += len(chunk)
+                        elapsed = max(time.monotonic() - started, 0.001)
+                        if progress_callback:
+                            progress_callback(downloaded, total, downloaded / elapsed)
+        finally:
+            response.close()
 
     @staticmethod
     def _downloader_progress_mode(downloader):

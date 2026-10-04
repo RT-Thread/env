@@ -7,6 +7,7 @@ import hmac
 import http.client
 import ipaddress
 import json
+import logging
 import mimetypes
 import os
 import secrets
@@ -30,6 +31,9 @@ from ..market import (
 )
 from ..service import PluginService
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
+from .builds import BuildTaskManager
+from .documents import DocumentNotFound, WorkspaceDocuments
+from .requirements import evaluate_launch_requirements
 
 # The command-line compatibility entry point imports ``plugins`` as a
 # top-level package, while installed consumers import ``env.plugins``.
@@ -39,16 +43,20 @@ if (__package__ or '').split('.', 1)[0] == 'env':
     from ...sdk_manager import SdkManager, SdkUsageError
     from ...toolchain_manager import ToolchainManager
     from ...file_context_menu import FileContextMenuManager
+    from ... import network
 else:
     from sdk_manager import SdkManager, SdkUsageError
     from toolchain_manager import ToolchainManager
     from file_context_menu import FileContextMenuManager
+    import network
 
 
 SESSION_COOKIE = 'env_webui_session'
 UPLOAD_TTL = 15 * 60
 JSON_LIMIT = 256 * 1024
 PACKAGE_LIMIT = 256 * 1024 * 1024
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MarketNotConfigured(UsageError):
@@ -70,6 +78,7 @@ class WebUIApplication(object):
         self.sdk = SdkManager(env_root=env_root)
         self.toolchains = ToolchainManager(env_root=env_root)
         self.context_menu = FileContextMenuManager(env_root=env_root)
+        self.network = network.NetworkSettings(env_root=env_root)
         self.workspace = os.path.abspath(workspace or os.getcwd())
         if not os.path.isdir(self.workspace):
             raise UsageError("WebUI workspace is not a directory: %s" % self.workspace)
@@ -85,7 +94,9 @@ class WebUIApplication(object):
         self.asset_tokens = {}
         self.asset_token_lock = threading.Lock()
         self.market = load_market_config(self.service.paths)
-        self.market_client = MarketClient(self.market['url']) if self.market['enabled'] else None
+        self.market_client = MarketClient(self.market['url'], env_root=env_root) if self.market['enabled'] else None
+        self.build_manager = BuildTaskManager(self.workspace)
+        self.documents = WorkspaceDocuments(self.workspace)
 
     def consume_launch(self, token):
         if not self.launch_token or not hmac.compare_digest(token, self.launch_token):
@@ -125,7 +136,12 @@ class WebUIApplication(object):
                     'http_base': base + 'backend/',
                     'websocket_base': base + 'backend/',
                 }
-            result[item['id']] = {'base': base, 'backend': backend}
+            icon = (item.get('webui') or {}).get('icon')
+            icon_url = None
+            if isinstance(icon, dict):
+                icon_relative = icon['path'][len('frontend/'):]
+                icon_url = base + quote(icon_relative, safe='/')
+            result[item['id']] = {'base': base, 'backend': backend, 'icon_url': icon_url}
         return result
 
     def asset_token_for(self, plugin_id):
@@ -152,6 +168,14 @@ class WebUIApplication(object):
         result['source_name'] = os.path.basename(source) if source else ''
         required = set(permission['name'] for permission in result.get('permissions', []) if permission['required'])
         result['missing_required_permissions'] = sorted(required - set(result.get('granted_permissions', [])))
+        webui = result.get('webui') or {}
+        if webui:
+            launch_status = evaluate_launch_requirements(
+                self.workspace,
+                webui.get('launch_requirements'),
+            )
+            result['workspace_ready'] = launch_status['satisfied']
+            result['launch_requirements_status'] = launch_status
         return result
 
     def save_upload(self, content, filename):
@@ -244,6 +268,74 @@ class WebUIApplication(object):
 
     def context_menu_snapshot(self):
         return self.context_menu.snapshot()
+
+    def network_snapshot(self):
+        return self.network.snapshot()
+
+    def save_network(self, body):
+        return self.network.save(body)
+
+    def test_network(self, body):
+        if not isinstance(body, dict) or set(body) != {'target'}:
+            raise UsageError('network test requires one target')
+        targets = {
+            'github': 'https://github.com',
+            'gitee': 'https://gitee.com',
+            'pypi': network.pypi_index_url(self.network.env_root) or 'https://pypi.org/simple/',
+        }
+        if self.market['enabled']:
+            targets['market'] = self.market['url'] + '/api/v1/health'
+        target = body['target']
+        if not isinstance(target, str) or target not in targets:
+            raise UsageError('unknown or unconfigured network test target')
+        started = time.monotonic()
+        try:
+            response = network.request(
+                'HEAD', targets[target], env_root=self.network.env_root,
+                timeout=10, allow_redirects=False,
+            )
+            try:
+                status = response.status_code
+            finally:
+                response.close()
+            return {'target': target, 'reachable': 200 <= status < 400, 'status': status,
+                    'elapsed_ms': int((time.monotonic() - started) * 1000), 'message': 'HTTP %d' % status}
+        except Exception as exc:
+            # Exceptions can embed credentials from inherited system proxies.
+            return {'target': target, 'reachable': False, 'status': None,
+                    'elapsed_ms': int((time.monotonic() - started) * 1000),
+                    'message': 'Connection failed (%s)' % type(exc).__name__}
+
+    def workspace_snapshot(self):
+        files = self._workspace_files()
+        kconfig_plugin = next((item for item in self.installed()
+                               if item.get('enabled') and item.get('webui')
+                               and ('kconfig' in (item.get('id') or '').lower()
+                                    or 'kconfig' in (item.get('name') or '').lower())), None)
+        return {
+            'path': self.workspace,
+            'files': files,
+            'build_available': files['rtconfig'] and files['sconstruct'],
+            'kconfig_available': files['kconfig'],
+            'kconfig_plugin': kconfig_plugin,
+            'home_document': self.documents.home_path(),
+        }
+
+    def start_build(self):
+        return self.build_manager.start()
+
+    def start_clean(self):
+        return self.build_manager.start(clean=True)
+
+    def build_task(self, task_id):
+        return self.build_manager.get(task_id)
+
+    def _workspace_files(self):
+        return {
+            'rtconfig': os.path.isfile(os.path.join(self.workspace, 'rtconfig.py')),
+            'sconstruct': os.path.isfile(os.path.join(self.workspace, 'SConstruct')),
+            'kconfig': os.path.isfile(os.path.join(self.workspace, 'Kconfig')),
+        }
 
     def install_context_menu(self):
         return self.context_menu.install()
@@ -395,6 +487,7 @@ class WebUIApplication(object):
                 pass
 
     def close(self):
+        self.build_manager.close()
         self.service.stop_backends()
         with self.upload_lock:
             paths = [value[0] for value in self.uploads.values()]
@@ -418,7 +511,16 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
     server_version = 'EnvWebUI/1.0'
 
     def log_message(self, format_string, *args):
-        return
+        LOGGER.info('%s - %s', self.address_string(), format_string % args)
+
+    def _write_content(self, content):
+        try:
+            self.wfile.write(content)
+        except (BrokenPipeError, ConnectionResetError) as exc:
+            LOGGER.debug('client disconnected before response was sent: %s %s: %s',
+                         self.command, self.path, exc)
+            return False
+        return True
 
     @property
     def application(self):
@@ -446,6 +548,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self._error(HTTPStatus.FORBIDDEN, 'cross_origin_denied', 'cross-origin requests are not allowed')
 
     def _dispatch(self, method):
+        started = time.monotonic()
         try:
             if not self._valid_host():
                 self._error(HTTPStatus.BAD_REQUEST, 'invalid_host', 'request Host is not allowed')
@@ -490,8 +593,12 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 return
             if parsed.path.startswith('/plugins/'):
                 self._plugin_asset(parsed.path)
+            elif parsed.path.startswith('/workspace-assets/'):
+                self._workspace_asset(parsed.path)
             else:
                 self._host_asset(parsed.path)
+        except DocumentNotFound as exc:
+            self._error(HTTPStatus.NOT_FOUND, 'not_found', str(exc))
         except MarketNotConfigured:
             self._error(HTTPStatus.NOT_FOUND, 'not_found', 'API endpoint was not found')
         except MarketError as exc:
@@ -505,12 +612,17 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             if isinstance(exc, UsageError):
                 status = HTTPStatus.BAD_REQUEST
             self._error(status, exc.__class__.__name__.lower(), str(exc))
+        except (BrokenPipeError, ConnectionResetError) as exc:
+            LOGGER.debug('client disconnected while processing %s %s: %s', method, self.path, exc)
         except (ValueError, OSError) as exc:
             self._error(HTTPStatus.BAD_REQUEST, 'invalid_request', str(exc))
         except BackendUnavailableError as exc:
             self._error(HTTPStatus.BAD_GATEWAY, 'backend_unavailable', str(exc))
         except Exception:
+            LOGGER.exception('unhandled WebUI request failure: %s %s', method, self.path)
             self._error(HTTPStatus.INTERNAL_SERVER_ERROR, 'internal_error', 'the WebUI request could not be completed')
+        finally:
+            LOGGER.debug('request finished: %s %s (%.3fs)', method, self.path, time.monotonic() - started)
 
     def _launch(self, parsed):
         path = parsed.path
@@ -581,6 +693,24 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         if method == 'GET' and path == '/api/v1/plugins':
             self._json(self.application.installed())
             return
+        if method == 'GET' and path == '/api/v1/workspace':
+            self._json(self.application.workspace_snapshot())
+            return
+        if method == 'GET' and path == '/api/v1/workspace/document':
+            self._json(self.application.documents.read(_first(query, 'path', None)))
+            return
+        if method == 'POST' and path == '/api/v1/build':
+            snapshot = self.application.workspace_snapshot()
+            if not snapshot['build_available']:
+                raise UsageError('rtconfig.py and SConstruct are required to build this workspace')
+            self._json(self.application.start_build(), status=HTTPStatus.ACCEPTED)
+            return
+        if method == 'POST' and path == '/api/v1/build/clean':
+            snapshot = self.application.workspace_snapshot()
+            if not snapshot['build_available']:
+                raise UsageError('rtconfig.py and SConstruct are required to clean this workspace')
+            self._json(self.application.start_clean(), status=HTTPStatus.ACCEPTED)
+            return
         if method == 'GET' and path == '/api/v1/sdk':
             self._json(self.application.sdk_snapshot())
             return
@@ -589,6 +719,15 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             return
         if method == 'GET' and path == '/api/v1/settings/file-context-menu':
             self._json(self.application.context_menu_snapshot())
+            return
+        if method == 'GET' and path == '/api/v1/settings/network':
+            self._json(self.application.network_snapshot())
+            return
+        if method == 'PUT' and path == '/api/v1/settings/network':
+            self._json(self.application.save_network(self._read_json()))
+            return
+        if method == 'POST' and path == '/api/v1/settings/network/test':
+            self._json(self.application.test_network(self._read_json()))
             return
         if method == 'POST' and path == '/api/v1/sdk/plan':
             self._json(self.application.sdk_plan(self._read_json()))
@@ -669,6 +808,9 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             if len(segments) == 6 and segments[5] == 'cancel' and method == 'POST':
                 self._json(self.application.sdk_cancel_task(segments[4]), status=HTTPStatus.ACCEPTED)
                 return
+        if len(segments) == 5 and segments[:4] == ['api', 'v1', 'build', 'tasks'] and method == 'GET':
+            self._json(self.application.build_task(segments[4]))
+            return
         if len(segments) == 5 and segments[:4] == ['api', 'v1', 'settings', 'toolchains'] and method == 'DELETE':
             self._json(self.application.remove_toolchain(segments[4]))
             return
@@ -788,7 +930,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Credentials', 'true')
             self.send_header('Vary', 'Origin')
         self.end_headers()
-        self.wfile.write(content)
+        self._write_content(content)
 
     def _plugin_options(self):
         if not self._valid_plugin_origin():
@@ -881,35 +1023,55 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 return
         self._file(target, plugin=False)
 
+    def _workspace_asset(self, path):
+        relative = unquote(path[len('/workspace-assets/'):])
+        content, mime = self.application.documents.image(relative)
+        self._file_response(
+            content,
+            mime,
+            "sandbox; default-src 'none'; style-src 'unsafe-inline'; "
+            "img-src 'self' data: http: https:; base-uri 'none'; form-action 'none'",
+            'no-store',
+        )
+
     def _file(self, path, plugin=False):
         with open(path, 'rb') as source:
             content = source.read()
         mime = mimetypes.guess_type(path)[0] or 'application/octet-stream'
+        if plugin:
+            origin = 'http://%s' % self.headers.get('Host')
+            websocket_origin = 'ws://%s' % self.headers.get('Host')
+            secure_websocket_origin = 'wss://%s' % self.headers.get('Host')
+            policy = (
+                "default-src 'none'; script-src %s; style-src %s 'unsafe-inline'; img-src %s data:; "
+                "connect-src %s %s %s; frame-ancestors %s; base-uri 'none'; form-action 'none'"
+                % (origin, origin, origin, origin, websocket_origin, secure_websocket_origin, origin)
+            )
+        else:
+            policy = (
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: http: https:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'"
+            )
+        if path.endswith('index.html'):
+            cache = 'no-store'
+        elif plugin:
+            cache = 'public, max-age=3600'
+        else:
+            # Host assets use stable names, so revalidate them after each reload.
+            cache = 'no-cache'
+        self._file_response(content, mime, policy, cache)
+
+    def _file_response(self, content, mime, policy, cache):
         self.send_response(HTTPStatus.OK)
         charset = '; charset=utf-8' if mime.startswith(('text/', 'application/javascript')) else ''
         self.send_header('Content-Type', mime + charset)
         self.send_header('Content-Length', str(len(content)))
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Referrer-Policy', 'no-referrer')
-        self.send_header('Cache-Control', 'no-store' if path.endswith('index.html') else 'public, max-age=3600')
-        if plugin:
-            origin = 'http://%s' % self.headers.get('Host')
-            websocket_origin = 'ws://%s' % self.headers.get('Host')
-            secure_websocket_origin = 'wss://%s' % self.headers.get('Host')
-            self.send_header(
-                'Content-Security-Policy',
-                "default-src 'none'; script-src %s; style-src %s 'unsafe-inline'; img-src %s data:; "
-                "connect-src %s %s %s; frame-ancestors %s; base-uri 'none'; form-action 'none'"
-                % (origin, origin, origin, origin, websocket_origin, secure_websocket_origin, origin),
-            )
-        else:
-            self.send_header(
-                'Content-Security-Policy',
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'",
-            )
+        self.send_header('Cache-Control', cache)
+        self.send_header('Content-Security-Policy', policy)
         self.end_headers()
-        self.wfile.write(content)
+        self._write_content(content)
 
     def _valid_host(self):
         value = self.headers.get('Host', '')
@@ -977,20 +1139,25 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.end_headers()
-        self.wfile.write(content)
+        self._write_content(content)
 
     def _error(self, status, code, message, details=None):
         error = {'code': code, 'message': message}
         if details:
             error['details'] = details
         content = json.dumps({'error': error}, ensure_ascii=True).encode('utf-8')
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(content)))
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.end_headers()
-        self.wfile.write(content)
+        try:
+            self.send_response(status)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(content)))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+        except (BrokenPipeError, ConnectionResetError) as exc:
+            LOGGER.debug('client disconnected before error response was sent: %s %s: %s',
+                         self.command, self.path, exc)
+            return
+        self._write_content(content)
 
 
 def _first(query, name, default):

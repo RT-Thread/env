@@ -6,6 +6,7 @@ import http.client
 import json
 import os
 import signal
+import shutil
 import socket
 import subprocess
 import sys
@@ -35,12 +36,122 @@ def is_ssh_session(environ=None):
     return any(environ.get(name, '').strip() for name in SSH_ENVIRONMENT_VARIABLES)
 
 
+def is_vscode_terminal(environ=None):
+    environ = environ if environ is not None else os.environ
+    return environ.get('TERM_PROGRAM', '').lower() == 'vscode' or bool(environ.get('VSCODE_IPC_HOOK_CLI'))
+
+
 def should_open_browser(args, environ=None):
     if getattr(args, 'browser', False):
         return True
     if getattr(args, 'no_browser', False):
         return False
-    return not is_ssh_session(environ=environ)
+    return is_vscode_terminal(environ) or not is_ssh_session(environ=environ)
+
+
+def _vscode_server_root(candidate, directory, filenames):
+    path = os.path.realpath(candidate)
+    parent = os.path.dirname(path)
+    bin_path = os.path.dirname(parent)
+    root = os.path.dirname(bin_path)
+    if (os.path.basename(path) not in filenames or os.path.basename(parent) != directory
+            or os.path.basename(bin_path) != 'bin' or not os.path.isfile(path)):
+        return None
+    if not any(os.path.isfile(os.path.join(root, name)) for name in ('node', 'node.exe')):
+        return None
+    if not any(os.path.isfile(os.path.join(root, name)) for name in (
+        'out/server-cli.js', 'out/vs/server/node/server.cli.js',
+    )):
+        return None
+    return root
+
+
+def _run_vscode_opener(command, environ):
+    try:
+        result = subprocess.run(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True, timeout=5, env=dict(environ),
+        )
+        output = result.stdout + result.stderr
+        return result.returncode == 0 and not any(message in output for message in (
+            'Error when invoking', 'Unable to connect to VS Code server',
+            'Invalid url:', 'Ignoring option',
+        ))
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _vscode_opener_paths(environ):
+    candidates = []
+    browser = environ.get('BROWSER', '').strip()
+    browser_root = _vscode_server_root(browser, 'helpers', ('browser.sh',)) if browser else None
+    if browser_root:
+        candidates.extend(os.path.join(browser_root, 'bin', 'remote-cli', name)
+                          for name in ('code', 'code-insiders'))
+    node = environ.get('VSCODE_GIT_ASKPASS_NODE')
+    if node:
+        candidates.extend(os.path.join(os.path.dirname(node), 'bin', 'remote-cli', name)
+                          for name in ('code', 'code-insiders'))
+    askpass = environ.get('VSCODE_GIT_ASKPASS_MAIN')
+    if askpass:
+        root = os.path.abspath(os.path.join(os.path.dirname(askpass), '..', '..', '..'))
+        candidates.extend(os.path.join(root, 'bin', 'remote-cli', name)
+                          for name in ('code', 'code-insiders'))
+    for name in ('code', 'code-insiders'):
+        candidate = shutil.which(name, path=environ.get('PATH'))
+        if candidate:
+            candidates.append(candidate)
+    return browser if browser_root else None, list(dict.fromkeys(candidates))
+
+
+def _open_in_vscode(url, environ):
+    if not environ.get('VSCODE_IPC_HOOK_CLI'):
+        return False
+    browser, candidates = _vscode_opener_paths(environ)
+    # Remote SSH injects this helper; it opens on the connected VS Code client.
+    if browser and _run_vscode_opener([browser, url], environ):
+        return True
+    for candidate in candidates:
+        if not os.path.isfile(candidate):
+            continue
+        if _vscode_server_root(candidate, 'remote-cli', ('code', 'code-insiders')):
+            # Remote CLI supports this hidden flag, absent from its --help output.
+            if _run_vscode_opener([candidate, '--openExternal', url], environ):
+                return True
+            continue
+        try:
+            # For unrecognized CLIs, do not risk interpreting a URL as a file.
+            help_result = subprocess.run(
+                [candidate, '--help'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                universal_newlines=True, timeout=5, env=dict(environ),
+            )
+            if help_result.returncode or '--openExternal' not in help_result.stdout:
+                continue
+            if _run_vscode_opener([candidate, '--openExternal', url], environ):
+                return True
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return False
+
+
+def open_browser(url, args, environ=None):
+    environ = environ if environ is not None else os.environ
+    if not should_open_browser(args, environ):
+        return False
+    if is_vscode_terminal(environ) and not getattr(args, 'browser', False):
+        if _open_in_vscode(url, environ):
+            return True
+        browser, candidates = _vscode_opener_paths(environ)
+        remote = browser or any(_vscode_server_root(path, 'remote-cli', ('code', 'code-insiders'))
+                                for path in candidates)
+        if is_ssh_session(environ) or remote:
+            print('VS Code URL opener unavailable; open the Launch URL from the terminal.', file=sys.stderr)
+            return False
+    try:
+        return webbrowser.open(url)
+    except (OSError, webbrowser.Error):
+        print('Env WebUI: cannot open browser; open the Launch URL manually.', file=sys.stderr)
+        return False
 
 
 def _state_path(env_root=None):
@@ -276,10 +387,7 @@ def _start_background(args, path):
         if status == 'online':
             _print_server_urls(state)
             if should_open_browser(args):
-                try:
-                    webbrowser.open(state['launch_url'])
-                except OSError as exc:
-                    print('Env WebUI: cannot open browser: %s' % exc, file=sys.stderr)
+                open_browser(state['launch_url'], args)
             elif not getattr(args, 'no_browser', False) and is_ssh_session():
                 print('SSH session detected; browser launch skipped. Use --browser to force it.', flush=True)
             # The daemon owns its lifetime after the readiness handshake.
@@ -415,7 +523,7 @@ def _run_foreground(args):
         if server.remote_access:
             print('Warning: Env WebUI is accessible from local networks over unencrypted HTTP.', flush=True)
         if should_open_browser(args):
-            webbrowser.open(server.launch_url)
+            open_browser(server.launch_url, args)
         elif not getattr(args, 'no_browser', False) and is_ssh_session():
             print('SSH session detected; browser launch skipped. Use --browser to force it.', flush=True)
         server.serve_forever()
@@ -500,8 +608,8 @@ def main(argv=None):
         argv = sys.argv[1:]
         if argv and argv[0] == 'webui':
             argv = argv[1:]
-    cmd(parser.parse_args(argv))
+    return cmd(parser.parse_args(argv))
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

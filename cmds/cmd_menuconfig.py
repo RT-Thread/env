@@ -29,6 +29,7 @@ import os
 import platform
 import re
 import sys
+import subprocess
 
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
@@ -114,11 +115,12 @@ def mk_rtconfig(filename):
     except Exception as e:
         print('Error message:%s' % e)
         print('open config:%s failed' % filename)
-        return
+        return False
 
     target_fn = get_target_file(filename)
     if target_fn == None:
-        return
+        config.close()
+        return True
 
     rtconfig = open(target_fn, 'w')
     rtconfig.write('#ifndef RT_CONFIG_H__\n')
@@ -170,6 +172,8 @@ def mk_rtconfig(filename):
     rtconfig.write('\n')
     rtconfig.write('#endif\n')
     rtconfig.close()
+    config.close()
+    return True
 
 
 # fix locale for kconfiglib
@@ -223,15 +227,16 @@ def cmd(args):
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
         sys.argv = ['menuconfig', 'Kconfig']
-        menuconfig._main()
-        os.chdir(beforepath)
+        try:
+            menuconfig._main()
+        finally:
+            os.chdir(beforepath)
         return
 
     # generate rtconfig.h by .config.
     if args.menuconfig_g:
         print('generate rtconfig.h from .config')
-        mk_rtconfig(".config")
-        return
+        return mk_rtconfig(".config")
 
     if os.path.isfile(".config"):
         mtime = os.path.getmtime(".config")
@@ -260,7 +265,8 @@ def cmd(args):
 
     # generate rtconfig.h by .config.
     if mtime != mtime2:
-        mk_rtconfig(".config")
+        if mk_rtconfig(".config") is False:
+            return False
 
     # update pkgs
     env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
@@ -270,10 +276,10 @@ def cmd(args):
         return
 
     if find_bool_macro_in_config(fn, 'SYS_AUTO_UPDATE_PKGS'):
-        if is_in_powershell():
-            os.system('powershell pkgs.ps1 --update')
-        else:
-            os.system('pkgs --update')
+        entry = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'env.py')
+        returncode = subprocess.call([sys.executable, entry, 'pkg', '--update'])
+        if returncode:
+            return returncode
         print("==============================>The packages have been updated completely.")
 
     if platform.system() == "Windows":
@@ -281,24 +287,20 @@ def cmd(args):
             mdk_path = find_MDK_EXEC_PATH()
             iar_path = find_IAR_EXEC_PATH()
 
-            if find_bool_macro_in_config(fn, 'SYS_CREATE_MDK4'):
-                if mdk_path:
-                    os.system('scons --target=mdk4 -s --exec-path="' + mdk_path + '"')
-                else:
-                    os.system('scons --target=mdk4 -s')
-                print("Create Keil-MDK4 project done")
-            elif find_bool_macro_in_config(fn, 'SYS_CREATE_MDK5'):
-                if mdk_path:
-                    os.system('scons --target=mdk5 -s --exec-path="' + mdk_path + '"')
-                else:
-                    os.system('scons --target=mdk5 -s')
-                print("Create Keil-MDK5 project done")
-            elif find_bool_macro_in_config(fn, 'SYS_CREATE_IAR'):
-                if iar_path:
-                    os.system('scons --target=iar -s --exec-path="' + iar_path + '"')
-                else:
-                    os.system('scons --target=iar -s')
-                print("Create IAR project done")
+            for symbol, target, path in (
+                ('SYS_CREATE_MDK4', 'mdk4', mdk_path),
+                ('SYS_CREATE_MDK5', 'mdk5', mdk_path),
+                ('SYS_CREATE_IAR', 'iar', iar_path),
+            ):
+                if find_bool_macro_in_config(fn, symbol):
+                    command = ['scons', '--target=' + target, '-s']
+                    if path:
+                        command.append('--exec-path=' + path)
+                    returncode = subprocess.call(command)
+                    if returncode:
+                        return returncode
+                    print('Create %s project done' % target)
+                    break
 
 
 def add_parser(sub):

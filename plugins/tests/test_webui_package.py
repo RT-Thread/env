@@ -51,6 +51,40 @@ class WebUIPackageTest(unittest.TestCase):
         self.assertIsNotNone(result['webui'])
         self.assertEqual(service.doctor(result['id'])['status'], 'ok')
 
+    def test_webui_image_icon_is_packaged_and_served(self):
+        project = copy_project(
+            os.path.join(EXAMPLES, 'quality-gate-1.0.0'),
+            os.path.join(self.temporary.name, 'image-icon'),
+        )
+        def configure(data):
+            data['compatibility'].update({'platforms': ['any'], 'architectures': ['any']})
+            data['webui'].update({'icon': {'type': 'svg', 'path': 'frontend/icon.svg'}})
+
+        update_manifest(project, configure)
+        with open(os.path.join(project, 'frontend', 'icon.svg'), 'w', encoding='utf-8') as output:
+            output.write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8"/></svg>')
+        package = build_project(project, self.packages)
+        service = PluginService(env_root=self.env_root, launcher_dir=self.launchers)
+        installed = service.install(package, allow_unsigned=True)
+        self.assertEqual(installed['webui']['icon']['type'], 'svg')
+        icon = service.resolve_webui_asset('org.env-community.quality-gate', 'icon.svg')
+        with open(icon, 'r', encoding='utf-8') as source:
+            self.assertIn('<svg', source.read())
+
+    def test_webui_image_icon_must_exist_in_project(self):
+        project = copy_project(
+            os.path.join(EXAMPLES, 'quality-gate-1.0.0'),
+            os.path.join(self.temporary.name, 'missing-image-icon'),
+        )
+
+        def configure(data):
+            data['compatibility'].update({'platforms': ['any'], 'architectures': ['any']})
+            data['webui'].update({'icon': {'type': 'png', 'path': 'frontend/icon.png'}})
+
+        update_manifest(project, configure)
+        with self.assertRaisesRegex(PackageError, 'WebUI icon is missing'):
+            build_project(project, self.packages)
+
     def test_frontend_source_map_is_rejected(self):
         project = copy_project(
             os.path.join(EXAMPLES, 'build-insight-1.0.0'),

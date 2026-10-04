@@ -17,6 +17,10 @@ ABI_RE = re.compile(r'^(?:py3|cp[0-9]{2,3})$')
 ICON_RE = re.compile(r'^[a-z][a-z0-9-]{0,62}$')
 WINDOWS_RESERVED_COMMAND_RE = re.compile(r'^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$', re.IGNORECASE)
 
+LAUNCH_REQUIREMENT_KINDS = frozenset(['file', 'directory'])
+LAUNCH_REQUIREMENT_MAX_DEPTH = 16
+ICON_ASSET_TYPES = frozenset(['svg', 'png'])
+
 ALLOWED_PERMISSIONS = frozenset(
     [
         'workspace.read',
@@ -110,6 +114,68 @@ def _enum_list(value, allowed, path):
 def is_windows_reserved_command(name):
     normalized = name.rstrip(' .')
     return bool(WINDOWS_RESERVED_COMMAND_RE.match(normalized))
+
+
+def _validate_launch_requirement(value, path, depth=0):
+    if depth > LAUNCH_REQUIREMENT_MAX_DEPTH:
+        raise ManifestError("%s is nested too deeply" % path)
+    requirement = _object(value, path)
+    if 'type' in requirement:
+        _keys(requirement, ['type', 'pattern'], [], path)
+        kind = _string(requirement['type'], path + '.type')
+        if kind not in LAUNCH_REQUIREMENT_KINDS:
+            raise ManifestError("%s.type is unsupported: %s" % (path, kind))
+        pattern = _string(requirement['pattern'], path + '.pattern')
+        if '\\' in pattern or ':' in pattern or '\x00' in pattern:
+            raise ManifestError("%s.pattern must use a safe POSIX relative path or glob" % path)
+        pattern_path = PurePosixPath(pattern)
+        if (
+            pattern_path.is_absolute()
+            or any(part in ('', '.', '..') for part in pattern_path.parts)
+        ):
+            raise ManifestError("%s.pattern must stay below the workspace root" % path)
+        return
+    operators = [operator for operator in ('all', 'any', 'not') if operator in requirement]
+    if len(operators) != 1:
+        raise ManifestError("%s must declare exactly one of type, all, any or not" % path)
+    operator = operators[0]
+    if operator == 'not':
+        _keys(requirement, ['not'], [], path)
+        _validate_launch_requirement(requirement['not'], path + '.not', depth + 1)
+        return
+    _keys(requirement, [operator], [], path)
+    children = _list(requirement[operator], path + '.' + operator)
+    for index, child in enumerate(children):
+        _validate_launch_requirement(child, '%s.%s[%d]' % (path, operator, index), depth + 1)
+
+
+def _validate_frontend_asset_path(value, path, extension):
+    asset_path = _string(value, path)
+    if '\\' in asset_path or ':' in asset_path or '\x00' in asset_path:
+        raise ManifestError("%s must use a safe POSIX path below frontend/" % path)
+    path_value = PurePosixPath(asset_path)
+    if (
+        path_value.is_absolute()
+        or any(part in ('', '.', '..') for part in path_value.parts)
+        or not asset_path.startswith('frontend/')
+        or not asset_path.lower().endswith(extension)
+    ):
+        raise ManifestError("%s must name a file below frontend/ with extension %s" % (path, extension))
+    return asset_path
+
+
+def _validate_webui_icon(value, path):
+    if isinstance(value, str):
+        icon = _string(value, path)
+        if not ICON_RE.match(icon):
+            raise ManifestError("%s must be a lowercase icon identifier or an SVG/PNG asset" % path)
+        return
+    icon = _object(value, path)
+    _keys(icon, ['type', 'path'], [], path)
+    icon_type = _string(icon['type'], path + '.type').lower()
+    if icon_type not in ICON_ASSET_TYPES:
+        raise ManifestError("%s.type is unsupported: %s" % (path, icon_type))
+    _validate_frontend_asset_path(icon['path'], path + '.path', '.' + icon_type)
 
 
 class Manifest(object):
@@ -330,24 +396,19 @@ def validate_manifest(data):
 
     if 'webui' in data:
         webui = _object(data['webui'], 'manifest.webui')
-        _keys(webui, ['entry', 'icon', 'frontend_sdk'], ['keep_alive'], 'manifest.webui')
-        entry = _string(webui['entry'], 'manifest.webui.entry')
-        if '\\' in entry or ':' in entry:
-            raise ManifestError("manifest.webui.entry must use a safe POSIX path below frontend/")
-        entry_path = PurePosixPath(entry)
-        if (
-            entry_path.is_absolute()
-            or any(part in ('', '.', '..') for part in entry_path.parts)
-            or not entry.startswith('frontend/')
-            or not entry.lower().endswith('.html')
-        ):
-            raise ManifestError("manifest.webui.entry must name an HTML file below frontend/")
-        icon = _string(webui['icon'], 'manifest.webui.icon')
-        if not ICON_RE.match(icon):
-            raise ManifestError("manifest.webui.icon must be a lowercase icon identifier")
+        _keys(
+            webui,
+            ['entry', 'icon', 'frontend_sdk'],
+            ['keep_alive', 'launch_requirements'],
+            'manifest.webui',
+        )
+        _validate_frontend_asset_path(webui['entry'], 'manifest.webui.entry', '.html')
+        _validate_webui_icon(webui['icon'], 'manifest.webui.icon')
         _string(webui['frontend_sdk'], 'manifest.webui.frontend_sdk')
         if 'keep_alive' in webui:
             _boolean(webui['keep_alive'], 'manifest.webui.keep_alive')
+        if 'launch_requirements' in webui:
+            _validate_launch_requirement(webui['launch_requirements'], 'manifest.webui.launch_requirements')
 
     if not commands and 'webui' not in data and 'health_check' not in data and 'service' not in data:
         raise ManifestError("manifest must declare a command, WebUI page or health_check")

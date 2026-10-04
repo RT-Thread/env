@@ -202,6 +202,115 @@ class WebUIServerTest(unittest.TestCase):
         self.assertEqual(installed['id'], 'org.rt-thread.probe-flash')
         self.assertIsNone(installed['webui'])
 
+    def test_workspace_snapshot_requires_build_inputs(self):
+        self.authenticate()
+        _, snapshot = self.request_json('/api/v1/workspace')
+        self.assertEqual(snapshot['path'], os.path.abspath(self.temporary.name))
+        self.assertFalse(snapshot['build_available'])
+        self.assertFalse(snapshot['files']['rtconfig'])
+        self.assertFalse(snapshot['files']['sconstruct'])
+        self.assertIsNone(snapshot['home_document'])
+
+        with self.assertRaises(HTTPError) as rejected:
+            self.request_json('/api/v1/build', method='POST', body={})
+        self.assertEqual(rejected.exception.code, 400)
+
+    def test_project_documents_and_images_are_authenticated_and_workspace_bounded(self):
+        with open(os.path.join(self.temporary.name, 'README.md'), 'w', encoding='utf-8') as output:
+            output.write('# README\n')
+        with open(os.path.join(self.temporary.name, 'index.md'), 'w', encoding='utf-8') as output:
+            output.write('# Home\n![diagram](diagram.svg)\n')
+        with open(os.path.join(self.temporary.name, 'diagram.svg'), 'w', encoding='utf-8') as output:
+            output.write('<svg xmlns="http://www.w3.org/2000/svg"><a href="README.md"><text>Readme</text></a></svg>')
+        for relative in ('api/v1/workspace/document', 'workspace-assets/diagram.svg'):
+            with self.subTest(relative=relative), self.assertRaises(HTTPError) as denied:
+                urlopen(self.server.url + relative)
+            self.assertEqual(denied.exception.code, 401)
+
+        self.authenticate()
+        _, snapshot = self.request_json('/api/v1/workspace')
+        self.assertEqual(snapshot['home_document'], 'index.md')
+        _, document = self.request_json('/api/v1/workspace/document')
+        self.assertEqual(document['path'], 'index.md')
+        self.assertIn('diagram.svg', document['content'])
+        _, readme = self.request_json('/api/v1/workspace/document?path=README.md')
+        self.assertEqual(readme['content'], '# README\n')
+        with self.opener.open(self.server.url + 'workspace-assets/diagram.svg') as response:
+            self.assertEqual(response.headers['Content-Type'], 'image/svg+xml')
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+            self.assertIn('sandbox;', response.headers['Content-Security-Policy'])
+            self.assertNotIn('script-src', response.headers['Content-Security-Policy'])
+            self.assertIn('href="README.md"', response.read().decode('utf-8'))
+        for relative, status in (
+            ('api/v1/workspace/document?path=missing.md', 404),
+            ('api/v1/workspace/document?path=../README.md', 400),
+            ('workspace-assets/%2e%2e/diagram.svg', 400),
+            ('workspace-assets/index.md', 400),
+        ):
+            with self.subTest(relative=relative), self.assertRaises(HTTPError) as rejected:
+                self.opener.open(self.server.url + relative)
+            self.assertEqual(rejected.exception.code, status)
+
+    def test_host_policy_allows_document_images_but_not_external_scripts(self):
+        self.authenticate()
+        with self.opener.open(self.server.url) as response:
+            policy = response.headers['Content-Security-Policy']
+        self.assertIn("img-src 'self' data: http: https:", policy)
+        self.assertIn("script-src 'self';", policy)
+        self.assertIn("connect-src 'self';", policy)
+
+    def test_stable_host_assets_are_revalidated(self):
+        self.authenticate()
+        with self.opener.open(self.server.url + 'assets/index.js') as response:
+            self.assertEqual(response.headers['Cache-Control'], 'no-cache')
+
+    def test_webui_launch_requirements_hide_navigation_only(self):
+        self.authenticate()
+        project = copy_project(
+            os.path.join(EXAMPLES, 'build-insight-1.0.0'),
+            os.path.join(self.temporary.name, 'requirements-plugin'),
+        )
+        update_manifest(
+            project,
+            lambda data: data['webui'].update(
+                {
+                    'launch_requirements': {
+                        'all': [
+                            {'type': 'file', 'pattern': 'rtconfig.py'},
+                            {
+                                'any': [
+                                    {'type': 'directory', 'pattern': 'test_*'},
+                                    {'type': 'file', 'pattern': 'test_*.md'},
+                                ]
+                            },
+                        ]
+                    }
+                }
+            ),
+        )
+        package = build_project(project, os.path.join(self.temporary.name, 'requirements-packages'))
+        upload = self.upload_package(package)
+        self.request_json(
+            '/api/v1/plugins/install',
+            method='POST',
+            body={'upload_id': upload['upload_id'], 'allow_unsigned': True},
+        )
+
+        _, plugins = self.request_json('/api/v1/plugins')
+        plugin = next(item for item in plugins if item['id'] == 'org.rt-thread.build-insight')
+        self.assertFalse(plugin['workspace_ready'])
+        self.assertFalse(plugin['launch_requirements_status']['satisfied'])
+        with self.opener.open(self.server.url + 'plugins/org.rt-thread.build-insight/') as response:
+            self.assertIn('固件构建分析', response.read().decode('utf-8'))
+
+        with open(os.path.join(self.temporary.name, 'rtconfig.py'), 'w', encoding='utf-8') as output:
+            output.write('# test\n')
+        with open(os.path.join(self.temporary.name, 'test_result.md'), 'w', encoding='utf-8') as output:
+            output.write('# test\n')
+        _, plugins = self.request_json('/api/v1/plugins')
+        plugin = next(item for item in plugins if item['id'] == 'org.rt-thread.build-insight')
+        self.assertTrue(plugin['workspace_ready'])
+
     def test_catalog_and_remote_package_sources_are_rejected(self):
         self.authenticate()
         with self.assertRaises(HTTPError) as catalog:
@@ -381,6 +490,34 @@ class WebUIServerTest(unittest.TestCase):
                 'websocket_base': context['base'] + 'backend/',
             },
         )
+
+    def test_plugin_asset_context_exposes_image_icon_url(self):
+        project = copy_project(
+            os.path.join(EXAMPLES, 'quality-gate-1.0.0'),
+            os.path.join(self.temporary.name, 'image-icon-server'),
+        )
+
+        def configure(data):
+            data['compatibility'].update({'platforms': ['any'], 'architectures': ['any']})
+            data['webui'].update({'icon': {'type': 'svg', 'path': 'frontend/icon.svg'}})
+
+        update_manifest(project, configure)
+        with open(os.path.join(project, 'frontend', 'icon.svg'), 'w', encoding='utf-8') as output:
+            output.write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/></svg>')
+        package = build_project(project, os.path.join(self.temporary.name, 'image-icon-packages'))
+        self.authenticate()
+        upload = self.upload_package(package)
+        self.request_json(
+            '/api/v1/plugins/install',
+            method='POST',
+            body={'upload_id': upload['upload_id'], 'allow_unsigned': True},
+        )
+        _, session = self.request_json('/api/v1/session')
+        asset = session['plugin_assets']['org.env-community.quality-gate']
+        self.assertTrue(asset['icon_url'].endswith('/icon.svg'))
+        with self.opener.open(self.server.url + asset['icon_url'].lstrip('/')) as response:
+            self.assertEqual(response.headers['Content-Type'], 'image/svg+xml')
+            self.assertIn('<svg', response.read().decode('utf-8'))
 
     def test_websocket_proxy_forwards_standard_negotiation_headers(self):
         handler = object.__new__(EnvWebUIRequestHandler)
