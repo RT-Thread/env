@@ -25,22 +25,20 @@
 import os
 import json
 import platform
-import sys
 from vars import Import, Export
 
 '''RT-Thread environment sdk setting'''
 
 
 def cmd(args):
+    import kconfiglib
     import menuconfig
-    from cmds.cmd_package import list_packages
     from cmds.cmd_package import get_packages
     from cmds.cmd_package import package_update
 
     # change to sdk root directory
     tools_kconfig_path = os.path.join(Import('env_root'), 'tools', 'scripts')
     beforepath = os.getcwd()
-    before_argv = sys.argv
     before_hostos = os.environ.get('HOSTOS')
     os.chdir(tools_kconfig_path)
 
@@ -53,8 +51,7 @@ def cmd(args):
     Export('bsp_root')
 
     try:
-        sys.argv = ['menuconfig', 'Kconfig']
-        menuconfig._main()
+        menuconfig.menuconfig(kconfiglib.Kconfig('Kconfig', suppress_traceback=True))
         if package_update() is False:
             return False
         sdk_packages = [
@@ -66,7 +63,6 @@ def cmd(args):
         return True
     finally:
         os.chdir(beforepath)
-        sys.argv = before_argv
         if before_hostos is None:
             os.environ.pop('HOSTOS', None)
         else:

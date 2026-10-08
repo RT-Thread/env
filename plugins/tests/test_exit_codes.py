@@ -72,8 +72,10 @@ class ExitCodeTest(unittest.TestCase):
             with mock.patch.dict(vars.env_vars, {'env_root': directory, 'bsp_root': directory}), mock.patch.object(
                 cmd_menuconfig, 'get_rtt_root', return_value=None,
             ), mock.patch.object(cmd_menuconfig.os.path, 'exists', return_value=True), mock.patch(
-                'menuconfig._main',
-            ), mock.patch.object(cmd_menuconfig.subprocess, 'call', return_value=7), mock.patch('builtins.print') as output:
+                'menuconfig.menuconfig',
+            ), mock.patch('kconfiglib.Kconfig'), mock.patch.object(
+                cmd_menuconfig.subprocess, 'call', return_value=7,
+            ), mock.patch('builtins.print') as output:
                 self.assertEqual(cmd_menuconfig.cmd(args), 7)
             self.assertFalse(any('updated completely' in str(call) for call in output.call_args_list))
 
@@ -85,8 +87,8 @@ class ExitCodeTest(unittest.TestCase):
             before_argv = sys.argv
             before_hostos = os.environ.get('HOSTOS')
             with mock.patch.dict(vars.env_vars, {'env_root': directory, 'bsp_root': before}), mock.patch(
-                'menuconfig._main',
-            ), mock.patch('cmds.cmd_package.package_update', return_value=False):
+                'menuconfig.menuconfig',
+            ), mock.patch('kconfiglib.Kconfig'), mock.patch('cmds.cmd_package.package_update', return_value=False):
                 self.assertFalse(cmd_sdk.cmd(argparse.Namespace()))
                 self.assertEqual(os.getcwd(), before)
                 self.assertEqual(vars.env_vars['bsp_root'], before)

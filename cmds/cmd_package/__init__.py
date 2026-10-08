@@ -143,3 +143,4 @@ def add_parser(sub):
     )
 
     parser.set_defaults(func=run_env_cmd)
+    return parser

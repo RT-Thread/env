@@ -26,7 +26,10 @@
 
 import json
 import os
-import platform
+if (__package__ or '').split('.', 1)[0] == 'env':
+    from .env_paths import get_env_root
+else:
+    from env_paths import get_env_root
 
 from collections import namedtuple
 
@@ -77,13 +80,7 @@ def load_env_json():
 
         # If not found in script directory, try ENV_ROOT
         if not os.path.exists(env_json_path):
-            env_root = os.getenv("ENV_ROOT")
-            if env_root is None:
-                if platform.system() != 'Windows':
-                    env_root = os.path.join(os.getenv('HOME'), '.env')
-                else:
-                    env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
-            env_json_path = os.path.join(env_root, 'tools', 'scripts', 'env.json')
+            env_json_path = os.path.join(get_env_root(), 'tools', 'scripts', 'env.json')
 
         with open(env_json_path, 'r') as file:
             return json.load(file)

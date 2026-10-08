@@ -32,25 +32,11 @@ import uuid
 import subprocess
 import sys
 import network
+import requests
 from vars import Import
 from info import get_source, get_api_url
 from .cmd_package_utils import execute_command, git_pull_repo, find_bool_macro_in_config
 from .cmd_package_update import need_using_mirror_download
-
-try:
-    import requests
-except ImportError:
-    print(
-        "****************************************\n"
-        "* Import requests module error.\n"
-        "* Please install requests module first.\n"
-        "* pip install step:\n"
-        "* $ pip install requests\n"
-        "* command install step:\n"
-        "* $ sudo apt-get install python-requests\n"
-        "****************************************\n"
-    )
-
 
 def upgrade_packages_index(force_upgrade=False):
     """Update the package repository index."""

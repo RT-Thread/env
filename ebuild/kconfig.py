@@ -3,14 +3,15 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
-import re
+import shutil
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from . import config
+from config_file import is_package_metadata, read_config, write_header
 
 
 @dataclass
@@ -39,14 +40,14 @@ class KconfigManager:
         self._check_kconfiglib()
         self._exclude_utestcases()
 
+        import kconfiglib
         import menuconfig
         import curses
 
-        sys.argv = ['menuconfig', 'Kconfig']
         self._fix_locale()
 
         try:
-            menuconfig._main()
+            menuconfig.menuconfig(kconfiglib.Kconfig('Kconfig', suppress_traceback=True))
         except curses.error as exc:
             if not os.path.isfile(self.paths.config_file):
                 raise
@@ -63,10 +64,11 @@ class KconfigManager:
         self._check_kconfiglib()
         self._exclude_utestcases()
 
-        import defconfig
+        import kconfiglib
 
-        sys.argv = ['defconfig', '--kconfig', 'Kconfig', '.config']
-        defconfig.main()
+        kconf = kconfiglib.Kconfig('Kconfig', suppress_traceback=True)
+        print(kconf.load_config('.config'))
+        print(kconf.write_config())
         self._mk_proj_config(self.paths.config_file)
 
     def _sync_proj_config(self) -> None:
@@ -74,12 +76,12 @@ class KconfigManager:
             raise SystemExit(-1)
 
         if os.path.isfile(self.paths.config_old):
-            diff_eq = self._file_md5(self.paths.config_file) == self._file_md5(self.paths.config_old)
+            diff_eq = Path(self.paths.config_file).read_bytes() == Path(self.paths.config_old).read_bytes()
         else:
             diff_eq = False
 
         if not diff_eq:
-            self._copy_file(self.paths.config_file, self.paths.config_old)
+            shutil.copyfile(self.paths.config_file, self.paths.config_old)
             self._mk_proj_config(self.paths.config_file)
         elif not os.path.isfile(self.paths.config_header):
             self._mk_proj_config(self.paths.config_file)
@@ -89,50 +91,7 @@ class KconfigManager:
             print('open config:%s failed' % filename)
             return
 
-        with open(filename, 'r', encoding='utf-8') as config_file:
-            lines = config_file.readlines()
-
-        with open(self.paths.config_header, 'w', encoding='utf-8') as config_header:
-            config_header.write('#ifndef PROJ_CONFIG_H__\n')
-            config_header.write('#define PROJ_CONFIG_H__\n\n')
-
-            empty_line = True
-            for line in lines:
-                line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-                if not line:
-                    continue
-
-                if line.startswith('#'):
-                    if len(line) == 1:
-                        if empty_line:
-                            continue
-                        config_header.write('\n')
-                        empty_line = True
-                        continue
-                    if line.startswith('# CONFIG_'):
-                        line = ' ' + line[9:]
-                    else:
-                        config_header.write('/*%s */\n' % line[1:])
-                    empty_line = False
-                    continue
-
-                empty_line = False
-                setting = line.split('=')
-                if len(setting) < 2:
-                    continue
-                key = setting[0]
-                if key.startswith('CONFIG_'):
-                    key = key[7:]
-                if self._is_pkg_special_config(key):
-                    continue
-                if setting[1] == 'y':
-                    config_header.write('#define %s\n' % key)
-                else:
-                    value = re.findall(r"^.*?=(.*)$", line)[0]
-                    config_header.write('#define %s %s\n' % (key, value))
-
-            config_header.write('\n')
-            config_header.write('#endif\n')
+        write_header(read_config(filename), self.paths.config_header, 'PROJ_CONFIG_H__')
 
     def _exclude_utestcases(self) -> None:
         kconfig_path = os.path.join(self.paths.project_root, 'Kconfig')
@@ -175,22 +134,8 @@ class KconfigManager:
             locale.setlocale(locale.LC_ALL, 'C')
 
     @staticmethod
-    def _file_md5(file_path: str) -> str:
-        md5 = hashlib.new('md5')
-        with open(file_path, 'r', encoding='utf-8') as handle:
-            md5.update(handle.read().encode('utf8'))
-        return md5.hexdigest()
-
-    @staticmethod
-    def _copy_file(src: str, dst: str) -> None:
-        with open(src, 'r', encoding='utf-8') as handle:
-            content = handle.read()
-        with open(dst, 'w', encoding='utf-8') as handle:
-            handle.write(content)
-
-    @staticmethod
     def _is_pkg_special_config(config_str: str) -> bool:
-        return config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER'))
+        return is_package_metadata(config_str)
 
 
 def menuconfig(project_root: str) -> None:
