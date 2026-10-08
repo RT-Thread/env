@@ -13,7 +13,6 @@ urls = { Homepage = "https://github.com/RT-Thread/env", Repository = "https://gi
 dependencies = [
     "SCons>=4.0.0",
     "requests",
-    "psutil",
     "tqdm",
     "kconfiglib",
     "pyyaml",
@@ -44,9 +43,10 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"env" = ["*.*"]
-"env.plugins" = ["*.md", "bundled/**/*", "examples/**/*"]
-"env.plugins.spec" = ["*.json", "*.md"]
+"env" = ["env.json", "Kconfig", "env.sh", "env.ps1"]
+"env.cmds" = ["Kconfig"]
+"env.plugins" = ["bundled/epack/dist/*.epack"]
+"env.plugins.spec" = ["*.json"]
 "env.plugins.webui" = ["static/*", "static/assets/*"]
 
 [tool.setuptools.exclude-package-data]

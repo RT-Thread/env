@@ -13,7 +13,7 @@ fi
 
 sudo apt-get update
 # Python runtime dependencies are installed in the Env venv on first activation.
-sudo apt-get -qq install python3 python3-venv gcc git libncurses5-dev -y
+sudo apt-get -qq install python3 python3-venv gcc git -y
 
 wget "$TOUCH_ENV_URL" -O touch_env.sh
 chmod 777 touch_env.sh
