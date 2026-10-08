@@ -796,6 +796,13 @@ def update_latest_packages(sys_value):
             else:
                 repo_path = get_bsp_package_path(bsp_packages_path, pkgs_name_in_json, pkg['ver'])
 
+            # SDK source snapshots have no independent Git metadata. Running
+            # Git here would operate on the enclosing SDK repository instead.
+            # A .git file also counts, for submodules and linked worktrees.
+            if not os.path.exists(os.path.join(repo_path, '.git')):
+                print("Skip locally managed package (no .git): %s" % repo_path)
+                continue
+
             get_git_root = get_git_root_path(repo_path)
             if not get_git_root or not _same_path(repo_path, get_git_root):
                 logging.warning('Skip Git update outside a package repository: %s', repo_path)
