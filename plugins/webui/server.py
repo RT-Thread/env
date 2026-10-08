@@ -33,6 +33,7 @@ from ..service import PluginService
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
 from .builds import BuildTaskManager
 from .documents import DocumentNotFound, WorkspaceDocuments
+from .lifecycle import BrowserLifecycle
 from .requirements import evaluate_launch_requirements
 
 # The command-line compatibility entry point imports ``plugins`` as a
@@ -55,6 +56,7 @@ SESSION_COOKIE = 'env_webui_session'
 UPLOAD_TTL = 15 * 60
 JSON_LIMIT = 256 * 1024
 PACKAGE_LIMIT = 256 * 1024 * 1024
+LIFECYCLE_HEARTBEAT_PERIOD = 0.5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -97,6 +99,7 @@ class WebUIApplication(object):
         self.market_client = MarketClient(self.market['url'], env_root=env_root) if self.market['enabled'] else None
         self.build_manager = BuildTaskManager(self.workspace)
         self.documents = WorkspaceDocuments(self.workspace)
+        self.lifecycle = None
 
     def consume_launch(self, token):
         if not self.launch_token or not hmac.compare_digest(token, self.launch_token):
@@ -680,6 +683,9 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
                 }
             )
             return
+        if method == 'GET' and path == '/api/v1/lifecycle':
+            self._lifecycle_stream()
+            return
         if method == 'POST' and path == '/api/v1/shutdown':
             self._json({'status': 'shutting_down'})
             threading.Thread(target=self.server.shutdown, daemon=True).start()
@@ -687,6 +693,7 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         if method == 'GET' and path == '/api/v1/market/status':
             self._json(self.application.market_status())
             return
+
         if method == 'GET' and path == '/api/v1/market/plugins':
             self._json(self.application.market_plugins(query))
             return
@@ -818,6 +825,28 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
             self._json(self.application.update_toolchain(segments[4], self._read_json()))
             return
         self._error(HTTPStatus.NOT_FOUND, 'not_found', 'API endpoint was not found')
+
+    def _lifecycle_stream(self):
+        token = self.application.lifecycle.connect()
+        if token is None:
+            self._error(HTTPStatus.SERVICE_UNAVAILABLE, 'server_shutting_down', 'the WebUI is shutting down')
+            return
+        self.send_response(HTTPStatus.OK)
+        self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.end_headers()
+        try:
+            self.wfile.write(b': connected\n\n')
+            self.wfile.flush()
+            while not self.application.lifecycle.wait(LIFECYCLE_HEARTBEAT_PERIOD):
+                self.wfile.write(b': keep-alive\n\n')
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError, OSError, ValueError) as exc:
+            LOGGER.debug('lifecycle stream disconnected: %s', exc)
+        finally:
+            self.application.lifecycle.disconnect(token)
+            self.close_connection = True
 
     def _install(self, body, upgrade, expected_plugin_id=None):
         allowed = set(['upload_id', 'allow_unsigned'])
@@ -1237,6 +1266,9 @@ class WebUIServer(object):
             allow_remote_hosts=allow_remote_hosts,
             initial_plugin=plugin_id,
         )
+        self._shutdown_lock = threading.Lock()
+        self._shutdown_started = False
+        self.application.lifecycle = BrowserLifecycle(self._shutdown_from_lifecycle)
         self.httpd = EnvWebUIHTTPServer((host, int(port)), self.application)
         bound_host, bound_port = self.httpd.server_address[:2]
         if allow_remote_hosts:
@@ -1257,10 +1289,18 @@ class WebUIServer(object):
             self._serving = False
 
     def shutdown(self):
+        with self._shutdown_lock:
+            if self._shutdown_started:
+                return
+            self._shutdown_started = True
+        self.application.lifecycle.close()
         if self._serving:
             self.httpd.shutdown()
         self.httpd.server_close()
         self.application.close()
+
+    def _shutdown_from_lifecycle(self):
+        threading.Thread(target=self.shutdown, daemon=True).start()
 
 
 def _primary_ipv4_address():

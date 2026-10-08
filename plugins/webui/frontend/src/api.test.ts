@@ -6,6 +6,14 @@ afterEach(() => {
 })
 
 describe('local package API', () => {
+  it('opens the authenticated lifecycle stream endpoint', () => {
+    const source = {}
+    const eventSource = vi.fn(() => source)
+    vi.stubGlobal('EventSource', eventSource)
+    expect(api.lifecycle()).toBe(source)
+    expect(eventSource).toHaveBeenCalledWith('/api/v1/lifecycle')
+  })
+
   it('reads, saves and tests network settings with CSRF protection', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) })
     vi.stubGlobal('fetch', fetchMock)

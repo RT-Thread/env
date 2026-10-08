@@ -584,13 +584,15 @@ test('keep-alive plugin preserves iframe state while navigating', async ({ brows
   await context.close()
 })
 
-test('sidebar exit confirms and shuts down the WebUI service', async ({ browser }) => {
+test('sidebar exit confirms and Ctrl+W shuts down the WebUI service', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
   const page = await context.newPage()
   await page.goto(new URL('/', launchUrl).toString())
   await page.locator('.sidebar-footer').getByRole('button', { name: '退出 WebUI' }).click()
   await expect(page.getByText('关闭后 Env WebUI 服务将退出，当前页面也会关闭。是否继续？', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: '关闭并退出' }).click()
+  await page.getByRole('button', { name: '取消' }).click()
+  await expect(page.getByText('关闭后 Env WebUI 服务将退出，当前页面也会关闭。是否继续？', { exact: true })).toHaveCount(0)
+  await page.keyboard.press('Control+W')
   await expect.poll(() => serverProcess.exitCode, { timeout: 5000 }).not.toBeNull()
   await context.close()
 })
