@@ -29,13 +29,13 @@ import os
 import platform
 import shlex
 import subprocess
-import sys
-import time
 import shutil
 import requests
 import logging
 from vars import Import
 from info import get_api_url
+from config_file import find_setting, read_config, unquote
+from env_paths import get_env_root
 import network
 
 
@@ -67,14 +67,7 @@ def is_env_repository(repo_path):
     except (KeyError, TypeError):
         env_root = None
 
-    if not env_root:
-        env_root = os.environ.get('ENV_ROOT')
-    if not env_root:
-        home = os.environ.get('HOME') or os.environ.get('USERPROFILE')
-        if home:
-            env_root = os.path.join(home, '.env')
-    if not env_root:
-        return False
+    env_root = env_root or get_env_root()
 
     git_root = get_git_root_path(repo_path)
     if not git_root:
@@ -156,11 +149,6 @@ def _git_config_command_targets(command, cwd=None):
         yield target_cwd
 
 
-def _changes_git_config(command):
-    """Identify Git command families that can write repository config."""
-    return any(_git_config_command_targets(command))
-
-
 def execute_command(cmd_string, cwd=None, shell=True):
     """Execute the system command at the specified address."""
 
@@ -181,10 +169,7 @@ def execute_command(cmd_string, cwd=None, shell=True):
 
 
 def is_windows():
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
+    return platform.system() == 'Windows'
 
 
 def git_pull_repo(repo_path, repo_url=''):
@@ -204,11 +189,8 @@ def get_url_from_mirror_server(package_name, package_version):
     """Get the download address from the mirror server based on the package name."""
 
     try:
-        if type(package_name) == bytes:
-            if sys.version_info < (3, 0):
-                package_name = str(package_name)
-            else:
-                package_name = str(package_name, encoding='utf-8')
+        if isinstance(package_name, bytes):
+            package_name = package_name.decode('utf-8')
     except Exception as e:
         print('Error message:%s' % e)
         print("\nThe mirror server could not be contacted. Please check your network connection.")
@@ -257,20 +239,7 @@ def get_url_from_mirror_server(package_name, package_version):
 
 
 def user_input(msg=None):
-    """Gets the union keyboard input."""
-
-    if sys.version_info < (3, 0):
-        if msg is not None:
-            value = raw_input(msg)
-        else:
-            value = raw_input()
-    else:
-        if msg is not None:
-            value = input(msg)
-        else:
-            value = input()
-
-    return value
+    return input(msg) if msg is not None else input()
 
 
 # Find the string after '='
@@ -279,51 +248,12 @@ def user_input(msg=None):
 # True means this macro has been set and y is the string after '='
 def find_string_in_config(filename, macro_name):
     try:
-        config = open(filename, "r")
-    except Exception as e:
+        value = find_setting(read_config(filename), 'CONFIG_' + macro_name)
+        return value is not None, value
+    except OSError as e:
         print('Error message:%s' % e)
         print('open .config failed')
         return (False, None)
-
-    empty_line = 1
-
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
-            continue
-
-        if line[0] == '#':
-            if len(line) == 1:
-                if empty_line:
-                    continue
-
-                empty_line = 1
-                continue
-
-            # comment_line = line[1:]
-            if line.startswith('# CONFIG_'):
-                line = ' ' + line[9:]
-            else:
-                line = line[1:]
-
-            # print line
-
-            empty_line = 0
-        else:
-            empty_line = 0
-            setting = line.split('=')
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_'):
-                    setting[0] = setting[0][7:]
-
-                    if setting[0] == macro_name:
-                        config.close()
-                        return (True, setting[1])
-
-    config.close()
-    return (False, None)
-
 
 # check if the bool macro is set or not
 # e.g CONFIG_SYS_AUTO_UPDATE_PKGS=y
@@ -331,11 +261,8 @@ def find_string_in_config(filename, macro_name):
 # If this macro cannot find or the .config cannot find or the macro is not set (n),
 # the function will return False
 def find_bool_macro_in_config(filename, macro_name):
-    rst, str = find_string_in_config(filename, macro_name)
-    if rst == True and str == 'y':
-        return True
-    else:
-        return False
+    found, value = find_string_in_config(filename, macro_name)
+    return found and value == 'y'
 
 
 # find a string macro is defined or not
@@ -344,12 +271,8 @@ def find_bool_macro_in_config(filename, macro_name):
 # If this macro cannot find or .config cannot find
 # the function will return None
 def find_string_macro_in_config(filename, macro_name):
-    rst, str = find_string_in_config(filename, macro_name)
-    if rst == True:
-        str = str.strip('"')
-        return str
-    else:
-        return None
+    found, value = find_string_in_config(filename, macro_name)
+    return unquote(value) if found else None
 
 
 # return IAR execution path string or None for failure

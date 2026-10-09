@@ -24,7 +24,8 @@
 #
 
 import os
-import platform
+import argparse
+from env_paths import get_env_root
 
 
 def package_print_env():
@@ -35,13 +36,11 @@ def package_print_env():
     print("SCONS:%s" % (os.getenv("SCONS")))
     print("PKGS_ROOT:%s" % (os.getenv("PKGS_ROOT")))
 
-    env_root = os.getenv('ENV_ROOT')
-    if env_root is None:
-        if platform.system() != 'Windows':
-            env_root = os.path.join(os.getenv('HOME'), '.env')
-
-    print("ENV_ROOT:%s" % env_root)
+    print("ENV_ROOT:%s" % get_env_root())
 
 
 def package_print_help():
-    os.system('pkgs -h')
+    from . import add_parser
+
+    parser = argparse.ArgumentParser(prog='rt-env')
+    add_parser(parser.add_subparsers()).print_help()

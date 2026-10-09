@@ -1,18 +1,14 @@
 """Filesystem locations owned by the plugin subsystem."""
 
 import os
-import platform
+if (__package__ or '').split('.', 1)[0] == 'env':
+    from ..env_paths import get_env_root
+else:
+    from env_paths import get_env_root
 
 
 def default_env_root():
-    configured = os.environ.get('ENV_ROOT')
-    if configured:
-        return os.path.abspath(configured)
-    if platform.system() == 'Windows':
-        base = os.environ.get('USERPROFILE') or os.path.expanduser('~')
-    else:
-        base = os.environ.get('HOME') or os.path.expanduser('~')
-    return os.path.abspath(os.path.join(base, '.env'))
+    return get_env_root()
 
 
 def path_is_within(root, candidate):

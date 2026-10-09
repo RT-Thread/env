@@ -65,6 +65,7 @@ async function request<T>(path: string, options: ApiRequestOptions = {}): Promis
 
 export const api = {
   session: (): Promise<Session> => request('/api/v1/session'),
+  lifecycle: (): EventSource => new EventSource('/api/v1/lifecycle'),
   shutdown: (): Promise<Record<string, unknown>> => request('/api/v1/shutdown', { method: 'POST', json: {} }),
   plugins: (): Promise<EnvPlugin[]> => request('/api/v1/plugins'),
   workspace: (): Promise<WorkspaceSnapshot> => request('/api/v1/workspace'),

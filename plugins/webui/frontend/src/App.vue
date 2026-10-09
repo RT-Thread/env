@@ -69,6 +69,7 @@ import {
   marketStateClass,
   marketStateLabel,
 } from './utils/plugins'
+import { isCloseWebUIShortcut } from './utils/shortcuts'
 import type {
   ContextMenuSnapshot,
   DoctorResult,
@@ -156,6 +157,7 @@ const buildLogVisible = ref(false)
 const buildLogElement = ref<HTMLElement>()
 let buildPollTimer: number | undefined
 let buildPollGeneration = 0
+let lifecycleSource: EventSource | undefined
 
 const {
   sdkState,
@@ -247,6 +249,24 @@ function closeBrowserWindow() {
   }, 150)
 }
 
+function connectLifecycle() {
+  if (lifecycleSource || typeof EventSource === 'undefined') return
+  lifecycleSource = api.lifecycle()
+}
+
+async function shutdownWebUI() {
+  if (closing.value) return
+  closing.value = true
+  try {
+    await api.shutdown()
+    closeBrowserWindow()
+  } catch (error) {
+    closing.value = false
+    const message = error instanceof Error ? error.message : String(error)
+    ElMessage.error(`关闭 WebUI 失败：${message}`)
+  }
+}
+
 async function confirmCloseWebUI() {
   if (closing.value) return
   try {
@@ -263,14 +283,14 @@ async function confirmCloseWebUI() {
   } catch {
     return
   }
-  closing.value = true
-  try {
-    await api.shutdown()
-    closeBrowserWindow()
-  } catch (error) {
-    closing.value = false
-    ElMessage.error(`关闭 WebUI 失败：${error.message}`)
-  }
+  await shutdownWebUI()
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (!isCloseWebUIShortcut(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  void shutdownWebUI()
 }
 
 function mergeCatalogItem(detail) {
@@ -303,6 +323,7 @@ async function reloadAll() {
   const nextSession = await api.session()
   session.value = nextSession
   setCsrfToken(nextSession.csrf_token)
+  connectLifecycle()
   const installedItems = await api.plugins()
   const previousPlugins = new Map(installed.value.map((item) => [item.id, item]))
   installed.value = installedItems
@@ -963,11 +984,15 @@ function receivePluginMessage(event) {
 
 onMounted(() => {
   window.addEventListener('message', receivePluginMessage)
+  window.addEventListener('keydown', handleKeydown)
   bootstrap()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('message', receivePluginMessage)
+  window.removeEventListener('keydown', handleKeydown)
+  lifecycleSource?.close()
+  lifecycleSource = undefined
   iframeTimers.forEach((timer) => window.clearTimeout(timer))
   iframeTimers.clear()
   stopBuildPolling()

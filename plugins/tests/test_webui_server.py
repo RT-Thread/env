@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest import mock
 
@@ -580,6 +581,51 @@ class WebUIServerTest(unittest.TestCase):
         self.assertEqual(result, {'status': 'shutting_down'})
         self.thread.join(timeout=2)
         self.assertFalse(self.thread.is_alive())
+
+    def test_lifecycle_disconnect_stops_server(self):
+        self.authenticate()
+        host, port = self.server.httpd.server_address[:2]
+        connection = HTTPConnection(host, port)
+        connection.request(
+            'GET',
+            '/api/v1/lifecycle',
+            headers={'Cookie': 'env_webui_session=' + self.server.application.session_token},
+        )
+        response = connection.getresponse()
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.readline(), b': connected\n')
+        response.close()
+        connection.close()
+        self.thread.join(timeout=4)
+        self.assertFalse(self.thread.is_alive())
+
+    def test_lifecycle_reconnect_keeps_server_alive_after_refresh(self):
+        self.authenticate()
+        host, port = self.server.httpd.server_address[:2]
+
+        def open_lifecycle():
+            connection = HTTPConnection(host, port)
+            connection.request(
+                'GET',
+                '/api/v1/lifecycle',
+                headers={'Cookie': 'env_webui_session=' + self.server.application.session_token},
+            )
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.readline(), b': connected\n')
+            return connection, response
+
+        first_connection, first_response = open_lifecycle()
+        first_response.close()
+        first_connection.close()
+        second_connection, second_response = open_lifecycle()
+        try:
+            time.sleep(2.0)
+            self.assertTrue(self.thread.is_alive())
+        finally:
+            second_response.close()
+            second_connection.close()
+            self.server.shutdown()
 
     def test_host_and_upload_size_limits_are_enforced(self):
         host, port = self.server.httpd.server_address[:2]

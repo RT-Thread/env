@@ -183,7 +183,9 @@ def _load_json(path: str) -> Optional[Any]:
 
 
 def _env_root() -> str:
-    return os.path.expanduser("~/.env")
+    from env_paths import get_env_root
+
+    return get_env_root()
 
 
 def _detect_sdk_path_from_env(cc_bin: str) -> Optional[str]:

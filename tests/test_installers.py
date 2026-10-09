@@ -74,6 +74,15 @@ def test_arch_installer_does_not_use_an_aur_meta_package():
     assert 'rt-thread-env-meta' not in source
 
 
+@pytest.mark.parametrize('filename, package', (
+    ('install_ubuntu.sh', 'libncurses5-dev'),
+    ('install_suse.sh', 'ncurses-devel'),
+))
+def test_installers_do_not_require_native_kconfig_build_dependencies(filename, package):
+    source = (REPOSITORY / filename).read_text(encoding='utf-8')
+    assert package not in source
+
+
 def test_windows_installer_keeps_the_repository_bootstrap():
     source = (REPOSITORY / 'install_windows.ps1').read_text(encoding='utf-8')
     assert './touch_env.ps1' in source

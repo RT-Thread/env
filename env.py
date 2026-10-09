@@ -30,15 +30,14 @@ import os
 import sys
 import argparse
 import logging
-import platform
-import json
 import subprocess
 
 script_path = os.path.abspath(__file__)
 mpath = os.path.dirname(script_path)
 sys.path.insert(0, mpath)
 
-from cmds import *
+from cmds import cmd_menuconfig, cmd_package, cmd_plugin, cmd_sdk, cmd_system, cmd_webui
+from env_paths import get_env_root, get_package_root, get_rtt_root as resolve_rtt_root
 from vars import Export
 from info import get_name, get_version
 from plugins.errors import PluginError
@@ -113,12 +112,8 @@ def init_argparse():
     parser.add_argument('-v', '--version', action='version', version=env_ver_str)
     parser.add_argument('--info', action='store_true', help='Show environment information')
 
-    cmd_system.add_parser(subs)
-    cmd_menuconfig.add_parser(subs)
-    cmd_package.add_parser(subs)
-    cmd_sdk.add_parser(subs)
-    cmd_plugin.add_parser(subs)
-    cmd_webui.add_parser(subs)
+    for command in (cmd_system, cmd_menuconfig, cmd_package, cmd_sdk, cmd_plugin, cmd_webui):
+        command.add_parser(subs)
 
     return parser
 
@@ -160,50 +155,7 @@ def get_rtt_verion():
 
 
 def get_rtt_root():
-    bsp_root = get_bsp_root()
-
-    # bsp/kconfig文件获取rtt_root
-    if os.path.isfile(os.path.join(bsp_root, "Kconfig")):
-        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
-            lines = kconfig.readlines()
-            for i in range(len(lines)):
-                if "config RTT_DIR" in lines[i]:
-                    rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
-                    if not os.path.isabs(rtt_root):
-                        rtt_root = os.path.join(bsp_root, rtt_root)
-                    return os.path.normpath(rtt_root)
-                if "RTT_DIR :=" in lines[i]:
-                    rtt_root = lines[i].strip().split(":=")[1].strip()
-                    if not os.path.isabs(rtt_root):
-                        rtt_root = os.path.join(bsp_root, rtt_root)
-                    return os.path.normpath(rtt_root)
-
-    if os.path.isfile(os.path.join("rt-thread", "include", "rtdef.h")):
-        return os.path.normpath(os.path.join(bsp_root, "rt-thread"))
-
-    if "bsp" in bsp_root:
-        rtt_root = bsp_root.split("bsp")[0]
-        if os.path.isfile(os.path.join(rtt_root, "include", "rtdef.h")):
-            return os.path.normpath(rtt_root)
-
-    return None
-
-
-def get_env_root():
-    env_root = os.getenv("ENV_ROOT")
-    if env_root is None:
-        if platform.system() != 'Windows':
-            env_root = os.path.join(os.getenv('HOME'), '.env')
-        else:
-            env_root = os.path.join(os.getenv('USERPROFILE'), '.env')
-    return env_root
-
-
-def get_package_root():
-    package_root = os.getenv("PKGS_ROOT")
-    if package_root is None:
-        package_root = os.path.join(get_env_root(), 'packages')
-    return package_root
+    return resolve_rtt_root(get_bsp_root())
 
 
 def get_bsp_root():
@@ -211,8 +163,6 @@ def get_bsp_root():
 
 
 def export_environment_variable():
-    script_root = os.path.split(os.path.realpath(__file__))[0]
-    sys.path = sys.path + [os.path.join(script_root)]
     env_root = get_env_root()
     pkgs_root = get_package_root()
     bsp_root = get_bsp_root()
@@ -228,36 +178,30 @@ def export_environment_variable():
     Export('bsp_root')
 
 
-def exec_arg(arg):
-    export_environment_variable()
-    init_logger(get_env_root())
-
-    sys.argv.insert(1, arg)
-
-    parser = init_argparse()
-    args = parser.parse_args()
-    return run_command(args)
+def exec_arg(arg, argv=None):
+    arguments = sys.argv[1:] if argv is None else argv
+    return main([arg] + list(arguments))
 
 
 def cmd_env_info(args):
     """Handle environment information display."""
     show_version()
     show_version_warning(False)
-    sys.exit(0)
+    return 0
 
 
-def main():
+def main(argv=None):
     parser = init_argparse()
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.info:
-        cmd_env_info(args)
+        return cmd_env_info(args)
 
     # Check if any subcommand was provided
     if not hasattr(args, 'func'):
         # No subcommand provided, show help
         parser.print_help()
-        sys.exit(0)
+        return 0
 
     show_version_warning()
     export_environment_variable()
@@ -267,22 +211,18 @@ def main():
 
 
 def menuconfig():
-    show_version_warning()
     return exec_arg('menuconfig')
 
 
 def pkgs():
-    show_version_warning()
     return exec_arg('pkg')
 
 
 def sdk():
-    show_version_warning()
     return exec_arg('sdk')
 
 
 def system():
-    show_version_warning()
     return exec_arg('system')
 
 

@@ -32,10 +32,7 @@ import os
 import platform
 import shutil
 import time
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from urllib.parse import urlparse
 
 import requests
 import network
@@ -717,16 +714,6 @@ def sub_list(aList, bList):
     tmp = []
     for a in aList:
         if a not in bList:
-            tmp.append(a)
-    return tmp
-
-
-def and_list(aList, bList):
-    """Return the items in aList and in bList."""
-
-    tmp = []
-    for a in aList:
-        if a in bList:
             tmp.append(a)
     return tmp
 

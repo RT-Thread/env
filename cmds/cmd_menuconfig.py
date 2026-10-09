@@ -27,158 +27,52 @@
 
 import os
 import platform
-import re
 import sys
 import subprocess
 
+from config_file import find_setting, is_package_metadata, read_config, unquote, write_header
+from env_paths import get_rtt_root as resolve_rtt_root
 from vars import Import
 from .cmd_package.cmd_package_utils import find_bool_macro_in_config, find_IAR_EXEC_PATH, find_MDK_EXEC_PATH
 
 
-def is_in_powershell():
-    rst = False
-    try:
-        import psutil
-
-        rst = bool(re.fullmatch('pwsh|pwsh.exe|powershell.exe', psutil.Process(os.getppid()).name()))
-    except:
-        pass
-
-    return rst
-
-
-def build_kconfig_frontends(rtt_root):
-    kconfig_dir = os.path.join(rtt_root, 'tools', 'kconfig-frontends')
-    os.system('scons -C ' + kconfig_dir)
-
-
 def get_rtt_root():
-    rtt_root = os.getenv("RTT_ROOT")
-    if rtt_root is None:
-        bsp_root = Import("bsp_root")
-        if not os.path.exists(os.path.join(bsp_root, 'Kconfig')):
-            return rtt_root
-        with open(os.path.join(bsp_root, 'Kconfig')) as kconfig:
-            lines = kconfig.readlines()
-        for i in range(len(lines)):
-            if "config RTT_DIR" in lines[i]:
-                rtt_root = lines[i + 3].strip().split(" ")[1].strip('"')
-                if not os.path.isabs(rtt_root):
-                    rtt_root = os.path.join(bsp_root, rtt_root)
-                break
-    return rtt_root
+    return resolve_rtt_root(Import('bsp_root'))
 
 
 def is_pkg_special_config(config_str):
-    """judge if it's CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER"""
+    return is_package_metadata(config_str)
 
-    if isinstance(config_str, str):
-        if config_str.startswith("PKG_") and (config_str.endswith('_PATH') or config_str.endswith('_VER')):
-            return True
-    return False
+
+def _target_file(lines):
+    return unquote(find_setting(lines, 'CONFIG_TARGET_FILE', '"rtconfig.h"')) or None
 
 
 def get_target_file(filename):
     try:
-        config = open(filename, "r")
-    except:
+        return _target_file(read_config(filename))
+    except OSError:
         print('open config:%s failed' % filename)
         return None
-
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
-            continue
-
-        if line[0] == '#':
-            continue
-        else:
-            setting = line.split('=')
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_TARGET_FILE'):
-                    target_fn = re.findall(r"^.*?=(.*)$", line)[0]
-                    if target_fn.startswith('"'):
-                        target_fn = target_fn.replace('"', '')
-
-                    if target_fn == '':
-                        return None
-                    else:
-                        return target_fn
-
-    return 'rtconfig.h'
 
 
 def mk_rtconfig(filename):
     try:
-        config = open(filename, 'r')
-    except Exception as e:
+        lines = read_config(filename)
+    except OSError as e:
         print('Error message:%s' % e)
         print('open config:%s failed' % filename)
         return False
 
-    target_fn = get_target_file(filename)
-    if target_fn == None:
-        config.close()
-        return True
-
-    rtconfig = open(target_fn, 'w')
-    rtconfig.write('#ifndef RT_CONFIG_H__\n')
-    rtconfig.write('#define RT_CONFIG_H__\n\n')
-
-    empty_line = 1
-
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
-            continue
-
-        if line[0] == '#':
-            if len(line) == 1:
-                if empty_line:
-                    continue
-
-                rtconfig.write('\n')
-                empty_line = 1
-                continue
-
-            if line.startswith('# CONFIG_'):
-                line = ' ' + line[9:]
-            else:
-                line = line[1:]
-                rtconfig.write('/*%s */\n' % line)
-
-            empty_line = 0
-        else:
-            empty_line = 0
-            setting = line.split('=')
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_'):
-                    setting[0] = setting[0][7:]
-
-                # remove CONFIG_PKG_XX_PATH or CONFIG_PKG_XX_VER
-                if is_pkg_special_config(setting[0]):
-                    continue
-
-                if setting[1] == 'y':
-                    rtconfig.write('#define %s\n' % setting[0])
-                else:
-                    rtconfig.write('#define %s %s\n' % (setting[0], re.findall(r"^.*?=(.*)$", line)[0]))
-
-    if os.path.isfile('rtconfig_project.h'):
-        rtconfig.write('#include "rtconfig_project.h"\n')
-
-    rtconfig.write('\n')
-    rtconfig.write('#endif\n')
-    rtconfig.close()
-    config.close()
+    target_fn = _target_file(lines)
+    if target_fn:
+        includes = ['rtconfig_project.h'] if os.path.isfile('rtconfig_project.h') else []
+        write_header(lines, target_fn, 'RT_CONFIG_H__', includes)
     return True
 
 
 # fix locale for kconfiglib
 def kconfiglib_fix_locale():
-    import os
     import locale
 
     # Get the list of supported locales
@@ -189,9 +83,6 @@ def kconfiglib_fix_locale():
         os.environ['LANG'] = 'C'
 
 def cmd(args):
-    import menuconfig
-    import defconfig
-
     env_root = Import('env_root')
 
     # Keep both legacy Kconfig symbol names and their environment variables set.
@@ -223,12 +114,14 @@ def cmd(args):
 
     # Env config, auto update packages and create mdk/iar project
     if args.menuconfig_setting:
+        import kconfiglib
+        import menuconfig
+
         env_kconfig_path = os.path.join(env_root, 'tools', 'scripts', 'cmds')
         beforepath = os.getcwd()
         os.chdir(env_kconfig_path)
-        sys.argv = ['menuconfig', 'Kconfig']
         try:
-            menuconfig._main()
+            menuconfig.menuconfig(kconfiglib.Kconfig('Kconfig', suppress_traceback=True))
         finally:
             os.chdir(beforepath)
         return
@@ -250,13 +143,17 @@ def cmd(args):
 
         shutil.copy(args.menuconfig_fn, ".config")
 
+    import kconfiglib
+
     if args.menuconfig_silent:
-        sys.argv = ['defconfig', '--kconfig=Kconfig', '.config']
-        defconfig.main()
+        kconf = kconfiglib.Kconfig('Kconfig', suppress_traceback=True)
+        print(kconf.load_config('.config'))
+        print(kconf.write_config())
     else:
-        sys.argv = ['menuconfig', 'Kconfig']
+        import menuconfig
+
         kconfiglib_fix_locale()
-        menuconfig._main()
+        menuconfig.menuconfig(kconfiglib.Kconfig('Kconfig', suppress_traceback=True))
 
     if os.path.isfile(".config"):
         mtime2 = os.path.getmtime(".config")
@@ -340,11 +237,5 @@ def add_parser(sub):
         default=False,
         dest='menuconfig_setting',
     )
-
-    # parser.add_argument('--easy',
-    #                     help='easy mode, place kconfig everywhere, modify the option env="RTT_ROOT" default "../.."',
-    #                     action='store_true',
-    #                     default=False,
-    #                     dest='menuconfig_easy')
 
     parser.set_defaults(func=cmd)

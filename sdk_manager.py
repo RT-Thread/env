@@ -28,10 +28,12 @@ if __package__ and __package__.startswith("env"):
     from env.plugins.errors import PackageError, PluginError, StateError, UsageError
     import env.kconfig as kconfig
     import env.network as network
+    from env.env_paths import get_env_root
 else:
     from plugins.errors import PackageError, PluginError, StateError, UsageError
     import kconfig
     import network
+    from env_paths import get_env_root
 
 
 class SdkError(PluginError):
@@ -55,11 +57,7 @@ class SdkCancelledError(SdkError):
 
 
 def _default_env_root():
-    configured = os.environ.get("ENV_ROOT")
-    if configured:
-        return os.path.abspath(configured)
-    home = os.environ.get("HOME") or os.environ.get("USERPROFILE") or os.path.expanduser("~")
-    return os.path.abspath(os.path.join(home, ".env"))
+    return get_env_root()
 
 
 def _safe_version(value):

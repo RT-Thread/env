@@ -24,77 +24,41 @@
 #
 
 
-def pkgs_path(pkgs, name, path):
-    for pkg in pkgs:
-        if 'name' in pkg and pkg['name'] == name:
-            pkg['path'] = path
-            return
+if (__package__ or '').split('.', 1)[0] == 'env':
+    from .config_file import iter_settings, read_config, unquote
+else:
+    from config_file import iter_settings, read_config, unquote
 
-    pkg = {}
-    pkg['name'] = name
-    pkg['path'] = path
-    pkgs.append(pkg)
+
+def _set_package_field(pkgs, name, field, value):
+    for pkg in pkgs:
+        if pkg.get('name') == name:
+            pkg[field] = value
+            return
+    pkgs.append({'name': name, field: value})
+
+
+def pkgs_path(pkgs, name, path):
+    _set_package_field(pkgs, name, 'path', path)
 
 
 def pkgs_ver(pkgs, name, ver):
-    for pkg in pkgs:
-        if 'name' in pkg and pkg['name'] == name:
-            pkg['ver'] = ver
-            return
-
-    pkg = {}
-    pkg['name'] = name
-    pkg['ver'] = ver
-    pkgs.append(pkg)
+    _set_package_field(pkgs, name, 'ver', ver)
 
 
 def parse(filename):
-    ret = []
-
-    # noinspection PyBroadException
     try:
-        config = open(filename, "r")
-    except Exception as e:
+        lines = read_config(filename)
+    except OSError:
         print('open .config failed')
-        return ret
+        return []
 
-    for line in config:
-        line = line.lstrip(' ').replace('\n', '').replace('\r', '')
-
-        if len(line) == 0:
+    packages = {}
+    for key, value in iter_settings(lines):
+        if not key.startswith('CONFIG_PKG_') or key.startswith('CONFIG_PKG_USING_'):
             continue
-
-        if line[0] == '#':
-            continue
-        else:
-            setting = line.split('=', 1)
-            if len(setting) >= 2:
-                if setting[0].startswith('CONFIG_PKG_'):
-                    pkg_prefix = setting[0][11:]
-                    if pkg_prefix.startswith('USING_'):
-                        pkg_name = pkg_prefix[6:]
-                    else:
-                        if pkg_prefix.endswith('_PATH'):
-                            pkg_name = pkg_prefix[:-5]
-                            pkg_path = setting[1]
-                            if pkg_path.startswith('"'):
-                                pkg_path = pkg_path[1:]
-                            if pkg_path.endswith('"'):
-                                pkg_path = pkg_path[:-1]
-                            pkgs_path(ret, pkg_name, pkg_path)
-
-                        if pkg_prefix.endswith('_VER'):
-                            pkg_name = pkg_prefix[:-4]
-                            pkg_ver = setting[1]
-                            if pkg_ver.startswith('"'):
-                                pkg_ver = pkg_ver[1:]
-                            if pkg_ver.endswith('"'):
-                                pkg_ver = pkg_ver[:-1]
-                            pkgs_ver(ret, pkg_name, pkg_ver)
-
-    config.close()
-    return ret
-
-
-if __name__ == '__main__':
-    parse('sample/.config')
+        name, separator, field = key[11:].rpartition('_')
+        if separator and field in ('PATH', 'VER'):
+            package = packages.setdefault(name, {'name': name})
+            package['path' if field == 'PATH' else 'ver'] = unquote(value)
+    return list(packages.values())

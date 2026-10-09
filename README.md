@@ -4,109 +4,158 @@
 
 # RT-Thread Env
 
-> A command-line toolkit for RT-Thread development.
+RT-Thread Env 是面向 RT-Thread 开发的工具集，提供项目配置、软件包管理、SDK 配置和插件管理功能，支持命令行与浏览器界面。
 
-> WARNING
->
-> [env v2.0](https://github.com/RT-Thread/env/tree/master) and [env-windows v2.0](https://github.com/RT-Thread/env-windows/tree/v2.0.0) only **FULL SUPPORT** RT-Thread > v5.1.0 or [master](https://github.com/rt-thread/rt-thread) branch. if you work on RT-Thread <= v5.1.0, please use [env v1.5.x](https://github.com/RT-Thread/env/tree/v1.5.x) for linux, [env-windows v1.5.x](https://github.com/RT-Thread/env-windows/tree/v1.5.2) for windows
->
-> env v2.0 has made the following important changes:
->
-> - Upgrading Python version from v2 to v3
-> - Replacing kconfig-frontends with Python kconfiglib
->
-> Env v2.0 installs kconfiglib and its other runtime dependencies in a Python venv; do not preinstall them into the host Python environment.
+- 使用 `menuconfig` 配置 RT-Thread 内核、组件和软件包。
+- 使用 `pkgs` 管理项目的软件包，使用 `sdk` 配置开发工具链。
+- 使用 `webui` 进行项目构建、SDK 管理、本地工具链配置和插件管理。
 
-## Installation Dependencies
+Env 2.x 面向 RT-Thread 5.1.0 之后的版本及主开发分支。使用 RT-Thread 5.1.0 或更早版本时，请选择 Env 1.5.x。
 
-安装脚本只准备宿主 Python、Git 和平台所需的系统构建工具，不再向宿主 Python
-安装或升级 pip、SCons、requests、psutil、tqdm、kconfiglib 等 Python 包。
-首次运行 `source ~/.env/env.sh` 或 `~/.env/env.ps1` 时，Env 创建
-`~/.env/.venv`，并根据 `pyproject.toml` 在其中安装运行依赖。
+## 安装与激活
 
-The installers prepare the host Python, Git, and platform-specific system build
-tools only. They do not install or upgrade pip or Env runtime packages in the
-host Python environment. On first activation, Env creates `~/.env/.venv` and
-installs its runtime dependencies there from `pyproject.toml`.
+Env 使用 Python 3 和 Git，默认安装在用户主目录的 `.env` 下。首次激活时会创建独立的 Python 虚拟环境并安装运行依赖，无需在系统 Python 中单独安装 SCons 或 Kconfiglib。
 
-pyocd 和 OpenOCD 不属于基础安装，不会默认安装；需要时可由独立的可选 Env
-插件提供。Arch 安装入口使用受控的系统依赖列表，不再调用 AUR 元包或询问
-是否安装额外调试工具。
+### Linux
 
-pyocd and OpenOCD are not part of the base installation. They can be provided by
-optional Env plugins when needed. The Arch installer uses an explicit system
-dependency list instead of an AUR meta-package or debugger installation prompts.
+以 Ubuntu 为例，下载安装脚本并执行：
 
-## Usage under Linux
-
-### Tutorial
-
-[How to install Env Tool with QEMU simulator in Ubuntu](https://github.com/RT-Thread/rt-thread/blob/master/documentation/quick-start/quick_start_qemu/quick_start_qemu_linux.md)
-
-### Install Env
-
-```
-# 中国大陆网络：
-wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
-
-# 其他地区网络：
+```bash
 wget https://raw.githubusercontent.com/RT-Thread/env/master/install_ubuntu.sh
-
-chmod 777 install_ubuntu.sh
+chmod +x install_ubuntu.sh
 ./install_ubuntu.sh
-rm install_ubuntu.sh
 ```
 
-请根据自身网络地区选择对应的下载地址来下载安装脚本。安装脚本会自动识别网络区域，使用相应镜像下载后续仓库，完成后将仓库远程地址统一设为 GitHub。
+如需使用中国大陆镜像，可将下载命令替换为：
 
-### Prepare Env
+```bash
+wget https://gitee.com/RT-Thread-Mirror/env/raw/master/install_ubuntu.sh
+```
 
-Run `source ~/.env/env.sh` to activate Env. The script creates a missing Python
-virtual environment and always attempts to activate it. When the local
-`tools/scripts` source changes, it offers to reinstall Env into the venv and
-synchronize the activation script. To activate Env automatically, add this
-command to `~/.bashrc`.
+安装完成后，在当前终端激活 Env：
 
-The upgrade check is local and does not fetch the Env Git repository. Python
-packages use the Alibaba Cloud PyPI mirror when a mainland China IP is detected;
-other regions and detection failures use pip's configured default. Set
-`ENV_PYPI_INDEX_URL` to override the package index or
-`ENV_VENV_AUTO_UPGRADE=1` to accept a pending local-source upgrade without a
-prompt.
+```bash
+source ~/.env/env.sh
+```
 
-### Use Env
+其他系统的安装入口：
 
-Please see: [https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig](https://github.com/RT-Thread/rt-thread/blob/master/documentation/env/env.md#bsp-configuration-menuconfig)
+| 系统 | 安装脚本 |
+| --- | --- |
+| Arch Linux | [install_arch.sh](install_arch.sh) |
+| openSUSE | [install_suse.sh](install_suse.sh) |
+| macOS | [install_macos.sh](install_macos.sh) |
 
-## Usage under Windows
+macOS 需先准备 Python 3，安装后同样使用 `source ~/.env/env.sh` 激活。
 
-Tested on the following version of PowerShell:
+### Windows
 
-- PSVersion                      5.1.22621.963
-- PSVersion                      5.1.19041.2673
-
-### Install Env
-
-您需要以管理员身份运行 PowerShell 来设置执行。（You need to run PowerShell as an administrator to set up execution.）
-
-在 PowerShell 中执行（Execute the command in PowerShell）：
+在 PowerShell 中下载安装脚本并执行：
 
 ```powershell
-wget https://raw.githubusercontent.com/RT-Thread/env/master/install_windows.ps1 -O install_windows.ps1
-set-executionpolicy remotesigned
+Invoke-WebRequest https://raw.githubusercontent.com/RT-Thread/env/master/install_windows.ps1 -OutFile install_windows.ps1
 .\install_windows.ps1
 ```
 
-安装脚本会自动识别网络区域，使用相应镜像下载仓库，完成后将仓库远程地址统一设为 GitHub。
+如脚本被执行策略阻止，请按本机或组织的安全要求配置执行策略。安装 Python 或 Git 时可能需要管理员权限；安装完成后，日常使用无需以管理员身份运行。
 
-注意：
+在当前 PowerShell 会话中激活 Env：
 
-1. Powershell要以管理员身份运行。
-2. 将其设置为 remotesigned 后，您可以作为普通用户运行 PowerShell。（ After setting it to remotesigned, you can run PowerShell as a normal user.）
-3. 一定要关闭杀毒软件，否则安装过程可能会被杀毒软件强退
+```powershell
+. "$HOME\.env\env.ps1"
+```
 
-### Prepare Env
+每次打开新终端后均需激活 Env。也可以将激活命令加入 shell 启动配置或 PowerShell 的 `$PROFILE`。
 
-Run `~/.env/env.ps1` to activate Env. It follows the same venv creation, local
-upgrade, mirror selection, and activation behavior as `env.sh`. To activate Env
-automatically, add `~/.env/env.ps1` to your PowerShell profile.
+## 配置与构建项目
+
+先激活 Env，再进入目标 BSP 根目录。该目录应包含 `Kconfig` 和项目构建文件：
+
+```bash
+cd /path/to/rt-thread/bsp/your-board
+menuconfig
+pkgs --update
+scons
+```
+
+`menuconfig` 使用 Python 终端配置界面，保存项目的 `.config` 并生成配置头文件，默认文件名为 `rtconfig.h`。`pkgs --update` 根据配置安装或移除软件包，`scons` 执行项目构建。
+
+构建前需准备与目标芯片匹配的工具链，并按 BSP 要求配置编译器路径。
+
+常用配置选项：
+
+| 命令 | 用途 |
+| --- | --- |
+| `menuconfig --config saved.config` | 使用指定配置文件进行配置 |
+| `menuconfig --silent` | 无交互地加载现有配置，应用默认值和依赖关系并保存 |
+| `menuconfig --generate` | 从现有 `.config` 生成配置头文件 |
+| `menuconfig --setting` | 配置 Env 的自动更新软件包等选项 |
+
+## 软件包与 SDK
+
+在 `menuconfig` 中选择项目所需的软件包后，使用以下命令管理：
+
+| 命令 | 用途 |
+| --- | --- |
+| `pkgs --update` | 按当前项目配置更新软件包 |
+| `pkgs --list` | 查看当前配置选中的软件包 |
+| `pkgs --upgrade` | 更新本地软件包索引 |
+
+软件包索引更新后，可重新运行 `menuconfig` 选择新增的软件包或版本。
+
+通过终端界面选择和安装 SDK：
+
+```bash
+sdk
+```
+
+SDK 也可在 WebUI 的设置页面中管理。已有工具链可在“本地工具链配置”中登记，实际编译器选择仍以项目配置为准。
+
+## WebUI
+
+在项目目录运行以下命令，启动服务并打开浏览器：
+
+```bash
+webui
+```
+
+服务默认仅监听本机地址。浏览器未自动打开时，请访问终端输出的 `Launch URL`；使用 `webui --no-browser` 可仅启动服务。
+
+WebUI 提供项目首页、插件中心和设置页面。项目构建需要工作区具备相应构建文件；浏览器中的 BSP Kconfig 编辑功能由独立插件提供。
+
+按 `Ctrl+W` 可无确认退出 WebUI，并停止对应服务。刷新页面或切换标签页不会主动退出服务。也可以在启动服务的终端按 `Ctrl+C` 退出，或使用页面中的“退出 WebUI”按钮。
+
+需要后台运行时，使用以下命令：
+
+```bash
+webui start
+webui status
+webui stop
+```
+
+## 插件
+
+插件用于扩展 Env 命令或 WebUI 页面。激活 Env 后，可以安装本地 `.epack` 插件包并查看已安装插件：
+
+```bash
+rt-env plugin install /path/to/plugin.epack
+rt-env plugin list
+```
+
+安装前请核对插件来源和所需权限。插件的升级、卸载、诊断及开发说明见 [插件文档](plugins/README.zh-CN.md)。
+
+## 帮助与参考
+
+查看命令帮助及当前环境信息：
+
+```bash
+rt-env --help
+rt-env --info
+menuconfig --help
+pkgs --help
+webui --help
+```
+
+- [插件使用与开发](plugins/README.zh-CN.md)
+- [EBuild 构建框架](ebuild/README.md)
+- [插件包格式规范](plugins/spec/README.md)
