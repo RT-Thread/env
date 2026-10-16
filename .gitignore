@@ -116,6 +116,14 @@ plugins/webui/frontend/test-results/
 docs
 documentation
 
+# Standalone public HTML materials
+!docs/
+docs/*
+!docs/html/
+!docs/html/**
+!docs/introduction-html/
+!docs/introduction-html/**
+
 # Temporary files
 tmp
 temp
