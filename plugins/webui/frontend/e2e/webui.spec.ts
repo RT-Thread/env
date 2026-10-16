@@ -183,6 +183,96 @@ test('plugin center prioritizes installed plugins when the market is enabled', a
   await context.close()
 })
 
+for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 1920, height: 1080 }, { width: 390, height: 844 }]) {
+  test(`home leads navigation and documentation stays built-in at ${viewport.width}px`, async ({ browser }, testInfo) => {
+    const context = await browser.newContext({
+      viewport,
+      ...(authenticatedState ? { storageState: authenticatedState } : {}),
+    })
+    const page = await context.newPage()
+    const forumRequests = []
+    page.on('request', (request) => {
+      if (new URL(request.url()).hostname === 'club.rt-thread.org') forumRequests.push(request.url())
+    })
+    await context.route('https://www.rt-thread.org/document/site/**', async (route) => {
+      await route.fulfill({
+        contentType: 'text/html; charset=utf-8',
+        body: '<!doctype html><html><body><h1>文档测试页</h1><input aria-label="文档搜索"></body></html>',
+      })
+    })
+    await page.goto(authenticatedState ? new URL('/', launchUrl).toString() : launchUrl)
+    await expect(page.getByRole('heading', { name: '项目首页', exact: true })).toBeVisible()
+    const entries = page.locator('.plugin-navigation > .nav-entry')
+    await expect(entries.nth(0)).toContainText('项目首页')
+    await expect(entries.nth(1)).toContainText('文档中心')
+    await expect(entries.nth(0).locator('svg')).toHaveCount(1)
+    await expect(entries.nth(1).locator('svg')).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'RT-Thread 论坛', exact: true })).toHaveCount(0)
+
+    async function navigate(name) {
+      if (viewport.width < 840) await page.getByRole('button', { name: '打开导航' }).click()
+      await page.getByRole('button', { name, exact: true }).click()
+    }
+
+    const savedNavigationPreference = await page.evaluate(() => localStorage.getItem('env-sidebar-collapsed'))
+    const navigationWasCollapsed = await page.locator('.app-shell').evaluate((element) => element.classList.contains('sidebar-collapsed'))
+    await navigate('文档中心')
+    await expect(page).toHaveURL(/view=documentation/)
+    await expect(page.locator('.community-toolbar')).toHaveCount(0)
+    const frame = page.locator('.community-frame[title="文档中心"]')
+    await expect(frame.contentFrame().getByRole('heading', { name: '文档测试页' })).toBeVisible()
+    async function assertDocumentationBounds(sidebarWidth) {
+      const mainBounds = await page.locator('.main-shell').boundingBox()
+      const panelBounds = await page.locator('.community-view').boundingBox()
+      const frameBounds = await frame.boundingBox()
+      expect(mainBounds.width).toBeCloseTo(viewport.width - sidebarWidth, 0)
+      expect(panelBounds.width).toBeCloseTo(mainBounds.width, 0)
+      expect(panelBounds.height).toBeCloseTo(mainBounds.height, 0)
+      expect(frameBounds.width).toBeCloseTo(mainBounds.width, 0)
+      expect(frameBounds.height).toBeCloseTo(mainBounds.height, 0)
+      expect(frameBounds.x).toBeCloseTo(mainBounds.x, 0)
+      expect(frameBounds.y).toBeCloseTo(mainBounds.y, 0)
+      await expect(page.locator('.plugin-content')).toBeHidden()
+    }
+    if (navigationWasCollapsed) await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/)
+    else await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/)
+    if (viewport.width >= 840) {
+      const initialSidebarWidth = navigationWasCollapsed ? 72 : 244
+      const toggledSidebarWidth = navigationWasCollapsed ? 244 : 72
+      await expect.poll(async () => (await frame.boundingBox()).width).toBeCloseTo(viewport.width - initialSidebarWidth, 0)
+      await assertDocumentationBounds(initialSidebarWidth)
+      await page.getByRole('button', { name: navigationWasCollapsed ? '展开侧边栏' : '折叠侧边栏' }).click()
+      await expect.poll(async () => (await frame.boundingBox()).width).toBeCloseTo(viewport.width - toggledSidebarWidth, 0)
+      await assertDocumentationBounds(toggledSidebarWidth)
+      await page.getByRole('button', { name: navigationWasCollapsed ? '折叠侧边栏' : '展开侧边栏' }).click()
+      await expect.poll(async () => (await frame.boundingBox()).width).toBeCloseTo(viewport.width - initialSidebarWidth, 0)
+      await assertDocumentationBounds(initialSidebarWidth)
+    } else {
+      await assertDocumentationBounds(0)
+    }
+    expect(await page.evaluate(() => localStorage.getItem('env-sidebar-collapsed'))).toBe(savedNavigationPreference)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath('documentation.png') })
+
+    await frame.contentFrame().getByRole('textbox', { name: '文档搜索' }).fill('rt-thread')
+    await navigate('项目首页')
+    await expect(page.getByRole('heading', { name: '项目首页', exact: true })).toBeVisible()
+    if (navigationWasCollapsed) await expect(page.locator('.app-shell')).toHaveClass(/sidebar-collapsed/)
+    else await expect(page.locator('.app-shell')).not.toHaveClass(/sidebar-collapsed/)
+    await navigate('文档中心')
+    await expect(frame.contentFrame().getByRole('textbox', { name: '文档搜索' })).toHaveValue('rt-thread')
+
+    await page.goto(new URL('/?view=documentation', launchUrl).toString())
+    await expect(frame.contentFrame().getByRole('heading', { name: '文档测试页' })).toBeVisible()
+    await page.goto(new URL('/?view=forum', launchUrl).toString())
+    await expect(page.getByRole('heading', { name: '项目首页', exact: true })).toBeVisible()
+    await expect(page).not.toHaveURL(/view=forum/)
+    await expect(page.locator('.community-frame')).toHaveCount(0)
+    expect(forumRequests).toEqual([])
+    await context.close()
+  })
+}
+
 test('permissions, local upgrade and CLI package import stay synchronized', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, storageState: authenticatedState })
   const page = await context.newPage()

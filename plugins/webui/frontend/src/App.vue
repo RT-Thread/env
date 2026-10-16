@@ -20,6 +20,7 @@ import {
   Plus,
   Platform,
   Refresh,
+  Reading,
   FolderOpened,
   Setting,
   SwitchButton,
@@ -40,6 +41,7 @@ import {
   formatSpeed,
   reasonText,
   requestedPluginId,
+  requestedCommunityView,
   runtimeText,
   sdkActionLabel,
   sdkHasDownloadProgress,
@@ -70,6 +72,7 @@ import {
   marketStateLabel,
 } from './utils/plugins'
 import { isCloseWebUIShortcut } from './utils/shortcuts'
+import { communityWebsites, isCommunityView } from './utils/community'
 import type {
   ContextMenuSnapshot,
   DoctorResult,
@@ -89,6 +92,7 @@ import type {
 import { useSdk } from './composables/useSdk'
 import PluginIcon from './components/PluginIcon.vue'
 import NetworkSettings from './components/NetworkSettings.vue'
+import CommunityWebsite from './components/CommunityWebsite.vue'
 import envLogo from '@env-brand/env.png'
 
 const ProjectDocument = defineAsyncComponent(() => import('./components/ProjectDocument.vue'))
@@ -100,6 +104,8 @@ const actionBusy = ref(false)
 const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('env-sidebar-collapsed') === 'true')
 const currentView = ref('home')
+const navigationCollapsed = computed(() => sidebarCollapsed.value)
+const mountedCommunityViews = ref(new Set<string>())
 const closing = ref(false)
 const pluginTab = ref('installed')
 const settingsTab = ref('general')
@@ -190,6 +196,7 @@ function pluginAsset(plugin?: Partial<EnvPlugin> | null) {
 const marketEnabled = computed(() => Boolean(session.value?.market?.enabled))
 const webuiPlugins = computed(() => installed.value.filter((item) => item.enabled && item.webui))
 const navigablePlugins = computed(() => webuiPlugins.value.filter((item) => item.workspace_ready !== false))
+const mountedWebsites = computed(() => communityWebsites.filter((website) => mountedCommunityViews.value.has(website.id)))
 const activePlugin = computed(() => installed.value.find((item) => item.id === currentView.value))
 const buildRunning = computed(() => ['queued', 'running'].includes(buildTask.value?.status || ''))
 const buildStateLabel = computed(() => {
@@ -350,9 +357,10 @@ async function reloadAll() {
   const requested = installedItems.find((item) => item.id === requestedPluginId())
   if (currentView.value === 'home' || currentView.value === 'plugins') {
     if (requested?.enabled && requested.webui) go(requested.id)
+    else if (requestedCommunityView()) go(requestedCommunityView())
     else syncViewUrl(currentView.value)
   }
-  if (currentView.value !== 'home' && currentView.value !== 'plugins' && currentView.value !== 'settings') {
+  if (currentView.value !== 'home' && currentView.value !== 'plugins' && currentView.value !== 'settings' && !isCommunityView(currentView.value)) {
     const current = installedItems.find((item) => item.id === currentView.value)
     if (!current?.enabled || !current.webui) {
       currentView.value = 'plugins'
@@ -660,6 +668,11 @@ function go(view: string, forceReload = false) {
   currentView.value = view
   sidebarOpen.value = false
   syncViewUrl(view)
+  if (isCommunityView(view)) {
+    mountedCommunityViews.value = new Set([...mountedCommunityViews.value, view])
+    iframeState.value = 'idle'
+    return
+  }
   if (view === 'home' || view === 'plugins' || view === 'settings') {
     iframeState.value = 'idle'
     return
@@ -1001,18 +1014,18 @@ onBeforeUnmount(() => {
 
 <template>
   <el-config-provider>
-    <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen, 'sidebar-collapsed': sidebarCollapsed }" v-loading="loading">
+    <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen, 'sidebar-collapsed': navigationCollapsed }" v-loading="loading">
       <aside id="env-sidebar" class="sidebar">
         <div class="brand">
           <img class="brand-logo" :src="envLogo" alt="RT-Thread Env" />
-          <el-tooltip :content="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'">
+          <el-tooltip :content="navigationCollapsed ? '展开侧边栏' : '折叠侧边栏'">
             <el-button
               class="sidebar-toggle"
               text
               circle
-              :icon="sidebarCollapsed ? Expand : Fold"
-              :aria-label="sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'"
-              :aria-expanded="!sidebarCollapsed"
+              :icon="navigationCollapsed ? Expand : Fold"
+              :aria-label="navigationCollapsed ? '展开侧边栏' : '折叠侧边栏'"
+              :aria-expanded="!navigationCollapsed"
               aria-controls="env-sidebar"
               @click="toggleSidebarCollapsed"
             />
@@ -1020,9 +1033,21 @@ onBeforeUnmount(() => {
           <el-button class="mobile-close" text circle :icon="Close" aria-label="关闭导航" @click="sidebarOpen = false" />
         </div>
 
-        <nav class="plugin-navigation" aria-label="已安装插件">
-          <button class="nav-entry" :class="{ active: currentView === 'home' }" @click="go('home')">
+        <nav class="plugin-navigation" aria-label="主导航">
+          <button class="nav-entry" :class="{ active: currentView === 'home' }" :title="navigationCollapsed ? '项目首页' : undefined" aria-label="项目首页" @click="go('home')">
             <span class="nav-icon"><DataAnalysis /></span><span>项目首页</span>
+          </button>
+          <button
+            v-for="website in communityWebsites"
+            :key="website.id"
+            class="nav-entry builtin-entry"
+            :class="{ active: currentView === website.id }"
+            :title="navigationCollapsed ? website.title : undefined"
+            :aria-label="website.title"
+            @click="go(website.id)"
+          >
+            <span class="nav-icon"><Reading /></span>
+            <span>{{ website.title }}</span>
           </button>
           <div class="nav-heading"><span>已安装插件</span><b>{{ navigablePlugins.length }}</b></div>
           <button
@@ -1030,7 +1055,7 @@ onBeforeUnmount(() => {
             :key="plugin.id"
             class="nav-entry"
             :class="{ active: currentView === plugin.id }"
-            :title="sidebarCollapsed ? plugin.name : undefined"
+            :title="navigationCollapsed ? plugin.name : undefined"
             @click="go(plugin.id)"
           >
             <span class="nav-icon"><PluginIcon :plugin="plugin" :asset="pluginAsset(plugin)" /></span>
@@ -1066,6 +1091,13 @@ onBeforeUnmount(() => {
         <el-tooltip content="打开导航">
           <el-button class="mobile-menu" text circle :icon="Menu" aria-label="打开导航" @click="sidebarOpen = true" />
         </el-tooltip>
+
+        <CommunityWebsite
+          v-for="website in mountedWebsites"
+          v-show="currentView === website.id"
+          :key="website.id"
+          :website="website"
+        />
 
         <section v-if="currentView === 'home'" class="content-scroll home-view">
           <div class="home-hero">
@@ -1506,7 +1538,7 @@ onBeforeUnmount(() => {
           </el-tabs>
         </section>
 
-        <section v-show="currentView !== 'home' && currentView !== 'plugins' && currentView !== 'settings'" class="plugin-content">
+        <section v-show="currentView !== 'home' && currentView !== 'plugins' && currentView !== 'settings' && !isCommunityView(currentView)" class="plugin-content">
           <div class="plugin-frame-stack">
             <iframe
               v-for="plugin in mountedFramePlugins"
