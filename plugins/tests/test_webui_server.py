@@ -96,6 +96,7 @@ class WebUIServerTest(unittest.TestCase):
         session = self.authenticate()
         self.assertEqual(session['frontend_sdk'], '1.0.0')
         self.assertEqual(session['plugin_assets'], {})
+        self.assertNotIn('forum_identity', session)
         self.assertEqual(session['market'], {'enabled': False, 'url': '', 'source': None})
 
         package = os.path.join(
@@ -187,6 +188,23 @@ class WebUIServerTest(unittest.TestCase):
         self.request_json('/api/v1/plugins/org.rt-thread.build-insight?purge_data=false', method='DELETE')
         _, plugins = self.request_json('/api/v1/plugins')
         self.assertEqual(plugins, [])
+
+    def test_removed_forum_identity_api_is_unavailable(self):
+        self.authenticate()
+        for method in ('GET', 'PUT'):
+            with self.assertRaises(HTTPError) as missing:
+                self.request_json(
+                    '/api/v1/forum/identity', method=method,
+                    body={} if method == 'PUT' else None,
+                )
+            self.assertEqual(missing.exception.code, 404)
+
+    def test_host_csp_allows_only_documentation_and_local_frames(self):
+        self.authenticate()
+        with self.opener.open(self.server.url) as response:
+            policy = response.headers['Content-Security-Policy']
+        frame_sources = next(part.strip() for part in policy.split(';') if part.strip().startswith('frame-src '))
+        self.assertEqual(frame_sources, "frame-src 'self' https://www.rt-thread.org")
 
     def test_local_upload_installs_cli_only_plugin(self):
         self.authenticate()

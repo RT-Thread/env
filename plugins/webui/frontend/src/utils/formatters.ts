@@ -1,5 +1,6 @@
 import type { MarketDiagnosisReason, RuntimeProfile, SdkTask, SdkTaskOperation } from '../types/api'
 import { marketReasonLabels, sdkActionLabels, sdkStateLabels, sdkTaskOperationStatusLabels, sdkTaskStageLabels } from '../constants'
+import { isCommunityView } from './community'
 
 export function sdkStateLabel(state: string): string {
   return sdkStateLabels[state] || state
@@ -78,9 +79,18 @@ export function requestedPluginId(): string {
   return value?.trim() || ''
 }
 
+export function requestedCommunityView(): string {
+  const view = new URLSearchParams(window.location.search).get('view') || ''
+  return isCommunityView(view) ? view : ''
+}
+
 export function syncViewUrl(view: string): void {
   const url = new URL(window.location.href)
-  if (view !== 'home' && view !== 'plugins' && view !== 'settings') url.searchParams.set('plugin', view)
+  url.searchParams.delete('view')
+  if (isCommunityView(view)) {
+    url.searchParams.set('view', view)
+    url.searchParams.delete('plugin')
+  } else if (view !== 'home' && view !== 'plugins' && view !== 'settings') url.searchParams.set('plugin', view)
   else url.searchParams.delete('plugin')
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }

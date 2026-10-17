@@ -39,7 +39,7 @@ from collections import namedtuple
 # configured, the primary source is used.
 DEFAULTS = {
     'name': 'RT-Thread Env Tool',
-    'version': 'v2.0.2',
+    'version': 'v2.0.3',
     'description': 'A command-line toolkit for RT-Thread development.',
     'repositories': {
         'env': {

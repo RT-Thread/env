@@ -1079,7 +1079,8 @@ class EnvWebUIRequestHandler(BaseHTTPRequestHandler):
         else:
             policy = (
                 "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-                "img-src 'self' data: http: https:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'"
+                "img-src 'self' data: http: https:; connect-src 'self'; "
+                "frame-src 'self' https://www.rt-thread.org; object-src 'none'; base-uri 'none'"
             )
         if path.endswith('index.html'):
             cache = 'no-store'
