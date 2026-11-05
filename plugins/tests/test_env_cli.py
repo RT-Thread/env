@@ -77,6 +77,20 @@ class EnvPluginCliTest(unittest.TestCase):
         cleared = self.cli('market', 'clear', '--json')
         self.assertFalse(json.loads(cleared.stdout)['enabled'])
 
+    def test_market_defaults_to_sdk_and_clear_restores_sdk_source(self):
+        from plugins.tests.test_sdk_index import write_sdk_index
+
+        index = write_sdk_index(self.env_root, [])
+        shown = self.cli('market')
+        self.assertEqual(shown.returncode, 0, shown.stderr)
+        self.assertIn('SDK repository index', shown.stdout)
+        self.assertIn(str(index), shown.stdout)
+        self.assertEqual(json.loads(self.cli('market', '--json').stdout)['source'], 'sdk')
+        self.assertEqual(self.cli('market', 'set', 'https://market.example').returncode, 0)
+        cleared = self.cli('market', 'clear', '--json')
+        self.assertEqual(cleared.returncode, 0, cleared.stderr)
+        self.assertEqual(json.loads(cleared.stdout)['source'], 'sdk')
+
 
 if __name__ == '__main__':
     unittest.main()

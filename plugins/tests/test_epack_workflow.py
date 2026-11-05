@@ -111,6 +111,15 @@ class EpackWorkflowTest(unittest.TestCase):
         with self.assertRaisesRegex(MarketError, 'invalid token'):
             push_package(self.package, self.url)
 
+    def test_sdk_index_is_read_only_but_explicit_http_publication_still_works(self):
+        config = {'enabled': True, 'url': '/sdk/env-plugins/index.json', 'source': 'sdk'}
+        with mock.patch.object(epack_cli, 'load_market_config', return_value=config):
+            with self.assertRaisesRegex(UsageError, 'SDK plugin index is read-only'):
+                epack_cli.run(['push', self.package])
+            self.assertIsNone(self.server.upload)
+            self.assertEqual(epack_cli.run(['push', self.package, '--market', self.url]), 0)
+        self.assertIsNotNone(self.server.upload)
+
     def test_test_command_executes_from_temporary_install(self):
         project = os.path.join(EXAMPLES, 'hello-1.0.0')
         with mock.patch('plugins.launchers.shutil.which', return_value='/some/installed/launcher'):
