@@ -32,6 +32,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Build bundled epack plugin
+        run: python -m plugins.epack.build_epack
       - name: Install dependencies
         run: python -m pip install . pytest setuptools wheel uvicorn
       - name: Run Python regression tests
