@@ -1,0 +1,99 @@
+name: Plugin Tests
+
+on:
+  push:
+    branches: [master, feature/sdk-plugin-index]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: '1'
+  ENV_PLUGIN_MARKET_URL: ''
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: python -m pip install . pytest setuptools wheel uvicorn
+      - name: Run Python regression tests
+        run: python -m pytest tests plugins/tests -q
+
+  windows-sdk:
+    name: SDK index (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install . pytest setuptools wheel uvicorn
+      - name: Run SDK index and HTTP market regression tests
+        run: >-
+          python -m pytest -q
+          plugins/tests/test_sdk_index.py
+          plugins/tests/test_sdk_index_webui.py
+          plugins/tests/test_market.py
+          plugins/tests/test_env_cli.py
+          plugins/tests/test_epack_workflow.py
+
+  webui:
+    name: WebUI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: plugins/webui/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: plugins/webui/frontend/package-lock.json
+      - name: Install Python dependencies
+        run: python -m pip install ../../.. uvicorn
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Type-check frontend
+        run: npm run typecheck
+      - name: Run frontend unit tests
+        run: npm test
+      - name: Build frontend assets
+        run: npm run build
+      - name: Verify committed frontend assets
+        run: git diff --exit-code -- ../static
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test SDK catalog and plugin workflows in Chromium
+        run: npm run test:e2e -- sdk-market.spec.ts webui.spec.ts
+      - name: Retain browser test artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-browser-results
+          path: plugins/webui/frontend/test-results/
+          retention-days: 7
