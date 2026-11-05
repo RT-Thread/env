@@ -30,6 +30,7 @@ from ..market import (
     strip_download_urls,
 )
 from ..service import PluginService
+from ..sdk_index import SdkIndexClient
 from . import FRONTEND_SDK_VERSION, WEBUI_API_VERSION
 from .builds import BuildTaskManager
 from .documents import DocumentNotFound, WorkspaceDocuments
@@ -96,7 +97,8 @@ class WebUIApplication(object):
         self.asset_tokens = {}
         self.asset_token_lock = threading.Lock()
         self.market = load_market_config(self.service.paths)
-        self.market_client = MarketClient(self.market['url'], env_root=env_root) if self.market['enabled'] else None
+        client_class = SdkIndexClient if self.market['source'] == 'sdk' else MarketClient
+        self.market_client = client_class(self.market['url'], env_root=env_root) if self.market['enabled'] else None
         self.build_manager = BuildTaskManager(self.workspace)
         self.documents = WorkspaceDocuments(self.workspace)
         self.lifecycle = None
@@ -281,6 +283,12 @@ class WebUIApplication(object):
     def test_network(self, body):
         if not isinstance(body, dict) or set(body) != {'target'}:
             raise UsageError('network test requires one target')
+        if body['target'] == 'market' and self.market['source'] == 'sdk':
+            started = time.monotonic()
+            status = self.market_status()
+            return {'target': 'market', 'reachable': status['reachable'], 'status': None,
+                    'elapsed_ms': int((time.monotonic() - started) * 1000),
+                    'message': status['message'] or 'SDK plugin index is available'}
         targets = {
             'github': 'https://github.com',
             'gitee': 'https://gitee.com',
@@ -397,6 +405,9 @@ class WebUIApplication(object):
                 raise
         else:
             artifact = public_artifact(resolved.get('artifact'))
+            if artifact and artifact.get('version'):
+                result['action'] = annotate_catalog_item(
+                    dict(detail, latest_version=artifact['version']), installed)['action']
             result['compatible'] = True
             result['resolved'] = {
                 'version': (artifact or {}).get('version'),
@@ -431,14 +442,14 @@ class WebUIApplication(object):
             except OSError:
                 pass
             raise
-        if summary['id'] != plugin_id:
+        if summary['id'] != plugin_id or (artifact.get('version') and summary['version'] != artifact['version']):
             package_path = self.consume_upload(summary['upload_id'])
             try:
                 os.unlink(package_path)
             except OSError:
                 pass
             raise MarketError(
-                'downloaded package id does not match the market plugin',
+                'downloaded package id or version does not match the market plugin',
                 code='invalid_package',
                 status=400,
                 details={'stage': 'inspect'},

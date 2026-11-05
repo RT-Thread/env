@@ -229,6 +229,7 @@ const upgradeMismatch = computed(() => (
 ))
 const marketSourceLabel = computed(() => {
   if (!marketEnabled.value) return '未配置'
+  if (session.value.market.source === 'sdk') return 'SDK 仓库索引'
   return session.value.market.source === 'env' ? '环境变量' : '配置文件'
 })
 
