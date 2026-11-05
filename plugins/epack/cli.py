@@ -228,7 +228,11 @@ def run(argv, context=None):
     elif args.command == 'inspect':
         result = EpackArchive(_path(args.package, context)).inspect().summary()
     elif args.command in ('push', 'publish'):
-        market = args.market or load_market_config(PluginPaths())['url']
+        config = load_market_config(PluginPaths())
+        if not args.market and config['source'] == 'sdk':
+            raise UsageError('SDK plugin index is read-only; upload the .epack to a release and update its index, '
+                             'or use --market to publish to an HTTP market')
+        market = args.market or config['url']
         if not market:
             raise UsageError('plugin market is not configured; use --market or env plugin market set')
         token = _read_token(args.token_file, context) if args.token_file else None

@@ -9,8 +9,9 @@ upgrades, enables, disables, diagnoses and uninstalls them. CLI and browser
 operations share the same state and `PluginService` facade.
 
 The local lifecycle still installs from `.epack` files. An optional plugin
-market URL can be configured; when it is present, the WebUI shows an online
-catalog and downloads a matching artifact through the local Host API. Env
+market URL can be configured; otherwise the SDK repository plugin index is
+used when present. The WebUI shows an online catalog and downloads a matching
+artifact through the local Host API. Env
 never installs from a raw plugin id or URL.
 
 ## Layout
@@ -19,7 +20,7 @@ never installs from a raw plugin id or URL.
 - `installer.py`, `store.py`, `launchers.py`: transactional lifecycle state and command launchers.
 - `dispatcher.py`, `sdk/`: mandatory command dispatch and plugin runtime context.
 - `epack/`: plugin project initialization, validation, build and package inspection.
-- `market.py`: optional plugin market URL and Host API client.
+- `market.py`, `sdk_index.py`: HTTP market and serverless SDK index clients.
 - `webui/`: local Host API, Vue source and prebuilt host assets.
 - `bundled/epack/`: source project for the optional official `epack` developer tool.
 - `examples/`: CLI-only, WebUI-only and combined example plugin projects.
@@ -99,7 +100,21 @@ rt-env plugin market clear
 ```
 
 `ENV_PLUGIN_MARKET_URL` overrides `${ENV_ROOT}/var/plugins/market.json`.
-Without a configured URL, the WebUI hides the online plugin page.
+Without an explicit market URL, Env uses
+`${ENV_ROOT}/packages/sdk/env-plugins/index.json` when present. Its sdk-index-style
+root (`{"version": 1, "index": ["<plugin-directory>"]}`) references child
+`index.json` files containing plugin metadata and `versions[].artifacts[]`.
+Each artifact declares an HTTPS `url`, `.epack` filename, lowercase `sha256`,
+compatibility fields matching its manifest, and optional `size_bytes`. GitHub
+Release URLs are supported with restricted HTTPS asset redirects. See the SDK
+repository's `env-plugins/README.md` for the complete format and publishing steps.
+Refreshing the catalog rereads local files; update the SDK Git repository first
+to receive new entries. The highest compatible non-yanked version is selected.
+Downloads use Env network settings and checksum validation, then the existing
+package checks and unsigned-package consent. `epack push` still targets HTTP
+markets; SDK publication means uploading a release and updating the Git index.
+The online page is hidden only when neither source exists. Clearing a saved
+HTTP URL restores the SDK default (unless overridden by the environment).
 
 Add `--purge-data` to uninstall a plugin and remove its private configuration,
 data and cache. Workspace files are never removed by the uninstall workflow.
@@ -468,4 +483,4 @@ individual images to 16 MiB.
 - Service backends require `uvicorn` and its runtime dependencies to be included as dependency wheels.
 - Frontend resources must be prebuilt and must not contain source maps, symbolic links or path-traversal members.
 - V1 packages are currently unsigned local artifacts. Do not make `--yes` the default policy for packages from untrusted sources.
-- The WebUI shows the online catalog only when a market URL is configured. Installation still uses a one-time local upload id after the Host API downloads and inspects the artifact.
+- The WebUI shows the online catalog when an HTTP market is configured or the SDK plugin index exists. Installation still uses a one-time local upload id after the Host API downloads and inspects the artifact.

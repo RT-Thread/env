@@ -1,9 +1,13 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 from plugins.errors import UsageError
-from plugins.market import diagnose_market_plugin, load_market_config, normalize_market_url, save_market_url
+from plugins.market import (
+    artifact_compatibility_checks, diagnose_market_plugin, load_market_config, normalize_market_url,
+    runtime_profile, save_market_url,
+)
 from plugins.paths import PluginPaths
 
 
@@ -36,6 +40,20 @@ class MarketConfigTest(unittest.TestCase):
 
 
 class MarketDiagnosisTest(unittest.TestCase):
+    def test_runtime_abi_matches_native_and_portable_artifacts(self):
+        with mock.patch('plugins.market.python_abi', return_value='cp312'):
+            runtime = runtime_profile()
+        self.assertEqual(runtime['abi'], 'cp312')
+        compatibility = {
+            'env': '>=0.0.0', 'python': '>=3.7.0', 'implementations': [runtime['implementation']],
+            'platforms': ['any'], 'architectures': ['any'], 'abis': ['cp312'],
+        }
+        self.assertTrue(all(check['ok'] for check in artifact_compatibility_checks(compatibility, runtime)))
+        compatibility['abis'] = ['py3']
+        self.assertTrue(all(check['ok'] for check in artifact_compatibility_checks(compatibility, runtime)))
+        compatibility['abis'] = ['cp37']
+        self.assertFalse(all(check['ok'] for check in artifact_compatibility_checks(compatibility, runtime)))
+
     def test_explains_platform_mismatch(self):
         detail = {
             'id': 'org.example.windows',

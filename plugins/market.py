@@ -16,6 +16,7 @@ from .compatibility import (
     current_env_version,
     normalize_architecture,
     normalize_platform,
+    python_abi,
     version_satisfies,
 )
 from .errors import PluginError, UsageError
@@ -75,6 +76,9 @@ def load_market_config(paths, environ=None):
             return {'enabled': False, 'url': '', 'source': None}
     raw = _read_file_url(paths)
     if not raw:
+        index = os.path.join(paths.env_root, 'packages', 'sdk', 'env-plugins', 'index.json')
+        if os.path.isfile(index):
+            return {'enabled': True, 'url': index, 'source': 'sdk'}
         return {'enabled': False, 'url': '', 'source': None}
     try:
         return {'enabled': True, 'url': normalize_market_url(raw), 'source': 'file'}
@@ -117,7 +121,7 @@ def runtime_profile():
         'env': env_version,
         'python': '%d.%d.%d' % sys.version_info[:3],
         'implementation': platform.python_implementation().lower(),
-        'abi': 'py3',
+        'abi': python_abi(),
         'platform': normalize_platform(),
         'architecture': normalize_architecture(),
     }
@@ -422,41 +426,7 @@ class MarketClient(object):
             raise UsageError('artifact checksum is invalid')
         path = '/api/v1/artifacts/%s/download' % digest
         response = self._open(path, timeout=DOWNLOAD_TIMEOUT)
-        try:
-            header = (response.headers.get('X-Checksum-SHA256') or '').strip().lower()
-            length = response.headers.get('Content-Length')
-            if length is not None:
-                try:
-                    declared = int(length)
-                except ValueError:
-                    raise MarketError('plugin market returned an invalid download size', code='market_invalid_response')
-                if declared < 0 or declared > DOWNLOAD_LIMIT:
-                    raise MarketError('plugin package exceeds size limit', code='payload_too_large', status=413)
-            hasher = hashlib.sha256()
-            total = 0
-            with open(destination, 'wb') as output:
-                while True:
-                    chunk = response.read(64 * 1024)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if total > DOWNLOAD_LIMIT:
-                        raise MarketError('plugin package exceeds size limit', code='payload_too_large', status=413)
-                    hasher.update(chunk)
-                    output.write(chunk)
-            actual = hasher.hexdigest()
-            if header and header != actual:
-                raise MarketError('downloaded package checksum does not match', code='checksum_mismatch')
-            if actual != digest:
-                raise MarketError('downloaded package checksum does not match', code='checksum_mismatch')
-            return {
-                'path': destination,
-                'sha256': actual,
-                'size_bytes': total,
-                'filename': filename or os.path.basename(destination),
-            }
-        finally:
-            response.close()
+        return save_download(response, digest, destination, filename)
 
     def _get_json(self, path, query=None):
         response = self._open(path, query=query, timeout=JSON_TIMEOUT)
@@ -501,6 +471,52 @@ class MarketClient(object):
             raise
         except OSError:
             raise MarketError('plugin market is unreachable', code='market_unreachable', status=502)
+
+
+def save_download(response, digest, destination, filename=None, expected_size=None):
+    """Verify a streamed artifact for either market backend."""
+    try:
+        header = (response.headers.get('X-Checksum-SHA256') or '').strip().lower()
+        length = response.headers.get('Content-Length')
+        declared = None
+        if length is not None:
+            try:
+                declared = int(length)
+            except ValueError:
+                raise MarketError('plugin market returned an invalid download size', code='market_invalid_response')
+            if declared < 0 or declared > DOWNLOAD_LIMIT:
+                raise MarketError('plugin package exceeds size limit', code='payload_too_large', status=413)
+        hasher = hashlib.sha256()
+        total = 0
+        with open(destination, 'wb') as output:
+            while True:
+                chunk = response.read(64 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > DOWNLOAD_LIMIT:
+                    raise MarketError('plugin package exceeds size limit', code='payload_too_large', status=413)
+                hasher.update(chunk)
+                output.write(chunk)
+        actual = hasher.hexdigest()
+        if (header and header != actual) or actual != digest:
+            raise MarketError('downloaded package checksum does not match', code='checksum_mismatch')
+        if (declared is not None and total != declared) or (expected_size is not None and total != expected_size):
+            raise MarketError('downloaded package size does not match', code='size_mismatch')
+        return {
+            'path': destination,
+            'sha256': actual,
+            'size_bytes': total,
+            'filename': filename or os.path.basename(destination),
+        }
+    except Exception:
+        try:
+            os.unlink(destination)
+        except OSError:
+            pass
+        raise
+    finally:
+        response.close()
 
 
 def public_artifact(artifact):

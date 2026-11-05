@@ -123,7 +123,8 @@ def _print_result(value, as_json):
         return
     if isinstance(value, dict) and set(value) >= set(['enabled', 'url', 'source']):
         if value.get('enabled'):
-            source = 'environment variable' if value.get('source') == 'env' else 'configuration file'
+            source = {'env': 'environment variable', 'file': 'configuration file', 'sdk': 'SDK repository index'}.get(
+                value.get('source'), value.get('source'))
             print('Plugin market: %s (%s)' % (value['url'], source))
         else:
             print('Plugin market is not configured.')

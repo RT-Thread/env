@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'line',
   use: {
     browserName: 'chromium',
-    launchOptions: { executablePath: '/usr/bin/google-chrome' },
+    launchOptions: process.env.CI ? {} : { executablePath: '/usr/bin/google-chrome' },
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },

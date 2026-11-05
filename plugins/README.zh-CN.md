@@ -12,7 +12,7 @@ RT-Thread Env 是一套面向 RT-Thread 开发的命令行工具集。`plugins/`
 - `installer.py`、`store.py`、`launchers.py`：管理安装状态、事务回滚和插件命令启动器。
 - `dispatcher.py`、`sdk/`：统一分发插件命令，并创建插件运行上下文。
 - `epack/`：插件工程初始化、校验、构建和包检查工具。
-- `market.py`：可选的在线插件市场地址和 Host API 客户端。
+- `market.py`、`sdk_index.py`：HTTP 在线市场和 SDK 仓库插件索引客户端。
 - `webui/`：Env 本机 Host API、前端源码和发行版静态资源。
 - `bundled/epack/`：官方可选 `epack` 开发工具的插件工程。
 - `examples/`：CLI、WebUI 以及两者组合的示例工程。
@@ -81,7 +81,11 @@ rt-env plugin market set http://127.0.0.1:8800
 rt-env plugin market clear
 ```
 
-`ENV_PLUGIN_MARKET_URL` 优先于 `${ENV_ROOT}/var/plugins/market.json`。未配置地址时，WebUI 不显示在线插件页面。
+`ENV_PLUGIN_MARKET_URL` 优先于 `${ENV_ROOT}/var/plugins/market.json`。没有显式市场地址时，默认读取 `${ENV_ROOT}/packages/sdk/env-plugins/index.json`；只有两类来源都不存在时，WebUI 才不显示在线插件页面。清除文件中的 HTTP 配置可恢复 SDK 来源。
+
+SDK 插件索引的根文件使用 `{"version": 1, "index": ["<插件目录>"]}`，每个直接子目录的 `index.json` 包含插件 `id`、`name` 和 `versions[].artifacts[]`。制品必须包含 HTTPS `url`、`.epack` 文件名、小写 `sha256` 及与包一致的 `compatibility`，可选 `size_bytes`；可直接使用 GitHub Release 地址。详细格式见 SDK 仓库 `env-plugins/README.md`。
+
+索引随 SDK Git 仓库更新分发，刷新在线目录只重读本地索引，不隐式拉取 Git。安装选择最高兼容且未撤回的版本，校验摘要后复用已有包检查和未签名确认；沿用网络设置中的代理、超时。`epack push` 仍用于 HTTP 市场，SDK 来源应上传 Release 后维护索引。
 
 卸载时加上 `--purge-data` 会同时删除插件自己的配置、数据和缓存；工作区文件不会由卸载流程删除。
 
