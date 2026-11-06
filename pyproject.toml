@@ -27,6 +27,7 @@ pkgs = "env.env:pkgs"
 sdk = "env.env:sdk"
 system = "env.env:system"
 webui = "env.env:webui"
+format-changed = "env.env:format_changed"
 
 [tool.setuptools]
 package-dir = { env = ".", "env.cmds" = "cmds", "env.cmds.cmd_package" = "cmds/cmd_package", "env.plugins" = "plugins", "env.plugins.sdk" = "plugins/sdk", "env.plugins.epack" = "plugins/epack", "env.plugins.spec" = "plugins/spec", "env.plugins.webui" = "plugins/webui" }
