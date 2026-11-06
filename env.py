@@ -36,7 +36,7 @@ script_path = os.path.abspath(__file__)
 mpath = os.path.dirname(script_path)
 sys.path.insert(0, mpath)
 
-from cmds import cmd_menuconfig, cmd_package, cmd_plugin, cmd_sdk, cmd_system, cmd_webui
+from cmds import cmd_format_changed, cmd_menuconfig, cmd_package, cmd_plugin, cmd_sdk, cmd_system, cmd_webui
 from env_paths import get_env_root, get_package_root, get_rtt_root as resolve_rtt_root
 from vars import Export
 from info import get_name, get_version
@@ -112,7 +112,7 @@ def init_argparse():
     parser.add_argument('-v', '--version', action='version', version=env_ver_str)
     parser.add_argument('--info', action='store_true', help='Show environment information')
 
-    for command in (cmd_system, cmd_menuconfig, cmd_package, cmd_sdk, cmd_plugin, cmd_webui):
+    for command in (cmd_system, cmd_menuconfig, cmd_package, cmd_sdk, cmd_plugin, cmd_webui, cmd_format_changed):
         command.add_parser(subs)
 
     return parser
@@ -224,6 +224,10 @@ def sdk():
 
 def system():
     return exec_arg('system')
+
+
+def format_changed():
+    return exec_arg('format-changed')
 
 
 def webui():
