@@ -1549,7 +1549,7 @@ onBeforeUnmount(() => {
               class="plugin-frame"
               :title="plugin.name"
               :src="session?.plugin_assets?.[plugin.id]?.base || ''"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
               @load="iframeLoaded(plugin.id)"
             ></iframe>
             <div v-if="activePlugin?.missing_required_permissions?.length" class="boundary-state">
