@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RT-Thread Env">
+  <defs>
+    <linearGradient id="env-bg" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#30B7BA"/>
+      <stop offset=".52" stop-color="#0E7C7B"/>
+      <stop offset="1" stop-color="#08484A"/>
+    </linearGradient>
+    <radialGradient id="env-glow" cx="46" cy="6" r="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7AD4D6" stop-opacity=".5"/>
+      <stop offset="1" stop-color="#7AD4D6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#env-bg)"/>
+  <rect width="64" height="64" rx="14" fill="url(#env-glow)"/>
+  <path d="M16 20.5 29 32 16 43.5" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 45.5h15" fill="none" stroke="#EAF7F7" stroke-width="6.5" stroke-linecap="round"/>
+</svg>
